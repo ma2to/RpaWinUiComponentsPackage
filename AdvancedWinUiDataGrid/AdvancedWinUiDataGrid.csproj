@@ -17,6 +17,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Controls\AdvancedDataGrid.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
@@ -27,6 +31,12 @@
     <Folder Include="Controls\SpecialColumns\" />
     <Folder Include="Extensions\" />
     <Folder Include="Utilities\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="Controls\AdvancedDataGrid.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
 </Project>
