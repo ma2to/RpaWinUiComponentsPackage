@@ -1,4 +1,4 @@
-<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ -->
+<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ pre jednotné rozmery -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -15,47 +15,69 @@
         <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter"/>
         <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter"/>
 
-        <!-- Header Template -->
+        <!-- ✅ NOVÉ: Color Theme Resources - Customizable API -->
+        <SolidColorBrush x:Key="CellBackgroundBrush" Color="{x:Bind ColorTheme.CellBackgroundColor, Mode=OneWay}"/>
+        <SolidColorBrush x:Key="CellBorderBrush" Color="{x:Bind ColorTheme.CellBorderColor, Mode=OneWay}"/>
+        <SolidColorBrush x:Key="CellTextBrush" Color="{x:Bind ColorTheme.CellTextColor, Mode=OneWay}"/>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="{x:Bind ColorTheme.HeaderBackgroundColor, Mode=OneWay}"/>
+        <SolidColorBrush x:Key="HeaderTextBrush" Color="{x:Bind ColorTheme.HeaderTextColor, Mode=OneWay}"/>
+        <SolidColorBrush x:Key="ValidationErrorBrush" Color="{x:Bind ColorTheme.ValidationErrorColor, Mode=OneWay}"/>
+        <SolidColorBrush x:Key="SelectionBrush" Color="{x:Bind ColorTheme.SelectionColor, Mode=OneWay}"/>
+
+        <!-- ✅ OPRAVENÉ: Header Template s fixed height -->
         <DataTemplate x:Key="HeaderTemplate">
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            <Border Background="{StaticResource HeaderBackgroundBrush}"
+                    BorderBrush="{StaticResource CellBorderBrush}"
                     BorderThickness="0,0,1,1"
-                    Padding="8,12"
-                    MinHeight="40">
-                <TextBlock Text="{Binding}" 
+                    Padding="8,8"
+                    Height="40"
+                    MinWidth="{Binding Width}">
+                <TextBlock Text="{Binding Header}" 
                           FontWeight="SemiBold"
+                          Foreground="{StaticResource HeaderTextBrush}"
                           VerticalAlignment="Center"
-                          TextWrapping="Wrap"/>
+                          HorizontalAlignment="Left"
+                          TextWrapping="NoWrap"
+                          TextTrimming="CharacterEllipsis"/>
             </Border>
         </DataTemplate>
 
-        <!-- Cell Template -->
+        <!-- ✅ OPRAVENÉ: Cell Template s fixed sizing a realtime validáciou -->
         <DataTemplate x:Key="CellTemplate">
-            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+            <Border Background="{StaticResource CellBackgroundBrush}"
                     BorderBrush="{Binding IsValid, Converter={StaticResource BoolToValidationBrushConverter}}"
                     BorderThickness="{Binding IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}"
                     Padding="8,6"
-                    MinHeight="36">
-                <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    MinHeight="36"
+                    MinWidth="{Binding ColumnDefinition.Width}"
+                    MaxWidth="{Binding ColumnDefinition.MaxWidth}">
+
+                <TextBox x:Name="CellTextBox"
+                        Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                         Background="Transparent"
+                        Foreground="{StaticResource CellTextBrush}"
                         BorderThickness="0"
                         Padding="0"
                         AcceptsReturn="True"
                         TextWrapping="Wrap"
                         VerticalAlignment="Stretch"
+                        HorizontalAlignment="Stretch"
                         KeyDown="OnCellKeyDown"
                         LostFocus="OnCellLostFocus"
-                        GotFocus="OnCellGotFocus"/>
+                        GotFocus="OnCellGotFocus"
+                        TextChanged="OnCellTextChanged"
+                        Tag="{Binding}"/>
             </Border>
         </DataTemplate>
 
-        <!-- Delete Button Template -->
+        <!-- ✅ OPRAVENÉ: Delete Button Template s fixed sizing -->
         <DataTemplate x:Key="DeleteButtonTemplate">
-            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            <Border Background="{StaticResource CellBackgroundBrush}"
+                    BorderBrush="{StaticResource CellBorderBrush}"
                     BorderThickness="0,0,1,1"
                     Padding="4"
-                    MinHeight="36">
+                    MinHeight="36"
+                    Width="40">
                 <Button Background="Transparent"
                         BorderThickness="0"
                         Width="24"
@@ -66,29 +88,55 @@
                         Tag="{Binding}">
                     <FontIcon Glyph="&#xE74D;" 
                              FontSize="12"
-                             Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                             Foreground="{StaticResource ValidationErrorBrush}"/>
                 </Button>
             </Border>
         </DataTemplate>
 
-        <!-- Validation Alerts Template -->
+        <!-- ✅ OPRAVENÉ: Validation Alerts Template s fixed sizing -->
         <DataTemplate x:Key="ValidationAlertsTemplate">
-            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            <Border Background="{StaticResource CellBackgroundBrush}"
+                    BorderBrush="{StaticResource CellBorderBrush}"
                     BorderThickness="0,0,0,1"
                     Padding="8,6"
-                    MinHeight="36">
-                <TextBlock Text="{Binding ValidationErrors}" 
-                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                          FontSize="12"
-                          TextWrapping="Wrap"
-                          VerticalAlignment="Center"/>
+                    MinHeight="36"
+                    MinWidth="200">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Disabled"
+                              MaxHeight="100">
+                    <TextBlock Text="{Binding ValidationErrors}" 
+                              Foreground="{StaticResource ValidationErrorBrush}"
+                              FontSize="12"
+                              TextWrapping="Wrap"
+                              VerticalAlignment="Center"/>
+                </ScrollViewer>
             </Border>
         </DataTemplate>
+
+        <!-- ✅ NOVÉ: Row Template pre jednotné sizing -->
+        <DataTemplate x:Key="RowTemplate">
+            <ItemsRepeater ItemsSource="{Binding Cells}" x:Name="RowCellsRepeater">
+                <ItemsRepeater.Layout>
+                    <StackLayout Orientation="Horizontal" Spacing="0"/>
+                </ItemsRepeater.Layout>
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate>
+                        <ContentPresenter Content="{Binding}" 
+                                        ContentTemplateSelector="{StaticResource CellTemplateSelector}"/>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+        </DataTemplate>
+
+        <!-- ✅ NOVÉ: Template Selector pre rôzne typy buniek -->
+        <local:CellTemplateSelector x:Key="CellTemplateSelector"
+                                   CellTemplate="{StaticResource CellTemplate}"
+                                   DeleteButtonTemplate="{StaticResource DeleteButtonTemplate}"
+                                   ValidationAlertsTemplate="{StaticResource ValidationAlertsTemplate}"/>
     </UserControl.Resources>
 
     <Grid>
-        <!-- ✅ OPRAVENÉ: Loading Overlay s potrebnými elementmi -->
+        <!-- ✅ OPRAVENÉ: Loading Overlay -->
         <Border x:Name="LoadingOverlay"
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
                 Visibility="Collapsed">
@@ -102,20 +150,20 @@
             </StackPanel>
         </Border>
 
-        <!-- ✅ OPRAVENÉ: Main Content s potrebnými elementmi -->
+        <!-- ✅ OPRAVENÉ: Main Content s fixed column sizing -->
         <Grid x:Name="MainContentGrid" Visibility="Visible">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- ✅ OPRAVENÉ: Header s potrebnými elementmi -->
+            <!-- ✅ OPRAVENÉ: Header s fixed column widths -->
             <ScrollViewer x:Name="HeaderScrollViewer"
                          Grid.Row="0"
                          HorizontalScrollBarVisibility="Hidden"
                          VerticalScrollBarVisibility="Disabled"
                          ZoomMode="Disabled">
-                <ItemsRepeater x:Name="HeaderRepeater">
+                <ItemsRepeater x:Name="HeaderRepeater" ItemsSource="{x:Bind HeaderColumns, Mode=OneWay}">
                     <ItemsRepeater.Layout>
                         <StackLayout Orientation="Horizontal" Spacing="0"/>
                     </ItemsRepeater.Layout>
@@ -128,34 +176,35 @@
                 </ItemsRepeater>
             </ScrollViewer>
 
-            <!-- ✅ OPRAVENÉ: Data ScrollViewer s potrebnými elementmi -->
+            <!-- ✅ OPRAVENÉ: Data ScrollViewer s multi-selection support -->
             <ScrollViewer x:Name="DataScrollViewer"
                          Grid.Row="1"
                          HorizontalScrollBarVisibility="Auto"
                          VerticalScrollBarVisibility="Auto"
                          ZoomMode="Disabled"
                          ViewChanged="OnDataScrollViewChanged">
-                <ItemsRepeater x:Name="DataRowsRepeater">
+
+                <ItemsRepeater x:Name="DataRowsRepeater" ItemsSource="{x:Bind DataRows, Mode=OneWay}">
                     <ItemsRepeater.Layout>
                         <StackLayout Orientation="Vertical" Spacing="0"/>
                     </ItemsRepeater.Layout>
                     <ItemsRepeater.ItemTemplate>
                         <DataTemplate>
-                            <ItemsRepeater ItemsSource="{Binding Cells}">
-                                <ItemsRepeater.Layout>
-                                    <StackLayout Orientation="Horizontal" Spacing="0"/>
-                                </ItemsRepeater.Layout>
-                                <ItemsRepeater.ItemTemplate>
-                                    <DataTemplate>
-                                        <ContentPresenter Content="{Binding}" 
-                                                        ContentTemplate="{StaticResource CellTemplate}"/>
-                                    </DataTemplate>
-                                </ItemsRepeater.ItemTemplate>
-                            </ItemsRepeater>
+                            <ContentPresenter Content="{Binding}" 
+                                            ContentTemplate="{StaticResource RowTemplate}"/>
                         </DataTemplate>
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
             </ScrollViewer>
         </Grid>
+
+        <!-- ✅ NOVÉ: Multi-selection overlay -->
+        <Canvas x:Name="SelectionCanvas" 
+                Grid.Row="1"
+                Background="Transparent"
+                IsHitTestVisible="True"
+                PointerPressed="OnSelectionCanvasPointerPressed"
+                PointerMoved="OnSelectionCanvasPointerMoved"
+                PointerReleased="OnSelectionCanvasPointerReleased"/>
     </Grid>
 </UserControl>

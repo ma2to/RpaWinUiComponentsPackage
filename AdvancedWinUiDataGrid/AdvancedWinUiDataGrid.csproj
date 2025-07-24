@@ -76,7 +76,6 @@
   <ItemGroup>
     <Folder Include="Services\" />
     <Folder Include="Services\Interfaces\" />
-    <Folder Include="Utilities\" />
     <Folder Include="Extensions\" />
   </ItemGroup>
 
