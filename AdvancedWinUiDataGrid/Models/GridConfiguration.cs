@@ -1,6 +1,7 @@
 ﻿// Models/GridConfiguration.cs
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
 {

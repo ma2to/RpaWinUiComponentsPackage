@@ -1,10 +1,10 @@
 ﻿// Models/ThrottlingConfig.cs
 using System;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Konfigurácia pre throttling operácií v DataGrid
+    /// Konfigurácia pre throttling operácií v DataGrid - PUBLIC API
     /// </summary>
     public class ThrottlingConfig
     {

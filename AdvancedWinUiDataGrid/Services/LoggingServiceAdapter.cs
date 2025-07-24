@@ -1,5 +1,6 @@
 ﻿// Services/LoggingServiceAdapter.cs
 using Microsoft.Extensions.Logging;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
 using System;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid

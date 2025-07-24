@@ -16,9 +16,6 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
 
-    <!-- ✅ OPRAVENÉ: Disable default page items aby sme mali plnú kontrolu -->
-    <EnableDefaultPageItems>false</EnableDefaultPageItems>
-
     <!-- Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
     <Version>1.0.0</Version>
@@ -47,7 +44,6 @@
   <!-- Dependency Injection & Logging -->
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
   </ItemGroup>
@@ -57,47 +53,17 @@
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: Explicitné definovanie XAML súborov -->
+  <!-- ✅ OPRAVENÉ: Odstránené duplicitné Compile items - .NET SDK ich automaticky pridá -->
+  <!-- ✅ KĽÚČOVÁ OPRAVA: Necháme SDK automaticky zahrnúť všetky .cs súbory -->
+
+  <!-- ✅ OPRAVENÉ: Iba explicitne definované XAML súbory (ak sú potrebné) -->
   <ItemGroup>
     <Page Include="Controls\AdvancedDataGrid.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: Explicitné definovanie C# súborov -->
-  <ItemGroup>
-    <Compile Include="Controls\AdvancedDataGrid.xaml.cs">
-      <DependentUpon>AdvancedDataGrid.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Models\ColumnDefinition.cs" />
-    <Compile Include="Models\ValidationRule.cs" />
-    <Compile Include="Models\ThrottlingConfig.cs" />
-    <Compile Include="Models\GridConfiguration.cs" />
-    <Compile Include="Models\RowDataModel.cs" />
-    <Compile Include="Models\CellData.cs" />
-    <Compile Include="Services\Interfaces\IValidationService.cs" />
-    <Compile Include="Services\Interfaces\IDataManagementService.cs" />
-    <Compile Include="Services\Interfaces\ICopyPasteService.cs" />
-    <Compile Include="Services\Interfaces\IExportService.cs" />
-    <Compile Include="Services\Interfaces\INavigationService.cs" />
-    <Compile Include="Services\Interfaces\ILoggingService.cs" />
-    <Compile Include="Services\ValidationService.cs" />
-    <Compile Include="Services\DataManagementService.cs" />
-    <Compile Include="Services\CopyPasteService.cs" />
-    <Compile Include="Services\ExportService.cs" />
-    <Compile Include="Services\NavigationService.cs" />
-    <Compile Include="Services\LoggingServiceAdapter.cs" />
-    <Compile Include="Utilities\BoolToVisibilityConverter.cs" />
-    <Compile Include="Utilities\Converters.cs" />
-    <Compile Include="Utilities\DataTypeConverter.cs" />
-    <Compile Include="Utilities\ExcelClipboardHelper.cs" />
-    <Compile Include="Utilities\ResourceCleanupHelper.cs" />
-    <Compile Include="Utilities\ThrottleHelper.cs" />
-    <Compile Include="Extensions\ColumnDefinitionExtensions.cs" />
-    <Compile Include="Extensions\ValidationExtensions.cs" />
-  </ItemGroup>
-
-  <!-- Project Structure Folders -->
+  <!-- Project Structure Folders (pre VS organization) -->
   <ItemGroup>
     <Folder Include="Controls\" />
     <Folder Include="Models\" />

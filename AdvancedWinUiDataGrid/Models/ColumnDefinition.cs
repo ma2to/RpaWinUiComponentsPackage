@@ -1,10 +1,10 @@
 ﻿// Models/ColumnDefinition.cs - ROZŠÍRENÉ
 using System;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Definícia stĺpca v DataGrid
+    /// Definícia stĺpca v DataGrid - PUBLIC API
     /// </summary>
     public class ColumnDefinition
     {

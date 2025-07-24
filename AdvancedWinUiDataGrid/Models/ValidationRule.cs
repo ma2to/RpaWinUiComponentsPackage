@@ -48,17 +48,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <summary>
         /// Minimálna dĺžka (pre string validácie)
         /// </summary>
-        public int? MinLength { get; set; }
+        public int? MinLengthValue { get; set; }
 
         /// <summary>
         /// Maximálna dĺžka (pre string validácie)
         /// </summary>
-        public int? MaxLength { get; set; }
+        public int? MaxLengthValue { get; set; }
 
         /// <summary>
         /// Regex pattern (pre Pattern validácie)
         /// </summary>
-        public string? Pattern { get; set; }
+        public string? PatternValue { get; set; }
 
         /// <summary>
         /// Či je validácia povinná
@@ -75,14 +75,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             ErrorMessage = errorMessage;
         }
 
-        // ✅ OPRAVENÉ: Len jedna Custom metóda s ValidationFunction delegátom
+        #region Static Factory Methods
+
         /// <summary>
         /// Vytvorí custom validačné pravidlo
         /// </summary>
-        /// <param name="columnName">Názov stĺpca</param>
-        /// <param name="validator">Custom validačná funkcia</param>
-        /// <param name="errorMessage">Chybová správa</param>
-        /// <returns>ValidationRule</returns>
         public static ValidationRule Custom(string columnName, ValidationFunction validator, string errorMessage)
         {
             return new ValidationRule
@@ -118,7 +115,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 ColumnName = columnName,
                 Type = ValidationType.Email,
                 ErrorMessage = errorMessage,
-                Pattern = @"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+                PatternValue = @"^[^\s@]+@[^\s@]+\.[^\s@]+$"
             };
         }
 
@@ -146,7 +143,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 ColumnName = columnName,
                 Type = ValidationType.MinLength,
-                MinLength = minLength,
+                MinLengthValue = minLength,
                 ErrorMessage = errorMessage
             };
         }
@@ -160,7 +157,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 ColumnName = columnName,
                 Type = ValidationType.MaxLength,
-                MaxLength = maxLength,
+                MaxLengthValue = maxLength,
                 ErrorMessage = errorMessage
             };
         }
@@ -174,16 +171,16 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 ColumnName = columnName,
                 Type = ValidationType.Pattern,
-                Pattern = pattern,
+                PatternValue = pattern,
                 ErrorMessage = errorMessage
             };
         }
 
+        #endregion
+
         /// <summary>
         /// Validuje hodnotu podľa tohto pravidla
         /// </summary>
-        /// <param name="value">Hodnota na validáciu</param>
-        /// <returns>True ak je hodnota validná</returns>
         public bool Validate(object? value)
         {
             return Type switch
@@ -198,6 +195,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _ => true
             };
         }
+
+        #region Private Validation Methods
 
         private bool ValidateRequired(object? value)
         {
@@ -244,14 +243,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             if (value == null) return !IsRequired;
             var str = value.ToString();
             if (string.IsNullOrEmpty(str)) return !IsRequired;
-            return MinLength == null || str.Length >= MinLength.Value;
+            return MinLengthValue == null || str.Length >= MinLengthValue.Value;
         }
 
         private bool ValidateMaxLength(object? value)
         {
             if (value == null) return !IsRequired;
             var str = value.ToString() ?? "";
-            return MaxLength == null || str.Length <= MaxLength.Value;
+            return MaxLengthValue == null || str.Length <= MaxLengthValue.Value;
         }
 
         private bool ValidatePattern(object? value)
@@ -259,11 +258,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             if (value == null) return !IsRequired;
             var str = value.ToString();
             if (string.IsNullOrEmpty(str)) return !IsRequired;
-            if (string.IsNullOrEmpty(Pattern)) return true;
+            if (string.IsNullOrEmpty(PatternValue)) return true;
 
             try
             {
-                return System.Text.RegularExpressions.Regex.IsMatch(str, Pattern);
+                return System.Text.RegularExpressions.Regex.IsMatch(str, PatternValue);
             }
             catch
             {
@@ -275,6 +274,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         {
             return CustomValidator?.Invoke(value) ?? true;
         }
+
+        #endregion
     }
 
     /// <summary>
