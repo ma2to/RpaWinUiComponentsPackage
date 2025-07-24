@@ -1,7 +1,10 @@
-﻿// Extensions/ColumnDefinitionExtensions.cs
+﻿// Extensions/ColumnDefinitionExtensions.cs - ✅ OPRAVENÝ
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
+// ✅ OPRAVENÉ CS0246: Správny import pre naše typy
+using GridColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.ColumnDefinition;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
@@ -21,7 +24,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="minWidth">Minimálna šírka (optional)</param>
         /// <param name="maxWidth">Maximálna šírka (optional)</param>
         /// <returns>Tá istá inštancia pre fluent chaining</returns>
-        public static ColumnDefinition WithWidth(this ColumnDefinition column, double width, double? minWidth = null, double? maxWidth = null)
+        public static GridColumnDefinition WithWidth(this GridColumnDefinition column, double width, double? minWidth = null, double? maxWidth = null)
         {
             column.Width = width;
             if (minWidth.HasValue) column.MinWidth = minWidth.Value;
@@ -35,7 +38,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="column">Definícia stĺpca</param>
         /// <param name="header">Text header-u</param>
         /// <returns>Tá istá inštancia pre fluent chaining</returns>
-        public static ColumnDefinition WithHeader(this ColumnDefinition column, string header)
+        public static GridColumnDefinition WithHeader(this GridColumnDefinition column, string header)
         {
             column.Header = header;
             return column;
@@ -47,9 +50,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="column">Definícia stĺpca</param>
         /// <param name="isReadOnly">Či je readonly</param>
         /// <returns>Tá istá inštancia pre fluent chaining</returns>
-        public static ColumnDefinition AsReadOnly(this ColumnDefinition column, bool isReadOnly = true)
+        public static GridColumnDefinition AsReadOnly(this GridColumnDefinition column, bool isReadOnly = true)
         {
-            column.IsReadOnly = isReadOnly;
+            column.IsEditable = !isReadOnly;
             return column;
         }
 
@@ -59,21 +62,21 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="column">Definícia stĺpca</param>
         /// <param name="isVisible">Či je viditeľný</param>
         /// <returns>Tá istá inštancia pre fluent chaining</returns>
-        public static ColumnDefinition WithVisibility(this ColumnDefinition column, bool isVisible)
+        public static GridColumnDefinition WithVisibility(this GridColumnDefinition column, bool isVisible)
         {
             column.IsVisible = isVisible;
             return column;
         }
 
         /// <summary>
-        /// Nastaví placeholder text (fluent API).
+        /// Nastaví default hodnotu (fluent API).
         /// </summary>
         /// <param name="column">Definícia stĺpca</param>
-        /// <param name="placeholderText">Placeholder text</param>
+        /// <param name="defaultValue">Default hodnota</param>
         /// <returns>Tá istá inštancia pre fluent chaining</returns>
-        public static ColumnDefinition WithPlaceholder(this ColumnDefinition column, string placeholderText)
+        public static GridColumnDefinition WithDefaultValue(this GridColumnDefinition column, object? defaultValue)
         {
-            column.PlaceholderText = placeholderText;
+            column.DefaultValue = defaultValue;
             return column;
         }
 
@@ -86,9 +89,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Filtrované dátové stĺpce</returns>
-        public static IEnumerable<ColumnDefinition> DataColumnsOnly(this IEnumerable<ColumnDefinition> columns)
+        public static IEnumerable<GridColumnDefinition> DataColumnsOnly(this IEnumerable<GridColumnDefinition> columns)
         {
-            return columns.Where(c => c.IsDataColumn);
+            return columns.Where(c => !c.IsSpecialColumn);
         }
 
         /// <summary>
@@ -96,7 +99,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Filtrované viditeľné stĺpce</returns>
-        public static IEnumerable<ColumnDefinition> VisibleOnly(this IEnumerable<ColumnDefinition> columns)
+        public static IEnumerable<GridColumnDefinition> VisibleOnly(this IEnumerable<GridColumnDefinition> columns)
         {
             return columns.Where(c => c.IsVisible);
         }
@@ -106,9 +109,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Filtrované editovateľné stĺpce</returns>
-        public static IEnumerable<ColumnDefinition> EditableOnly(this IEnumerable<ColumnDefinition> columns)
+        public static IEnumerable<GridColumnDefinition> EditableOnly(this IEnumerable<GridColumnDefinition> columns)
         {
-            return columns.Where(c => !c.IsReadOnly);
+            return columns.Where(c => c.IsEditable);
         }
 
         /// <summary>
@@ -117,7 +120,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <param name="columnName">Názov stĺpca</param>
         /// <returns>Nájdený stĺpec alebo null</returns>
-        public static ColumnDefinition? FindByName(this IEnumerable<ColumnDefinition> columns, string columnName)
+        public static GridColumnDefinition? FindByName(this IEnumerable<GridColumnDefinition> columns, string columnName)
         {
             return columns.FirstOrDefault(c => c.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
         }
@@ -128,7 +131,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <param name="dataType">Dátový typ</param>
         /// <returns>Filtrované stĺpce podľa typu</returns>
-        public static IEnumerable<ColumnDefinition> OfType(this IEnumerable<ColumnDefinition> columns, Type dataType)
+        public static IEnumerable<GridColumnDefinition> OfType(this IEnumerable<GridColumnDefinition> columns, Type dataType)
         {
             return columns.Where(c => c.DataType == dataType);
         }
@@ -138,7 +141,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Číselné stĺpce</returns>
-        public static IEnumerable<ColumnDefinition> NumericColumns(this IEnumerable<ColumnDefinition> columns)
+        public static IEnumerable<GridColumnDefinition> NumericColumns(this IEnumerable<GridColumnDefinition> columns)
         {
             return columns.Where(c => IsNumericType(c.DataType));
         }
@@ -148,7 +151,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Textové stĺpce</returns>
-        public static IEnumerable<ColumnDefinition> TextColumns(this IEnumerable<ColumnDefinition> columns)
+        public static IEnumerable<GridColumnDefinition> TextColumns(this IEnumerable<GridColumnDefinition> columns)
         {
             return columns.Where(c => c.DataType == typeof(string));
         }
@@ -162,7 +165,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Zoznam chýb validácie</returns>
-        public static List<string> ValidateColumns(this IEnumerable<ColumnDefinition> columns)
+        public static List<string> ValidateColumns(this IEnumerable<GridColumnDefinition> columns)
         {
             var errors = new List<string>();
             var columnsList = columns.ToList();
@@ -186,8 +189,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             // Validácia jednotlivých stĺpcov
             foreach (var column in columnsList)
             {
-                var columnErrors = column.GetValidationErrors();
-                errors.AddRange(columnErrors.Select(e => $"Stĺpec '{column.Name}': {e}"));
+                try
+                {
+                    column.Validate();
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Stĺpec '{column.Name}': {ex.Message}");
+                }
             }
 
             return errors;
@@ -198,7 +207,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>True ak je validná</returns>
-        public static bool IsValid(this IEnumerable<ColumnDefinition> columns)
+        public static bool IsValid(this IEnumerable<GridColumnDefinition> columns)
         {
             return !ValidateColumns(columns).Any();
         }
@@ -213,20 +222,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="column">Pôvodný stĺpec</param>
         /// <param name="newName">Nový názov</param>
         /// <returns>Kópia stĺpca</returns>
-        public static ColumnDefinition Clone(this ColumnDefinition column, string? newName = null)
+        public static GridColumnDefinition Clone(this GridColumnDefinition column, string? newName = null)
         {
-            var clone = new ColumnDefinition(newName ?? column.Name, column.DataType)
-            {
-                Header = column.Header,
-                Width = column.Width,
-                MinWidth = column.MinWidth,
-                MaxWidth = column.MaxWidth,
-                IsReadOnly = column.IsReadOnly,
-                IsVisible = column.IsVisible,
-                PlaceholderText = column.PlaceholderText
-            };
-
-            return clone;
+            return column.Clone();
         }
 
         /// <summary>
@@ -234,7 +232,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Celková šírka</returns>
-        public static double GetTotalWidth(this IEnumerable<ColumnDefinition> columns)
+        public static double GetTotalWidth(this IEnumerable<GridColumnDefinition> columns)
         {
             return columns.Where(c => c.IsVisible).Sum(c => c.Width);
         }
@@ -244,7 +242,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <returns>Celková minimálna šírka</returns>
-        public static double GetTotalMinWidth(this IEnumerable<ColumnDefinition> columns)
+        public static double GetTotalMinWidth(this IEnumerable<GridColumnDefinition> columns)
         {
             return columns.Where(c => c.IsVisible).Sum(c => c.MinWidth);
         }
@@ -254,7 +252,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="columns">Kolekcia stĺpcov</param>
         /// <param name="totalWidth">Cieľová celková šírka</param>
-        public static void ResizeProportionally(this IEnumerable<ColumnDefinition> columns, double totalWidth)
+        public static void ResizeProportionally(this IEnumerable<GridColumnDefinition> columns, double totalWidth)
         {
             var visibleColumns = columns.Where(c => c.IsVisible).ToList();
             if (!visibleColumns.Any()) return;
@@ -300,13 +298,13 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         /// <param name="dataTypes">Slovník názvov stĺpcov a ich typov</param>
         /// <returns>Kolekcia ColumnDefinition</returns>
-        public static List<ColumnDefinition> CreateFromTypes(Dictionary<string, Type> dataTypes)
+        public static List<GridColumnDefinition> CreateFromTypes(Dictionary<string, Type> dataTypes)
         {
-            var columns = new List<ColumnDefinition>();
+            var columns = new List<GridColumnDefinition>();
 
             foreach (var kvp in dataTypes)
             {
-                var column = new ColumnDefinition(kvp.Key, kvp.Value)
+                var column = new GridColumnDefinition(kvp.Key, kvp.Value)
                 {
                     Header = kvp.Key,
                     Width = GetDefaultWidthForType(kvp.Value)

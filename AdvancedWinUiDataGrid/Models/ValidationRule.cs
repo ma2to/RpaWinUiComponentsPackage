@@ -1,4 +1,4 @@
-﻿// Models/ValidationRule.cs
+﻿// Models/ValidationRule.cs - ✅ KOMPLETNE OPRAVENÝ
 using System;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
@@ -65,7 +65,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         public bool IsRequired { get; set; }
 
-        // Konštruktory
+        // ✅ OPRAVENÉ: Konštruktory
         public ValidationRule() { }
 
         public ValidationRule(string columnName, ValidationType type, string errorMessage)
@@ -244,14 +244,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             if (value == null) return !IsRequired;
             var str = value.ToString();
             if (string.IsNullOrEmpty(str)) return !IsRequired;
-            return MinLength == null || str.Length >= MinLength;
+            return MinLength == null || str.Length >= MinLength.Value;
         }
 
         private bool ValidateMaxLength(object? value)
         {
             if (value == null) return !IsRequired;
             var str = value.ToString() ?? "";
-            return MaxLength == null || str.Length <= MaxLength;
+            return MaxLength == null || str.Length <= MaxLength.Value;
         }
 
         private bool ValidatePattern(object? value)

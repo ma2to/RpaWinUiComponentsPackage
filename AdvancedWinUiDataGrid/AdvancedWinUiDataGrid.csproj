@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid.csproj -->
+﻿<!-- AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -15,6 +15,9 @@
     <!-- ✅ OPRAVENÉ: Potlačenie CA1416 warnings pre Windows-only balík -->
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
+
+    <!-- ✅ OPRAVENÉ: Disable default page items aby sme mali plnú kontrolu -->
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
 
     <!-- Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
@@ -54,7 +57,47 @@
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- Project Structure -->
+  <!-- ✅ OPRAVENÉ: Explicitné definovanie XAML súborov -->
+  <ItemGroup>
+    <Page Include="Controls\AdvancedDataGrid.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+
+  <!-- ✅ OPRAVENÉ: Explicitné definovanie C# súborov -->
+  <ItemGroup>
+    <Compile Include="Controls\AdvancedDataGrid.xaml.cs">
+      <DependentUpon>AdvancedDataGrid.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Models\ColumnDefinition.cs" />
+    <Compile Include="Models\ValidationRule.cs" />
+    <Compile Include="Models\ThrottlingConfig.cs" />
+    <Compile Include="Models\GridConfiguration.cs" />
+    <Compile Include="Models\RowDataModel.cs" />
+    <Compile Include="Models\CellData.cs" />
+    <Compile Include="Services\Interfaces\IValidationService.cs" />
+    <Compile Include="Services\Interfaces\IDataManagementService.cs" />
+    <Compile Include="Services\Interfaces\ICopyPasteService.cs" />
+    <Compile Include="Services\Interfaces\IExportService.cs" />
+    <Compile Include="Services\Interfaces\INavigationService.cs" />
+    <Compile Include="Services\Interfaces\ILoggingService.cs" />
+    <Compile Include="Services\ValidationService.cs" />
+    <Compile Include="Services\DataManagementService.cs" />
+    <Compile Include="Services\CopyPasteService.cs" />
+    <Compile Include="Services\ExportService.cs" />
+    <Compile Include="Services\NavigationService.cs" />
+    <Compile Include="Services\LoggingServiceAdapter.cs" />
+    <Compile Include="Utilities\BoolToVisibilityConverter.cs" />
+    <Compile Include="Utilities\Converters.cs" />
+    <Compile Include="Utilities\DataTypeConverter.cs" />
+    <Compile Include="Utilities\ExcelClipboardHelper.cs" />
+    <Compile Include="Utilities\ResourceCleanupHelper.cs" />
+    <Compile Include="Utilities\ThrottleHelper.cs" />
+    <Compile Include="Extensions\ColumnDefinitionExtensions.cs" />
+    <Compile Include="Extensions\ValidationExtensions.cs" />
+  </ItemGroup>
+
+  <!-- Project Structure Folders -->
   <ItemGroup>
     <Folder Include="Controls\" />
     <Folder Include="Models\" />
@@ -64,19 +107,10 @@
     <Folder Include="Extensions\" />
   </ItemGroup>
 
-  <!-- XAML Files -->
-  <ItemGroup>
-    <Page Include="Controls\AdvancedDataGrid.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-
   <!-- Public API Surface -->
   <ItemGroup>
     <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
   </ItemGroup>
-
-  <!-- Resource Files -->
 
   <!-- Ensure proper WinUI packaging -->
   <PropertyGroup Condition="'$(DisableMsixProjectCapabilityAddition)' == ''">

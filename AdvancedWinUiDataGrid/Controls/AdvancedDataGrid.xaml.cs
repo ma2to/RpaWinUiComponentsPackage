@@ -1,10 +1,7 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
-using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
-using RpaWinUiComponents.AdvancedWinUiDataGrid.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -13,6 +10,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+// ✅ OPRAVENÉ CS0104: Aliasy pre zamedzenie konfliktov s WinUI typmi
+using GridColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.ColumnDefinition;
+using GridValidationRule = RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationRule;
+using GridThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
+using GridConfiguration = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.GridConfiguration;
+using RowDataModel = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.RowDataModel;
+using CellDataModel = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.CellDataModel;
+
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
@@ -77,9 +85,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// Inicializuje DataGrid s konfiguráciou
         /// </summary>
         public async Task InitializeAsync(
-            List<ColumnDefinition> columns,
-            List<ValidationRule> validationRules,
-            ThrottlingConfig throttlingConfig,
+            List<GridColumnDefinition> columns,
+            List<GridValidationRule> validationRules,
+            GridThrottlingConfig throttlingConfig,
             int emptyRowsCount = 15)
         {
             try
@@ -91,9 +99,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 // Vytvorenie konfigurácie
                 _configuration = new GridConfiguration
                 {
-                    Columns = columns ?? new List<ColumnDefinition>(),
-                    ValidationRules = validationRules ?? new List<ValidationRule>(),
-                    ThrottlingConfig = throttlingConfig ?? ThrottlingConfig.Default,
+                    Columns = columns ?? new List<GridColumnDefinition>(),
+                    ValidationRules = validationRules ?? new List<GridValidationRule>(),
+                    ThrottlingConfig = throttlingConfig ?? GridThrottlingConfig.Default,
                     EmptyRowsCount = emptyRowsCount
                 };
 
@@ -246,7 +254,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <summary>
         /// ✅ NOVÁ METÓDA: Zmaže riadky na základe custom validačných pravidiel
         /// </summary>
-        public async Task DeleteRowsByCustomValidationAsync(List<ValidationRule> deleteValidationRules)
+        public async Task DeleteRowsByCustomValidationAsync(List<GridValidationRule> deleteValidationRules)
         {
             try
             {
@@ -549,6 +557,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 if (LoadingText != null)
                     LoadingText.Text = message;
+
+                if (MainContentGrid != null)
+                    MainContentGrid.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -558,6 +569,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 if (LoadingOverlay != null)
                     LoadingOverlay.Visibility = Visibility.Collapsed;
+
+                if (MainContentGrid != null)
+                    MainContentGrid.Visibility = Visibility.Visible;
             });
         }
 

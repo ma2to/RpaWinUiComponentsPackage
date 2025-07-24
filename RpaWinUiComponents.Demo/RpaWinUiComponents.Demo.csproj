@@ -1,3 +1,4 @@
+<!-- RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -11,8 +12,13 @@
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
+
+    <!-- ✅ OPRAVENÉ: Potlačenie Windows-only warnings -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
+  <!-- ✅ OPRAVENÉ: Assets files -->
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
@@ -35,9 +41,16 @@
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
   </ItemGroup>
+
+  <!-- ✅ OPRAVENÉ: WinUI package references -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231008000" />
+  </ItemGroup>
+
+  <!-- ✅ KĽÚČOVÁ OPRAVA: Project reference na náš balík -->
+  <ItemGroup>
+    <ProjectReference Include="..\AdvancedWinUiDataGrid\AdvancedWinUiDataGrid.csproj" />
   </ItemGroup>
 
   <!--

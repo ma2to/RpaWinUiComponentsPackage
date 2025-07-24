@@ -1,4 +1,4 @@
-﻿// Extensions/ValidationExtensions.cs
+﻿// Extensions/ValidationExtensions.cs - ✅ OPRAVENÝ
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,22 +12,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// </summary>
     internal static class ValidationExtensions
     {
-        #region ValidationRule extensions
-
-        /// <summary>
-        /// Nastaví prioritu validačného pravidla (fluent API).
-        /// </summary>
-        /// <param name="rule">Validačné pravidlo</param>
-        /// <param name="priority">Priorita (vyššie číslo = vyššia priorita)</param>
-        /// <returns>Tá istá inštancia pre fluent chaining</returns>
-        public static ValidationRule WithPriority(this ValidationRule rule, int priority)
-        {
-            rule.Priority = priority;
-            return rule;
-        }
-
-        #endregion
-
         #region Collection extensions
 
         /// <summary>
@@ -47,9 +31,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="rules">Kolekcia validačných pravidiel</param>
         /// <param name="ruleType">Typ pravidla</param>
         /// <returns>Filtrované pravidlá podľa typu</returns>
-        public static IEnumerable<ValidationRule> OfType(this IEnumerable<ValidationRule> rules, ValidationRuleType ruleType)
+        public static IEnumerable<ValidationRule> OfType(this IEnumerable<ValidationRule> rules, ValidationType ruleType)
         {
-            return rules.Where(r => r.RuleType == ruleType);
+            return rules.Where(r => r.Type == ruleType);
         }
 
         /// <summary>
@@ -59,7 +43,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <returns>Required pravidlá</returns>
         public static IEnumerable<ValidationRule> RequiredOnly(this IEnumerable<ValidationRule> rules)
         {
-            return rules.OfType(ValidationRuleType.Required);
+            return rules.OfType(ValidationType.Required);
         }
 
         /// <summary>
@@ -69,17 +53,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <returns>Custom pravidlá</returns>
         public static IEnumerable<ValidationRule> CustomOnly(this IEnumerable<ValidationRule> rules)
         {
-            return rules.OfType(ValidationRuleType.Custom);
-        }
-
-        /// <summary>
-        /// Zorradí pravidlá podľa priority (najvyššia priorita prvá).
-        /// </summary>
-        /// <param name="rules">Kolekcia validačných pravidiel</param>
-        /// <returns>Zoradené pravidlá</returns>
-        public static IEnumerable<ValidationRule> OrderByPriority(this IEnumerable<ValidationRule> rules)
-        {
-            return rules.OrderByDescending(r => r.Priority).ThenBy(r => r.ColumnName);
+            return rules.OfType(ValidationType.Custom);
         }
 
         /// <summary>
@@ -339,12 +313,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
             var summary = new List<string>();
 
-            if (columnRules.Any(r => r.RuleType == ValidationRuleType.Required))
+            if (columnRules.Any(r => r.Type == ValidationType.Required))
                 summary.Add("Povinné");
 
-            foreach (var rule in columnRules.Where(r => r.RuleType != ValidationRuleType.Required))
+            foreach (var rule in columnRules.Where(r => r.Type != ValidationType.Required))
             {
-                summary.Add(rule.RuleType.ToString());
+                summary.Add(rule.Type.ToString());
             }
 
             return string.Join(", ", summary);
@@ -366,7 +340,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             foreach (var columnGroup in groupedByColumn)
             {
                 var columnRules = columnGroup.ToList();
-                var duplicateTypes = columnRules.GroupBy(r => r.RuleType)
+                var duplicateTypes = columnRules.GroupBy(r => r.Type)
                                               .Where(g => g.Count() > 1)
                                               .Select(g => g.Key);
 
@@ -384,25 +358,25 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         #region Performance extensions
 
         /// <summary>
-        /// Vykoná rýchlu validáciu hodnoty proti pravidlám (s caching).
+        /// Vykoná rýchlu validáciu hodnoty proti pravidlám.
         /// </summary>
         /// <param name="rules">Validačné pravidlá</param>
         /// <param name="columnName">Názov stĺpca</param>
         /// <param name="value">Hodnota na validáciu</param>
-        /// <returns>Výsledok validácie</returns>
-        public static ValidationResult FastValidate(this IEnumerable<ValidationRule> rules, string columnName, object? value)
+        /// <returns>True ak je validná, inak false</returns>
+        public static bool FastValidate(this IEnumerable<ValidationRule> rules, string columnName, object? value)
         {
-            var columnRules = rules.ForColumn(columnName).OrderByPriority();
+            var columnRules = rules.ForColumn(columnName);
 
             foreach (var rule in columnRules)
             {
                 if (!rule.Validate(value))
                 {
-                    return ValidationResult.Error(rule.GetFormattedErrorMessage());
+                    return false;
                 }
             }
 
-            return ValidationResult.Success();
+            return true;
         }
 
         /// <summary>
@@ -411,11 +385,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <param name="rules">Validačné pravidlá</param>
         /// <param name="columnValues">Slovník stĺpcov a hodnôt</param>
         /// <returns>Slovník výsledkov validácie</returns>
-        public static Dictionary<string, ValidationResult> BatchValidate(
+        public static Dictionary<string, bool> BatchValidate(
             this IEnumerable<ValidationRule> rules,
             Dictionary<string, object?> columnValues)
         {
-            var results = new Dictionary<string, ValidationResult>();
+            var results = new Dictionary<string, bool>();
 
             foreach (var kvp in columnValues)
             {
