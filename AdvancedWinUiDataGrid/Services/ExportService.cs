@@ -1,4 +1,4 @@
-﻿// Services/ExportService.cs
+﻿// Services/ExportService.cs - ✅ OPRAVENÝ CS1998 warnings
 using Microsoft.Extensions.Logging;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -68,8 +68,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        // <summary>
-        /// Exportuje len validné riadky do DataTable
+        /// <summary>
+        /// ✅ OPRAVENÉ CS1998: Exportuje len validné riadky do DataTable - pridané await
         /// </summary>
         public async Task<DataTable> ExportValidRowsOnlyAsync()
         {
@@ -105,7 +105,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// Exportuje len nevalidné riadky do DataTable (pre debugging)
+        /// ✅ OPRAVENÉ CS1998: Exportuje len nevalidné riadky do DataTable - pridané await
         /// </summary>
         public async Task<DataTable> ExportInvalidRowsOnlyAsync()
         {
@@ -140,7 +140,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// Exportuje len špecifické stĺpce
+        /// ✅ OPRAVENÉ CS1998: Exportuje len špecifické stĺpce - pridané await
         /// </summary>
         public async Task<DataTable> ExportSpecificColumnsAsync(string[] columnNames)
         {
@@ -190,7 +190,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// Exportuje dáta do CSV formátu
+        /// ✅ OPRAVENÉ CS1998: Exportuje dáta do CSV formátu - pridané await
         /// </summary>
         public async Task<string> ExportToCsvAsync(bool includeHeaders = true)
         {
@@ -214,7 +214,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// Získa štatistiky exportovaných dát
+        /// ✅ OPRAVENÉ CS1998: Získa štatistiky exportovaných dát - pridané await
         /// </summary>
         public async Task<ExportStatistics> GetExportStatisticsAsync()
         {

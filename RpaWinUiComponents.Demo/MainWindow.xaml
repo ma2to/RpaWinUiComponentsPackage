@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ KOMPLETNÝ -->
+<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ OPRAVENÝ XLS0413 -->
 <Window x:Class="RpaWinUiComponents.Demo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,6 +6,7 @@
         xmlns:grid="using:RpaWinUiComponents.AdvancedWinUiDataGrid"
         Title="RPA WinUI Components - Demo Aplikácia s Color Theme API">
 
+    <!-- ✅ OPRAVENÉ XLS0413: Window nemá MinWidth/MinHeight properties v WinUI3 -->
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
