@@ -10,6 +10,12 @@
     d:DesignWidth="800">
 
     <UserControl.Resources>
+        <!-- Converters -->
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter"/>
+        <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter"/>
+        <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter"/>
+
         <!-- Štýl pre hlavičky stĺpcov -->
         <Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -28,6 +34,12 @@
             <Setter Property="MinHeight" Value="32"/>
         </Style>
 
+        <!-- Štýl pre nevalidné bunky -->
+        <Style x:Key="InvalidCellBorderStyle" TargetType="Border" BasedOn="{StaticResource CellBorderStyle}">
+            <Setter Property="BorderBrush" Value="{ThemeResource SystemFillColorCriticalBrush}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+
         <!-- Štýl pre TextBox v bunkách -->
         <Style x:Key="CellTextBoxStyle" TargetType="TextBox">
             <Setter Property="BorderThickness" Value="0"/>
@@ -36,7 +48,7 @@
             <Setter Property="VerticalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="AcceptsReturn" Value="False"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
         </Style>
 
         <!-- Štýl pre scrollers -->

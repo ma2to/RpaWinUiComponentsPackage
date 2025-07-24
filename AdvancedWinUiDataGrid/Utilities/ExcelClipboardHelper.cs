@@ -303,6 +303,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         /// <summary>
         /// Formátuje hodnotu bunky pre TSV export.
+        /// Zachováva newlines a tabs v bunkách pomocou proper quoting.
         /// </summary>
         /// <param name="cellValue">Hodnota bunky</param>
         /// <returns>Formátovaný string</returns>
@@ -313,7 +314,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
             var stringValue = cellValue.ToString() ?? string.Empty;
 
-            // Escape špeciálne znaky
+            // Escape a quote value ak obsahuje špeciálne znaky
             stringValue = EscapeTsvValue(stringValue);
 
             return stringValue;

@@ -285,6 +285,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         {
             EnsureInitialized();
 
+            await Task.CompletedTask; // Make async compliant
+
             var metadata = new
             {
                 Version = "1.0.0",
@@ -329,7 +331,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             };
 
             var json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true });
-            await Task.CompletedTask;
             return json;
         }
 
