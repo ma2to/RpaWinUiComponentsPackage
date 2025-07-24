@@ -49,8 +49,9 @@
   </ItemGroup>
 
   <!-- ✅ KĽÚČOVÁ OPRAVA: Project reference na náš balík -->
-  <ItemGroup>
-    <ProjectReference Include="..\AdvancedWinUiDataGrid\AdvancedWinUiDataGrid.csproj" />
+  <ItemGroup><!--<ProjectReference Include="..\AdvancedWinUiDataGrid\AdvancedWinUiDataGrid.csproj" />-->
+  
+    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.0" />
   </ItemGroup>
 
   <!--
