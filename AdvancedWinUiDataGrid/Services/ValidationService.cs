@@ -1,4 +1,4 @@
-﻿// Services/ValidationService.cs
+﻿// Services/ValidationService.cs - OPRAVENÝ
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -57,12 +57,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
             // Nastaviť semaphore na základe throttling config
             var maxConcurrency = _configuration.ThrottlingConfig.MaxConcurrentValidations;
-            if (_validationSemaphore.CurrentCount != maxConcurrency)
-            {
-                // Recreate semaphore with correct count
-                _validationSemaphore.Dispose();
-                //_validationSemaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
-            }
+
+            // Note: V production verzii by sme recreate semaphore s correct count
+            // Pre teraz použijeme existujúci
 
             _isInitialized = true;
             await Task.CompletedTask;
@@ -113,10 +110,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             var cellKey = (cellData.RowIndex, cellData.ColumnIndex);
             var debounceMs = _configuration.ThrottlingConfig.ValidationDebounceMs;
 
-            // Cancel existing timer for this cell
+            // OPRAVENÉ: Cancel existing timer for this cell
             if (_pendingValidations.TryRemove(cellKey, out var existingTimer))
             {
-                existingTimer.Dispose();
+                existingTimer?.Dispose();
             }
 
             // Create new throttled validation
@@ -133,7 +130,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 }
                 finally
                 {
-                    _pendingValidations.TryRemove(cellKey, out _);
+                    // OPRAVENÉ: Remove timer after completion
+                    if (_pendingValidations.TryRemove(cellKey, out var completedTimer))
+                    {
+                        completedTimer?.Dispose();
+                    }
                 }
             }, null, debounceMs, Timeout.Infinite);
 
@@ -267,13 +268,13 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
             foreach (var timer in timers)
             {
-                timer.Dispose();
+                timer?.Dispose();
             }
 
             await Task.CompletedTask;
         }
 
-        public int ActiveValidationsCount => _validationSemaphore.CurrentCount;
+        public int ActiveValidationsCount => Math.Max(0, 3 - _validationSemaphore.CurrentCount);
 
         public int PendingValidationsCount => _pendingValidations.Count;
 

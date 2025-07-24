@@ -1,4 +1,4 @@
-<!-- Controls/AdvancedDataGrid.xaml -->
+<!-- Controls/AdvancedDataGrid.xaml - OPRAVENÝ pre WinUI3 -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -26,12 +26,6 @@
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="MinHeight" Value="32"/>
-        </Style>
-
-        <!-- Štýl pre invalidné bunky -->
-        <Style x:Key="InvalidCellBorderStyle" TargetType="Border" BasedOn="{StaticResource CellBorderStyle}">
-            <Setter Property="BorderBrush" Value="{ThemeResource SystemFillColorCriticalBrush}"/>
-            <Setter Property="BorderThickness" Value="2"/>
         </Style>
 
         <!-- Štýl pre TextBox v bunkách -->
@@ -63,12 +57,12 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Loading overlay -->
+        <!-- Loading overlay - OPRAVENÉ: Canvas.ZIndex namiesto ZIndex -->
         <Grid x:Name="LoadingOverlay" 
               Grid.RowSpan="2"
               Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
               Visibility="Collapsed"
-              ZIndex="1000">
+              Canvas.ZIndex="1000">
             <StackPanel HorizontalAlignment="Center" 
                        VerticalAlignment="Center"
                        Spacing="12">
@@ -94,9 +88,8 @@
                          VerticalScrollMode="Disabled"
                          ZoomMode="Disabled">
 
-                <!-- ItemsRepeater pre hlavičky stĺpcov -->
-                <ItemsRepeater x:Name="HeaderRepeater"
-                              Layout="{x:Null}">
+                <!-- ItemsRepeater pre hlavičky stĺpcov - OPRAVENÉ: Iba jeden Layout -->
+                <ItemsRepeater x:Name="HeaderRepeater">
                     <ItemsRepeater.Layout>
                         <StackLayout Orientation="Horizontal" Spacing="0"/>
                     </ItemsRepeater.Layout>
@@ -122,7 +115,7 @@
                      Grid.Row="1"
                      Style="{StaticResource DataGridScrollViewerStyle}">
 
-            <!-- ItemsRepeater pre riadky dát -->
+            <!-- ItemsRepeater pre riadky dát - OPRAVENÉ: Iba jeden Layout -->
             <ItemsRepeater x:Name="DataRowsRepeater">
                 <ItemsRepeater.Layout>
                     <StackLayout Orientation="Vertical" Spacing="0"/>
@@ -131,35 +124,20 @@
                 <ItemsRepeater.ItemTemplate>
                     <DataTemplate>
                         <!-- Jeden riadok = ItemsRepeater pre bunky v riadku -->
-                        <ItemsRepeater ItemsSource="{Binding}"
-                                      Layout="{x:Null}">
+                        <ItemsRepeater ItemsSource="{Binding}">
                             <ItemsRepeater.Layout>
                                 <StackLayout Orientation="Horizontal" Spacing="0"/>
                             </ItemsRepeater.Layout>
 
                             <ItemsRepeater.ItemTemplate>
                                 <DataTemplate>
-                                    <!-- Jedna bunka -->
+                                    <!-- OPRAVENÉ: WinUI3 nepodporuje Triggers, použijeme Converter -->
                                     <Border x:Name="CellBorder"
                                            MinWidth="{Binding ColumnDefinition.MinWidth}"
                                            Width="{Binding ColumnDefinition.Width}"
                                            MaxWidth="{Binding ColumnDefinition.MaxWidth}"
-                                           MinHeight="32">
-
-                                        <!-- Dynamic štýl závislý od validácie -->
-                                        <Border.Style>
-                                            <Style TargetType="Border" BasedOn="{StaticResource CellBorderStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsValid}" Value="False">
-                                                        <Setter Property="BorderBrush" Value="{ThemeResource SystemFillColorCriticalBrush}"/>
-                                                        <Setter Property="BorderThickness" Value="2"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
+                                           MinHeight="32"
+                                           Style="{StaticResource CellBorderStyle}">
 
                                         <!-- Obsah bunky závislý od typu stĺpca -->
                                         <Grid>
@@ -169,7 +147,7 @@
                                                     Style="{StaticResource CellTextBoxStyle}"
                                                     IsReadOnly="{Binding IsReadOnly}"
                                                     PlaceholderText="{Binding ColumnDefinition.PlaceholderText}"
-                                                    Visibility="{Binding ColumnDefinition.IsDataColumn}"/>
+                                                    Visibility="{Binding ColumnDefinition.IsDataColumn, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                             <!-- DeleteRows stĺpec - tlačidlo s ikonkou -->
                                             <Button x:Name="DeleteButton"
@@ -181,7 +159,7 @@
                                                    FontSize="16"
                                                    Width="24"
                                                    Height="24"
-                                                   Visibility="{Binding ColumnDefinition.IsDeleteColumn}"
+                                                   Visibility="{Binding ColumnDefinition.IsDeleteColumn, Converter={StaticResource BoolToVisibilityConverter}}"
                                                    Click="OnDeleteRowClick"
                                                    Tag="{Binding RowIndex}"/>
 
@@ -193,7 +171,7 @@
                                                       TextWrapping="Wrap"
                                                       Padding="4"
                                                       VerticalAlignment="Center"
-                                                      Visibility="{Binding ColumnDefinition.IsValidationColumn}"/>
+                                                      Visibility="{Binding ColumnDefinition.IsValidationColumn, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

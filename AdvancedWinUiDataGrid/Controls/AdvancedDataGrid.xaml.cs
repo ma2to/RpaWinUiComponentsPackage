@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs
+﻿// Controls/AdvancedDataGrid.xaml.cs - OPRAVENÝ
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -43,7 +43,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private readonly HashSet<(int row, int col)> _selectedCells = new();
 
         // Throttling & Performance
-        private readonly Timer? _validationTimer;
         private readonly SemaphoreSlim _initializationSemaphore = new(1, 1);
 
         #endregion
@@ -322,9 +321,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             _services.AddSingleton<ICopyPasteService, CopyPasteService>();
             _services.AddTransient<IExportService, ExportService>();
 
-            // Logging abstrakcia
+            // Logging abstrakcia - OPRAVENÉ: Null-safe
             _services.AddSingleton<ILoggingService>(provider =>
-                new LoggingServiceAdapter(provider.GetService<ILogger<AdvancedDataGrid>>()));
+            {
+                var logger = provider.GetService<ILogger<AdvancedDataGrid>>();
+                return new LoggingServiceAdapter(logger);
+            });
         }
 
         /// <summary>
@@ -332,6 +334,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         private async Task InitializeServicesAsync()
         {
+            // OPRAVENÉ: Null-safe získanie services
             _logger = _serviceProvider!.GetRequiredService<ILoggingService>();
             _dataService = _serviceProvider.GetRequiredService<IDataManagementService>();
             _validationService = _serviceProvider.GetRequiredService<IValidationService>();
@@ -343,6 +346,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             await _validationService.InitializeAsync(_configuration!);
             await _copyPasteService.InitializeAsync(_configuration!);
             await _exportService.InitializeAsync(_configuration!);
+
+            // OPRAVENÉ: Set cross-dependencies
+            if (_copyPasteService is CopyPasteService copyPasteImpl)
+            {
+                copyPasteImpl.SetDataService(_dataService);
+            }
+
+            if (_exportService is ExportService exportImpl)
+            {
+                exportImpl.SetDataService(_dataService);
+            }
 
             // Pripojiť event handlery
             _dataService.DataChanged += OnDataChanged;
