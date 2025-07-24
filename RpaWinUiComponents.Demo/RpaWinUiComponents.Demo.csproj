@@ -46,13 +46,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.0" />
   </ItemGroup>
 
   <!-- ✅ KĽÚČOVÁ OPRAVA: Project reference na náš balík -->
-  <ItemGroup><!--<ProjectReference Include="..\AdvancedWinUiDataGrid\AdvancedWinUiDataGrid.csproj" />-->
-  
-    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.0" />
-  </ItemGroup>
 
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
