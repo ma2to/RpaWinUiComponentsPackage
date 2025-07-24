@@ -15,7 +15,7 @@
         <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter"/>
         <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter"/>
 
-        <!-- ✅ NOVÉ: Color Theme Resources - Customizable API -->
+        <!-- ✅ OPRAVENÉ: Color Theme Resources s binding na ColorTheme property -->
         <SolidColorBrush x:Key="CellBackgroundBrush" Color="{x:Bind ColorTheme.CellBackgroundColor, Mode=OneWay}"/>
         <SolidColorBrush x:Key="CellBorderBrush" Color="{x:Bind ColorTheme.CellBorderColor, Mode=OneWay}"/>
         <SolidColorBrush x:Key="CellTextBrush" Color="{x:Bind ColorTheme.CellTextColor, Mode=OneWay}"/>
@@ -23,15 +23,16 @@
         <SolidColorBrush x:Key="HeaderTextBrush" Color="{x:Bind ColorTheme.HeaderTextColor, Mode=OneWay}"/>
         <SolidColorBrush x:Key="ValidationErrorBrush" Color="{x:Bind ColorTheme.ValidationErrorColor, Mode=OneWay}"/>
         <SolidColorBrush x:Key="SelectionBrush" Color="{x:Bind ColorTheme.SelectionColor, Mode=OneWay}"/>
+        <SolidColorBrush x:Key="EditingCellBrush" Color="{x:Bind ColorTheme.EditingCellColor, Mode=OneWay}"/>
 
-        <!-- ✅ OPRAVENÉ: Header Template s fixed height -->
+        <!-- ✅ OPRAVENÉ: Header Template s FIXED sizing -->
         <DataTemplate x:Key="HeaderTemplate">
             <Border Background="{StaticResource HeaderBackgroundBrush}"
                     BorderBrush="{StaticResource CellBorderBrush}"
                     BorderThickness="0,0,1,1"
-                    Padding="8,8"
+                    Padding="8,6"
                     Height="40"
-                    MinWidth="{Binding Width}">
+                    Width="{Binding Width, FallbackValue=150}">
                 <TextBlock Text="{Binding Header}" 
                           FontWeight="SemiBold"
                           Foreground="{StaticResource HeaderTextBrush}"

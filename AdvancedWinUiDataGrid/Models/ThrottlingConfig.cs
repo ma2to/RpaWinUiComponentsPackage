@@ -59,6 +59,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         public bool UseBackgroundProcessing { get; set; } = true;
 
         /// <summary>
+        /// ✅ NOVÉ: Či je povolená true realtime validácia (na každý znak)
+        /// </summary>
+        public bool EnableRealtimeValidation { get; set; } = true;
+
+        /// <summary>
         /// Priorita thread pre background operácie
         /// </summary>
         public System.Threading.ThreadPriority BackgroundThreadPriority { get; set; } = System.Threading.ThreadPriority.BelowNormal;

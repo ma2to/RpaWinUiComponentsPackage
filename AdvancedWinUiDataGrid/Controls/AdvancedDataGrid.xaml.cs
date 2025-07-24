@@ -46,6 +46,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         // ✅ OPRAVENÉ CS0103: Pridané chybajúce fieldy
         private readonly Dictionary<string, List<string>> _validationErrors = new();
 
+        // ✅ NOVÉ: Color Theme Support
+        private DataGridColorTheme _colorTheme = DataGridColorTheme.Light;
+        private readonly Dictionary<string, DispatcherTimer> _realtimeValidationTimers = new();
+
         private bool _isInitialized = false;
         private bool _isDisposed = false;
 
@@ -79,6 +83,61 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 DataRowsRepeater.ItemsSource = _rows;
 
             _logger.LogInformation("AdvancedDataGrid inicializovaný");
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Color Theme API
+
+        /// <summary>
+        /// Aktuálna color theme. Setter automaticky aplikuje tému.
+        /// </summary>
+        public DataGridColorTheme ColorTheme
+        {
+            get => _colorTheme;
+            set
+            {
+                _colorTheme = value ?? DataGridColorTheme.Light;
+                ApplyColorThemeInternal();
+            }
+        }
+
+        /// <summary>
+        /// Aplikuje color theme na DataGrid
+        /// </summary>
+        public void ApplyColorTheme(DataGridColorTheme theme)
+        {
+            ColorTheme = theme;
+        }
+
+        /// <summary>
+        /// Resetuje na default light theme
+        /// </summary>
+        public void ResetToDefaultTheme()
+        {
+            ColorTheme = DataGridColorTheme.Light;
+        }
+
+        /// <summary>
+        /// Internes aplikovanie color theme
+        /// </summary>
+        private void ApplyColorThemeInternal()
+        {
+            try
+            {
+                // Theme sa aplikuje cez binding v XAML - len notifikujeme o zmene
+                this.DispatcherQueue.TryEnqueue(() =>
+                {
+                    // Trigger property changed pre všetky color bindings
+                    OnPropertyChanged(nameof(ColorTheme));
+                });
+
+                _logger.LogDebug("Color theme aplikovaná: {ThemeName}", _colorTheme.ToString());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri aplikovaní color theme");
+            }
         }
 
         #endregion

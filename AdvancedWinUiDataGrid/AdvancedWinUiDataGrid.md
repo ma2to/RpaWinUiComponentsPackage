@@ -552,7 +552,51 @@ public static class OptimizedConfigs
     };
 }
 ```
+### 8. API Design - Clean & Simple (všetky metódy začínajú bez prefixa)
+```csharp
+// Verejné API - iba to čo používateľ potrebuje
+namespace AdvancedWinUiDataGrid
+{
+    public class AdvancedDataGrid : UserControl 
+    {
+        // Initialization
+        Task InitializeAsync(List<ColumnDefinition> columns, 
+                           List<ValidationRule> validationRules, 
+                           ThrottlingConfig throttling, 
+                           int emptyRowsCount);
+        
+        // Data Operations  
+        Task LoadDataAsync(List<Dictionary<string, object?>> data);
+        Task LoadDataAsync(DataTable dataTable);
+        Task ClearAllDataAsync();
+        
+        // Validation
+        Task<bool> ValidateAllRowsAsync();
+        
+        // Export/Import
+        Task<DataTable> ExportToDataTableAsync();
+        
+        // 🎨 NEW: Color Theme API
+        DataGridColorTheme ColorTheme { get; set; }
+        void ApplyColorTheme(DataGridColorTheme theme);
+        void ResetToDefaultTheme();
+        
+        // Copy/Paste (automaticky funguje s Ctrl+C/Ctrl+V/Ctrl+X)
+        // NavigationService (automaticky funguje s Tab/Enter/Esc/Shift+Enter)
+    }
+    
+    // Models - iba tieto sú verejné
+    public class ColumnDefinition { ... }
+    public class ValidationRule { ... }  
+    public class ThrottlingConfig { ... }
+    public class DataGridColorTheme { ... } // 🎨 NEW
+}
 
+// SKRYTÉ od používateľa:
+- Všetky Services (IValidationService, IDataManagementService, ...)
+- Všetky Utilities  
+- Všetky internal Models
+- Cell implementation details
 ---
 
 ## 📋 **CHECKLIST FUNKCIONALÍT**
