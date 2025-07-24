@@ -8,7 +8,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Controls
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
     /// Reprezentuje jednu bunku v DataGrid
@@ -206,12 +206,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Controls
             {
                 if (IsValid)
                 {
-                    CellBorder.BorderBrush = new SolidColorBrush(Colors.Transparent);
+                    CellBorder.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
                     CellBorder.BorderThickness = new Thickness(0, 0, 1, 1);
                 }
                 else
                 {
-                    CellBorder.BorderBrush = new SolidColorBrush(Colors.Red);
+                    CellBorder.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
                     CellBorder.BorderThickness = new Thickness(2);
                 }
             }
@@ -224,12 +224,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Controls
                 if (IsSelected)
                 {
                     CellBorder.Background = Application.Current.Resources["SystemAccentColorLight2"] as SolidColorBrush
-                                          ?? new SolidColorBrush(Colors.LightBlue);
+                                          ?? new SolidColorBrush(Microsoft.UI.Colors.LightBlue);
                 }
                 else
                 {
                     CellBorder.Background = Application.Current.Resources["LayerFillColorDefaultBrush"] as SolidColorBrush
-                                          ?? new SolidColorBrush(Colors.White);
+                                          ?? new SolidColorBrush(Microsoft.UI.Colors.White);
                 }
             }
         }

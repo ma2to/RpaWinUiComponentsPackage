@@ -3,13 +3,14 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
+using Windows.UI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Controls.SpecialColumns
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
     /// Špeciálny stĺpec pre zobrazovanie validačných upozornení
@@ -150,14 +151,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Controls.SpecialColumns
                 // Nastav farbu podľa toho či sú chyby
                 if (HasErrors)
                 {
-                    AlertsTextBlock.Foreground = new SolidColorBrush(Colors.Red);
-                    AlertsCellBorder.Background = new SolidColorBrush(Color.FromArgb(20, 255, 0, 0)); // Jemne červené pozadie
+                    AlertsTextBlock.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    AlertsCellBorder.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(20, 255, 0, 0)); // Jemne červené pozadie
                 }
                 else
                 {
-                    AlertsTextBlock.Foreground = new SolidColorBrush(Colors.Gray);
+                    AlertsTextBlock.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                     AlertsCellBorder.Background = Application.Current.Resources["LayerFillColorDefaultBrush"] as SolidColorBrush
-                                                ?? new SolidColorBrush(Colors.White);
+                                                ?? new SolidColorBrush(Microsoft.UI.Colors.White);
                 }
             }
 
