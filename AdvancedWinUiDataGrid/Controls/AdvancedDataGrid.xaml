@@ -1,212 +1,166 @@
-<!-- Controls/AdvancedDataGrid.xaml - OPRAVENÝ pre WinUI3 -->
+<!-- Controls/AdvancedDataGrid.xaml -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:RpaWinUiComponents.AdvancedWinUiDataGrid"
+    xmlns:utilities="using:RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    d:DesignHeight="400"
-    d:DesignWidth="800">
+    mc:Ignorable="d">
 
     <UserControl.Resources>
-        <!-- Converters -->
-        <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        <local:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter"/>
-        <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter"/>
-        <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter"/>
+        <!-- ✅ OPRAVENÉ: Pridané convertery -->
+        <utilities:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <utilities:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter"/>
+        <utilities:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter"/>
+        <utilities:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter"/>
 
-        <!-- Štýl pre hlavičky stĺpcov -->
-        <Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Padding" Value="8,4"/>
-        </Style>
+        <!-- Header Template -->
+        <DataTemplate x:Key="HeaderTemplate">
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,1,1"
+                    Padding="8,12"
+                    MinHeight="40">
+                <TextBlock Text="{Binding}" 
+                          FontWeight="SemiBold"
+                          VerticalAlignment="Center"
+                          TextWrapping="Wrap"/>
+            </Border>
+        </DataTemplate>
 
-        <!-- Štýl pre bunky -->
-        <Style x:Key="CellBorderStyle" TargetType="Border">
-            <Setter Property="BorderBrush" Value="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,1,1"/>
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
-            <Setter Property="MinHeight" Value="32"/>
-        </Style>
+        <!-- Cell Template -->
+        <DataTemplate x:Key="CellTemplate">
+            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{Binding IsValid, Converter={StaticResource BoolToValidationBrushConverter}}"
+                    BorderThickness="{Binding IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}"
+                    Padding="8,6"
+                    MinHeight="36">
+                <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        VerticalAlignment="Stretch"
+                        KeyDown="OnCellKeyDown"
+                        LostFocus="OnCellLostFocus"
+                        GotFocus="OnCellGotFocus"/>
+            </Border>
+        </DataTemplate>
 
-        <!-- Štýl pre nevalidné bunky -->
-        <Style x:Key="InvalidCellBorderStyle" TargetType="Border" BasedOn="{StaticResource CellBorderStyle}">
-            <Setter Property="BorderBrush" Value="{ThemeResource SystemFillColorCriticalBrush}"/>
-            <Setter Property="BorderThickness" Value="2"/>
-        </Style>
+        <!-- Delete Button Template -->
+        <DataTemplate x:Key="DeleteButtonTemplate">
+            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,1,1"
+                    Padding="4"
+                    MinHeight="36">
+                <Button Background="Transparent"
+                        BorderThickness="0"
+                        Width="24"
+                        Height="24"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Click="OnDeleteRowClick"
+                        Tag="{Binding}">
+                    <FontIcon Glyph="&#xE74D;" 
+                             FontSize="12"
+                             Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                </Button>
+            </Border>
+        </DataTemplate>
 
-        <!-- Štýl pre TextBox v bunkách -->
-        <Style x:Key="CellTextBoxStyle" TargetType="TextBox">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="4"/>
-            <Setter Property="VerticalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="AcceptsReturn" Value="True"/>
-        </Style>
+        <!-- Validation Alerts Template -->
+        <DataTemplate x:Key="ValidationAlertsTemplate">
+            <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="8,6"
+                    MinHeight="36">
+                <TextBlock Text="{Binding ValidationErrors}" 
+                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                          FontSize="12"
+                          TextWrapping="Wrap"
+                          VerticalAlignment="Center"/>
+            </Border>
+        </DataTemplate>
 
-        <!-- Štýl pre scrollers -->
-        <Style x:Key="DataGridScrollViewerStyle" TargetType="ScrollViewer">
-            <Setter Property="ZoomMode" Value="Disabled"/>
-            <Setter Property="HorizontalScrollMode" Value="Auto"/>
-            <Setter Property="VerticalScrollMode" Value="Auto"/>
-            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
-            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-        </Style>
+        <!-- Row Template -->
+        <DataTemplate x:Key="RowTemplate">
+            <ItemsRepeater ItemsSource="{Binding Cells}" Layout="{StaticResource RowLayout}">
+                <ItemsRepeater.ItemTemplate>
+                    <DataTemplate>
+                        <ContentPresenter Content="{Binding}" 
+                                        ContentTemplate="{Binding CellTemplate}"/>
+                    </DataTemplate>
+                </ItemsRepeater.ItemTemplate>
+            </ItemsRepeater>
+        </DataTemplate>
+
+        <!-- Row Layout -->
+        <StackLayout x:Key="RowLayout" Orientation="Horizontal" Spacing="0"/>
+
+        <!-- Header Layout -->
+        <StackLayout x:Key="HeaderLayout" Orientation="Horizontal" Spacing="0"/>
     </UserControl.Resources>
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <Grid.RowDefinitions>
-            <!-- Header row -->
-            <RowDefinition Height="Auto"/>
-            <!-- Data rows -->
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- Loading overlay - OPRAVENÉ: Canvas.ZIndex namiesto ZIndex -->
-        <Grid x:Name="LoadingOverlay" 
-              Grid.RowSpan="2"
-              Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
-              Visibility="Collapsed"
-              Canvas.ZIndex="1000">
-            <StackPanel HorizontalAlignment="Center" 
-                       VerticalAlignment="Center"
-                       Spacing="12">
-                <ProgressRing IsActive="True" 
-                             Width="48" 
-                             Height="48"/>
-                <TextBlock x:Name="LoadingText" 
-                          Text="Načítava sa..."
-                          HorizontalAlignment="Center"
-                          Style="{ThemeResource BodyTextBlockStyle}"/>
-            </StackPanel>
-        </Grid>
-
-        <!-- Header area (Grid row 0) -->
-        <Border Grid.Row="0" 
+    <Grid>
+        <!-- ✅ OPRAVENÉ: Loading Overlay s potrebnými elementmi -->
+        <Border x:Name="LoadingOverlay"
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,0,0,2">
+                Visibility="Visible">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <ProgressRing IsActive="True" Width="32" Height="32"/>
+                <TextBlock x:Name="LoadingText" 
+                          Text="Inicializuje sa DataGrid..."
+                          FontSize="14"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                          HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
 
+        <!-- Main Content -->
+        <Grid Visibility="{Binding ElementName=LoadingOverlay, Path=Visibility, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ✅ OPRAVENÉ: Header s potrebnými elementmi -->
             <ScrollViewer x:Name="HeaderScrollViewer"
-                         HorizontalScrollMode="Auto"
+                         Grid.Row="0"
                          HorizontalScrollBarVisibility="Hidden"
-                         VerticalScrollMode="Disabled"
+                         VerticalScrollBarVisibility="Disabled"
                          ZoomMode="Disabled">
-
-                <!-- ItemsRepeater pre hlavičky stĺpcov - OPRAVENÉ: Iba jeden Layout -->
-                <ItemsRepeater x:Name="HeaderRepeater">
-                    <ItemsRepeater.Layout>
-                        <StackLayout Orientation="Horizontal" Spacing="0"/>
-                    </ItemsRepeater.Layout>
-
+                <ItemsRepeater x:Name="HeaderRepeater" 
+                              Layout="{StaticResource HeaderLayout}">
                     <ItemsRepeater.ItemTemplate>
                         <DataTemplate>
-                            <Border Style="{StaticResource CellBorderStyle}"
-                                   Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                   MinWidth="{Binding MinWidth}"
-                                   Width="{Binding Width}"
-                                   MaxWidth="{Binding MaxWidth}">
-                                <TextBlock Text="{Binding Header}"
-                                          Style="{StaticResource HeaderTextBlockStyle}"/>
-                            </Border>
+                            <ContentPresenter Content="{Binding}" 
+                                            ContentTemplate="{StaticResource HeaderTemplate}"/>
                         </DataTemplate>
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
             </ScrollViewer>
-        </Border>
 
-        <!-- Data area (Grid row 1) -->
-        <ScrollViewer x:Name="DataScrollViewer"
-                     Grid.Row="1"
-                     Style="{StaticResource DataGridScrollViewerStyle}">
-
-            <!-- ItemsRepeater pre riadky dát - OPRAVENÉ: Iba jeden Layout -->
-            <ItemsRepeater x:Name="DataRowsRepeater">
-                <ItemsRepeater.Layout>
-                    <StackLayout Orientation="Vertical" Spacing="0"/>
-                </ItemsRepeater.Layout>
-
-                <ItemsRepeater.ItemTemplate>
-                    <DataTemplate>
-                        <!-- Jeden riadok = ItemsRepeater pre bunky v riadku -->
-                        <ItemsRepeater ItemsSource="{Binding}">
-                            <ItemsRepeater.Layout>
-                                <StackLayout Orientation="Horizontal" Spacing="0"/>
-                            </ItemsRepeater.Layout>
-
-                            <ItemsRepeater.ItemTemplate>
-                                <DataTemplate>
-                                    <!-- OPRAVENÉ: WinUI3 nepodporuje Triggers, použijeme Converter -->
-                                    <Border x:Name="CellBorder"
-                                           MinWidth="{Binding ColumnDefinition.MinWidth}"
-                                           Width="{Binding ColumnDefinition.Width}"
-                                           MaxWidth="{Binding ColumnDefinition.MaxWidth}"
-                                           MinHeight="32"
-                                           Style="{StaticResource CellBorderStyle}">
-
-                                        <!-- Obsah bunky závislý od typu stĺpca -->
-                                        <Grid>
-                                            <!-- Štandardná textová bunka -->
-                                            <TextBox x:Name="CellTextBox"
-                                                    Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                    Style="{StaticResource CellTextBoxStyle}"
-                                                    IsReadOnly="{Binding IsReadOnly}"
-                                                    PlaceholderText="{Binding ColumnDefinition.PlaceholderText}"
-                                                    Visibility="{Binding ColumnDefinition.IsDataColumn, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                                            <!-- DeleteRows stĺpec - tlačidlo s ikonkou -->
-                                            <Button x:Name="DeleteButton"
-                                                   Content="🗑️"
-                                                   Background="Transparent"
-                                                   BorderThickness="0"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   FontSize="16"
-                                                   Width="24"
-                                                   Height="24"
-                                                   Visibility="{Binding ColumnDefinition.IsDeleteColumn, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   Click="OnDeleteRowClick"
-                                                   Tag="{Binding RowIndex}"/>
-
-                                            <!-- ValidAlerts stĺpec - readonly text -->
-                                            <TextBlock x:Name="ValidationText"
-                                                      Text="{Binding ErrorMessage}"
-                                                      Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                                      FontSize="12"
-                                                      TextWrapping="Wrap"
-                                                      Padding="4"
-                                                      VerticalAlignment="Center"
-                                                      Visibility="{Binding ColumnDefinition.IsValidationColumn, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsRepeater.ItemTemplate>
-                        </ItemsRepeater>
-                    </DataTemplate>
-                </ItemsRepeater.ItemTemplate>
-            </ItemsRepeater>
-        </ScrollViewer>
-
-        <!-- Status bar (voliteľný) -->
-        <Border x:Name="StatusBar"
-               Grid.Row="1"
-               VerticalAlignment="Bottom"
-               Background="{ThemeResource LayerFillColorAltBrush}"
-               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-               BorderThickness="0,1,0,0"
-               Padding="8,4"
-               Visibility="Collapsed">
-            <TextBlock x:Name="StatusText"
-                      Text="Pripravené"
-                      FontSize="12"
-                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-        </Border>
+            <!-- ✅ OPRAVENÉ: Data ScrollViewer s potrebnými elementmi -->
+            <ScrollViewer x:Name="DataScrollViewer"
+                         Grid.Row="1"
+                         HorizontalScrollBarVisibility="Auto"
+                         VerticalScrollBarVisibility="Auto"
+                         ZoomMode="Disabled"
+                         ViewChanged="OnDataScrollViewChanged">
+                <ItemsRepeater x:Name="DataRowsRepeater">
+                    <ItemsRepeater.Layout>
+                        <StackLayout Orientation="Vertical" Spacing="0"/>
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <StaticResource ResourceKey="RowTemplate"/>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </ScrollViewer>
+        </Grid>
     </Grid>
 </UserControl>

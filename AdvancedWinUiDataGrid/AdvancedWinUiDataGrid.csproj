@@ -1,40 +1,95 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<!-- AdvancedWinUiDataGrid.csproj -->
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>RpaWinUiComponents.AdvancedWinUiDataGrid</RootNamespace>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- ✅ OPRAVENÉ: Potlačenie CA1416 warnings pre Windows-only balík -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+
+    <!-- Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <Version>1.0.0</Version>
     <Authors>RPA Team</Authors>
-    <Description>Professional WinUI3 DataGrid component with advanced features</Description>
-    <Copyright>Copyright © 2025</Copyright>
+    <Company>RPA Company</Company>
+    <Product>RPA WinUI Components</Product>
+    <Description>Profesionálny WinUI3 DataGrid komponent s pokročilými funkciami pre dátové aplikácie</Description>
+    <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel</PackageTags>
+    <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright © 2025 RPA Company</Copyright>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+
+    <!-- Assembly Information -->
+    <AssemblyTitle>Advanced WinUI DataGrid Component</AssemblyTitle>
+    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 aplikácie s realtime validáciami a Excel funkcionalitou</AssemblyDescription>
   </PropertyGroup>
 
+  <!-- WinUI Dependencies -->
   <ItemGroup>
-    <None Remove="Controls\AdvancedDataGrid.xaml" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231008000" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
   </ItemGroup>
 
+  <!-- Dependency Injection & Logging -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
   </ItemGroup>
 
+  <!-- Additional System Dependencies -->
   <ItemGroup>
-    <Folder Include="Controls\SpecialColumns\" />
+    <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
+  <!-- Project Structure -->
   <ItemGroup>
-    <Page Update="Controls\AdvancedDataGrid.xaml">
+    <Folder Include="Controls\" />
+    <Folder Include="Models\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\Interfaces\" />
+    <Folder Include="Utilities\" />
+    <Folder Include="Extensions\" />
+  </ItemGroup>
+
+  <!-- XAML Files -->
+  <ItemGroup>
+    <Page Include="Controls\AdvancedDataGrid.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
+
+  <!-- Public API Surface -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
+  </ItemGroup>
+
+  <!-- Resource Files -->
+
+  <!-- Ensure proper WinUI packaging -->
+  <PropertyGroup Condition="'$(DisableMsixProjectCapabilityAddition)' == ''">
+    <DisableMsixProjectCapabilityAddition>true</DisableMsixProjectCapabilityAddition>
+  </PropertyGroup>
+
+  <!-- ✅ Build optimizations -->
+  <PropertyGroup>
+    <Optimize>true</Optimize>
+    <DebugType>portable</DebugType>
+    <WarningsAsErrors />
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+  </PropertyGroup>
 
 </Project>

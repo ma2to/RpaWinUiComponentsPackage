@@ -1,538 +1,625 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - OPRAVENÉ warningy
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+﻿// Controls/AdvancedDataGrid.xaml.cs
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// AdvancedDataGrid - profesionálny WinUI3 komponent pre dynamické tabuľky.
-    /// Verejné API pre používateľov balíka.
+    /// Hlavný AdvancedDataGrid komponent pre WinUI3
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, IDisposable
     {
-        #region Private fields
+        #region Private Fields
 
-        private readonly ServiceCollection _services;
-        private ServiceProvider? _serviceProvider;
-        private IDataManagementService? _dataService;
-        private IValidationService? _validationService;
-        private ICopyPasteService? _copyPasteService;
-        private IExportService? _exportService;
-        private ILoggingService? _logger;
-        private INavigationService? _navigationService;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IValidationService _validationService;
+        private readonly IDataManagementService _dataManagementService;
+        private readonly ICopyPasteService _copyPasteService;
+        private readonly IExportService _exportService;
+        private readonly INavigationService _navigationService;
+        private readonly ILogger<AdvancedDataGrid> _logger;
 
         private GridConfiguration? _configuration;
+        private ObservableCollection<string> _headers = new();
+        private ObservableCollection<RowDataModel> _rows = new();
         private bool _isInitialized = false;
-        private bool _disposed = false;
-
-        // UI Collections
-        private readonly ObservableCollection<ColumnDefinition> _headerColumns = new();
-        private readonly ObservableCollection<ObservableCollection<CellData>> _dataRows = new();
-
-        // Navigation & Selection - OPRAVENÉ: Odstránený nepoužívaný _currentCell
-        private readonly HashSet<(int row, int col)> _selectedCells = new();
-
-        // Throttling & Performance
-        private readonly SemaphoreSlim _initializationSemaphore = new(1, 1);
+        private bool _isDisposed = false;
 
         #endregion
 
         #region Constructor
 
-        /// <summary>
-        /// Vytvorí novú inštanciu AdvancedDataGrid komponentu.
-        /// </summary>
         public AdvancedDataGrid()
         {
+            // Inicializácia DI kontajnera
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            _serviceProvider = services.BuildServiceProvider();
+
+            // Získanie služieb z DI kontajnera
+            _validationService = _serviceProvider.GetRequiredService<IValidationService>();
+            _dataManagementService = _serviceProvider.GetRequiredService<IDataManagementService>();
+            _copyPasteService = _serviceProvider.GetRequiredService<ICopyPasteService>();
+            _exportService = _serviceProvider.GetRequiredService<IExportService>();
+            _navigationService = _serviceProvider.GetRequiredService<INavigationService>();
+            _logger = _serviceProvider.GetRequiredService<ILogger<AdvancedDataGrid>>();
+
+            // ✅ OPRAVENÉ: InitializeComponent je teraz dostupný
             this.InitializeComponent();
 
-            // Inicializovať DI kontajner
-            _services = new ServiceCollection();
-            ConfigureDependencyInjection();
+            // Nastavenie ItemsSource pre UI elementy
+            if (HeaderRepeater != null)
+                HeaderRepeater.ItemsSource = _headers;
 
-            // Nastaviť UI bindings
-            HeaderRepeater.ItemsSource = _headerColumns;
-            DataRowsRepeater.ItemsSource = _dataRows;
+            if (DataRowsRepeater != null)
+                DataRowsRepeater.ItemsSource = _rows;
 
-            // Keyboard handling
-            this.KeyDown += OnKeyDown;
-            this.Loaded += OnLoaded;
-
-            // Scroll synchronization
-            DataScrollViewer.ViewChanged += OnDataScrollViewChanged;
+            _logger.LogInformation("AdvancedDataGrid inicializovaný");
         }
 
         #endregion
 
-        #region Verejné API - Inicializácia
+        #region Public API Methods
 
         /// <summary>
-        /// Inicializuje DataGrid s konfiguráciou stĺpcov, validačných pravidiel a nastavení.
+        /// Inicializuje DataGrid s konfiguráciou
         /// </summary>
-        /// <param name="columns">Definície stĺpcov</param>
-        /// <param name="validationRules">Validačné pravidlá</param>
-        /// <param name="throttlingConfig">Konfigurácia throttling-u</param>
-        /// <param name="emptyRowsCount">Počet prázdnych riadkov na vytvorenie</param>
-        /// <returns>Task pre asynchrónnu inicializáciu</returns>
         public async Task InitializeAsync(
             List<ColumnDefinition> columns,
             List<ValidationRule> validationRules,
-            ThrottlingConfig? throttlingConfig = null,
-            int emptyRowsCount = 10)
+            ThrottlingConfig throttlingConfig,
+            int emptyRowsCount = 15)
         {
-            await _initializationSemaphore.WaitAsync();
             try
             {
-                if (_isInitialized)
-                    throw new InvalidOperationException("DataGrid je už inicializovaný");
+                _logger.LogInformation("Začína inicializácia DataGrid...");
 
-                await ShowLoadingAsync("Inicializuje sa DataGrid...");
+                ShowLoadingState("Inicializuje sa DataGrid...");
 
-                _logger?.LogInformation("Začína inicializácia AdvancedDataGrid");
+                // Vytvorenie konfigurácie
+                _configuration = new GridConfiguration
+                {
+                    Columns = columns ?? new List<ColumnDefinition>(),
+                    ValidationRules = validationRules ?? new List<ValidationRule>(),
+                    ThrottlingConfig = throttlingConfig ?? ThrottlingConfig.Default,
+                    EmptyRowsCount = emptyRowsCount
+                };
 
-                // Validovať vstupné parametre
-                if (columns == null || !columns.Any())
-                    throw new ArgumentException("Musí byť definovaný aspoň jeden stĺpec");
+                // Inicializácia služieb
+                await _validationService.InitializeAsync(_configuration);
+                await _dataManagementService.InitializeAsync(_configuration);
 
-                // Vytvoriť konfiguráciu gridu
-                _configuration = new GridConfiguration(
-                    columns,
-                    validationRules,
-                    throttlingConfig ?? ThrottlingConfig.Default,
-                    emptyRowsCount);
+                // Generovanie headers
+                GenerateHeaders();
 
-                // Inicializovať services - OPRAVENÉ: Null check pre _serviceProvider
-                _serviceProvider = _services.BuildServiceProvider();
-                if (_serviceProvider == null)
-                    throw new InvalidOperationException("Nepodarilo sa vytvoriť ServiceProvider");
-
-                await InitializeServicesAsync();
-
-                // Nastaviť UI
-                await SetupUIAsync();
-
-                // Vytvoriť prázdne riadky
+                // Vytvorenie prázdnych riadkov
                 await CreateEmptyRowsAsync(emptyRowsCount);
 
                 _isInitialized = true;
-                _logger?.LogInformation("AdvancedDataGrid úspešne inicializovaný");
+                HideLoadingState();
 
-                await HideLoadingAsync();
+                _logger.LogInformation("DataGrid úspešne inicializovaný");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Chyba pri inicializácii AdvancedDataGrid");
-                await HideLoadingAsync();
+                _logger.LogError(ex, "Chyba pri inicializácii DataGrid");
+                ShowLoadingState($"Chyba: {ex.Message}");
                 throw;
-            }
-            finally
-            {
-                _initializationSemaphore.Release();
             }
         }
 
         /// <summary>
-        /// Určuje či je DataGrid inicializovaný.
+        /// Načíta dáta do DataGrid
         /// </summary>
-        public bool IsInitialized => _isInitialized;
-
-        #endregion
-
-        #region Verejné API - Dátové operácie
-
-        /// <summary>
-        /// Načíta dáta z Dictionary kolekcie.
-        /// </summary>
-        /// <param name="data">Kolekcia dát</param>
-        /// <returns>Task pre asynchrónne načítanie</returns>
         public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
         {
-            EnsureInitialized();
-
             try
             {
-                await ShowLoadingAsync("Načítavajú sa dáta...");
-                await _dataService!.LoadDataAsync(data);
-                await RefreshUIAsync();
-                _logger?.LogInformation("Načítaných {Count} riadkov dát", data?.Count ?? 0);
+                EnsureInitialized();
+                _logger.LogInformation($"Načítavajú sa dáta: {data.Count} riadkov");
+
+                ShowLoadingState("Načítavajú sa dáta...");
+
+                await _dataManagementService.LoadDataAsync(data);
+                await RefreshGridDataAsync();
+
+                HideLoadingState();
+                _logger.LogInformation("Dáta úspešne načítané");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Chyba pri načítaní dát");
+                _logger.LogError(ex, "Chyba pri načítavaní dát");
                 throw;
-            }
-            finally
-            {
-                await HideLoadingAsync();
             }
         }
 
         /// <summary>
-        /// Načíta dáta z DataTable.
+        /// Načíta dáta z DataTable
         /// </summary>
-        /// <param name="dataTable">DataTable s dátami</param>
-        /// <returns>Task pre asynchrónne načítanie</returns>
         public async Task LoadDataAsync(DataTable dataTable)
         {
-            EnsureInitialized();
-
             try
             {
-                await ShowLoadingAsync("Načítavajú sa dáta z DataTable...");
-                await _dataService!.LoadDataAsync(dataTable);
-                await RefreshUIAsync();
-                _logger?.LogInformation("Načítaných {Count} riadkov z DataTable", dataTable?.Rows.Count ?? 0);
+                EnsureInitialized();
+
+                var dataList = new List<Dictionary<string, object?>>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    var rowDict = new Dictionary<string, object?>();
+                    foreach (DataColumn column in dataTable.Columns)
+                    {
+                        rowDict[column.ColumnName] = row[column];
+                    }
+                    dataList.Add(rowDict);
+                }
+
+                await LoadDataAsync(dataList);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Chyba pri načítaní dát z DataTable");
+                _logger.LogError(ex, "Chyba pri načítavaní dát z DataTable");
                 throw;
-            }
-            finally
-            {
-                await HideLoadingAsync();
             }
         }
 
         /// <summary>
-        /// Vymaže všetky dáta z DataGrid a uvoľní zdroje.
+        /// Validuje všetky riadky v DataGrid
         /// </summary>
-        /// <returns>Task pre asynchrónne vymazanie</returns>
-        public async Task ClearAllDataAsync()
-        {
-            EnsureInitialized();
-
-            try
-            {
-                await ShowLoadingAsync("Vymazávajú sa dáta...");
-
-                // Vyčistiť services
-                await _dataService!.ClearAllDataAsync();
-
-                // Vyčistiť UI kolekcie
-                _dataRows.Clear();
-                _selectedCells.Clear();
-
-                _logger?.LogInformation("Všetky dáta vymazané z DataGrid");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Chyba pri vymazávaní dát");
-                throw;
-            }
-            finally
-            {
-                await HideLoadingAsync();
-            }
-        }
-
-        #endregion
-
-        #region Verejné API - Validácia
-
-        /// <summary>
-        /// Validuje všetky neprázdne riadky v DataGrid.
-        /// </summary>
-        /// <returns>True ak sú všetky dáta validné</returns>
         public async Task<bool> ValidateAllRowsAsync()
         {
-            EnsureInitialized();
-
             try
             {
-                await ShowLoadingAsync("Validujú sa dáta...");
+                EnsureInitialized();
+                _logger.LogInformation("Spúšťa sa validácia všetkých riadkov");
 
-                var allRowsData = _dataService!.GetAllRowsData();
-                var result = await _validationService!.ValidateAllNonEmptyRowsAsync(allRowsData);
+                var result = await _validationService.ValidateAllRowsAsync();
+                await RefreshValidationStateAsync();
 
-                // Aktualizovať UI s výsledkami validácie
-                await RefreshValidationUIAsync(result);
-
-                _logger?.LogInformation("Validácia dokončená: {ValidRows}/{TotalRows} validných riadkov",
-                    result.ValidRowsCount, result.TotalRowsCount);
-
-                return result.IsValid;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Chyba pri validácii dát");
-                throw;
-            }
-            finally
-            {
-                await HideLoadingAsync();
-            }
-        }
-
-        #endregion
-
-        #region Verejné API - Export
-
-        /// <summary>
-        /// Exportuje všetky dáta do DataTable.
-        /// Zahŕňa ValidAlerts stĺpec, ale nezahŕňa DeleteRows stĺpec.
-        /// </summary>
-        /// <returns>DataTable s dátami</returns>
-        public async Task<DataTable> ExportToDataTableAsync()
-        {
-            EnsureInitialized();
-
-            try
-            {
-                await ShowLoadingAsync("Exportujú sa dáta...");
-
-                var result = await _exportService!.ExportToDataTableAsync(includeEmptyRows: false);
-
-                _logger?.LogInformation("Export do DataTable dokončený: {RowCount} riadkov", result.Rows.Count);
-
+                _logger.LogInformation($"Validácia dokončená: {(result ? "všetky validné" : "nájdené chyby")}");
                 return result;
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Chyba pri exporte do DataTable");
+                _logger.LogError(ex, "Chyba pri validácii všetkých riadkov");
                 throw;
             }
-            finally
+        }
+
+        /// <summary>
+        /// Exportuje dáta do DataTable
+        /// </summary>
+        public async Task<DataTable> ExportToDataTableAsync()
+        {
+            try
             {
-                await HideLoadingAsync();
+                EnsureInitialized();
+                _logger.LogInformation("Exportujú sa dáta do DataTable");
+
+                var result = await _exportService.ExportToDataTableAsync();
+                _logger.LogInformation($"Export dokončený: {result.Rows.Count} riadkov");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri exporte do DataTable");
+                throw;
             }
         }
 
-        #endregion
-
-        #region Private - Inicializácia services
-
         /// <summary>
-        /// Konfiguruje Dependency Injection kontajner.
+        /// Vymaže všetky dáta z DataGrid
         /// </summary>
-        private void ConfigureDependencyInjection()
+        public async Task ClearAllDataAsync()
         {
-            // Zaregistrovať services
-            _services.AddSingleton<IValidationService, ValidationService>();
-            _services.AddSingleton<IDataManagementService, DataManagementService>();
-            _services.AddSingleton<ICopyPasteService, CopyPasteService>();
-            _services.AddTransient<IExportService, ExportService>();
-            _services.AddSingleton<INavigationService, NavigationService>();
-
-            // Logging abstrakcia - OPRAVENÉ: Null-safe
-            _services.AddSingleton<ILoggingService>(provider =>
+            try
             {
-                var logger = provider.GetService<ILogger<AdvancedDataGrid>>();
-                return new LoggingServiceAdapter(logger);
-            });
-        }
+                EnsureInitialized();
+                _logger.LogInformation("Vymazávajú sa všetky dáta");
 
-        /// <summary>
-        /// Inicializuje všetky services.
-        /// </summary>
-        private async Task InitializeServicesAsync()
-        {
-            // OPRAVENÉ: Null-safe získanie services s explicit null check
-            if (_serviceProvider == null)
-                throw new InvalidOperationException("ServiceProvider nie je inicializovaný");
+                ShowLoadingState("Vymazávajú sa dáta...");
 
-            _logger = _serviceProvider.GetRequiredService<ILoggingService>();
-            _dataService = _serviceProvider.GetRequiredService<IDataManagementService>();
-            _validationService = _serviceProvider.GetRequiredService<IValidationService>();
-            _copyPasteService = _serviceProvider.GetRequiredService<ICopyPasteService>();
-            _exportService = _serviceProvider.GetRequiredService<IExportService>();
-            _navigationService = _serviceProvider.GetRequiredService<INavigationService>();
+                await _dataManagementService.ClearAllDataAsync();
+                await CreateEmptyRowsAsync(_configuration?.EmptyRowsCount ?? 15);
 
-            // Inicializovať každý service s konfiguráciou
-            await _dataService.InitializeAsync(_configuration!);
-            await _validationService.InitializeAsync(_configuration!);
-            await _copyPasteService.InitializeAsync(_configuration!);
-            await _exportService.InitializeAsync(_configuration!);
-            await _navigationService.InitializeAsync(_configuration!, this);
-
-            // OPRAVENÉ: Set cross-dependencies
-            if (_copyPasteService is CopyPasteService copyPasteImpl)
-            {
-                copyPasteImpl.SetDataService(_dataService);
+                HideLoadingState();
+                _logger.LogInformation("Všetky dáta vymazané");
             }
-
-            if (_exportService is ExportService exportImpl)
+            catch (Exception ex)
             {
-                exportImpl.SetDataService(_dataService);
+                _logger.LogError(ex, "Chyba pri vymazávaní dát");
+                throw;
             }
-
-            // Pripojiť event handlery
-            _dataService.DataChanged += OnDataChanged;
-            _validationService.CellValidationChanged += OnCellValidationChanged;
         }
 
-        #endregion
-
-        #region Private - UI management
-
         /// <summary>
-        /// Nastaví UI na základe konfigurácie.
+        /// ✅ NOVÁ METÓDA: Zmaže riadky na základe custom validačných pravidiel
         /// </summary>
-        private async Task SetupUIAsync()
+        public async Task DeleteRowsByCustomValidationAsync(List<ValidationRule> deleteValidationRules)
         {
-            // Nastaviť hlavičky stĺpcov
-            _headerColumns.Clear();
-            foreach (var column in _configuration!.Columns)
+            try
             {
-                _headerColumns.Add(column);
-            }
+                EnsureInitialized();
+                _logger.LogInformation($"Spúšťa sa mazanie riadkov podľa {deleteValidationRules.Count} custom validačných pravidiel");
 
-            await Task.CompletedTask;
-        }
+                ShowLoadingState("Vyhodnocujú sa pravidlá pre mazanie riadkov...");
 
-        /// <summary>
-        /// Vytvorí prázdne riadky.
-        /// </summary>
-        private async Task CreateEmptyRowsAsync(int rowCount)
-        {
-            await _dataService!.CreateEmptyRowsAsync(rowCount);
-            await RefreshUIAsync();
-        }
+                int deletedCount = 0;
+                var rowsToDelete = new List<RowDataModel>();
 
-        /// <summary>
-        /// Obnoví UI s aktuálnymi dátami.
-        /// </summary>
-        private async Task RefreshUIAsync()
-        {
-            _dataRows.Clear();
-
-            var allRowsData = _dataService!.GetAllRowsData();
-            foreach (var rowData in allRowsData)
-            {
-                var rowCollection = new ObservableCollection<CellData>(rowData);
-                _dataRows.Add(rowCollection);
-            }
-
-            await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Aktualizuje UI s výsledkami validácie.
-        /// </summary>
-        private async Task RefreshValidationUIAsync(GridValidationResult validationResult)
-        {
-            // Aktualizovať validation stav v UI
-            foreach (var rowResult in validationResult.RowResults)
-            {
-                var rowIndex = rowResult.Key;
-                var rowValidation = rowResult.Value;
-
-                if (rowIndex < _dataRows.Count)
+                // Prejdi všetky riadky
+                foreach (var row in _rows.ToList())
                 {
-                    var uiRow = _dataRows[rowIndex];
+                    // Preskač prázdne riadky
+                    if (IsRowEmpty(row))
+                        continue;
 
-                    // Aktualizovať ValidAlerts stĺpec
-                    var validAlertsCell = uiRow.FirstOrDefault(c => c.ColumnDefinition.IsValidationColumn);
-                    if (validAlertsCell != null)
+                    // Kontrola či riadok splňuje niektoré z delete pravidiel
+                    bool shouldDelete = false;
+
+                    foreach (var rule in deleteValidationRules)
                     {
-                        validAlertsCell.ErrorMessage = rowValidation.FormattedErrorMessage;
-                    }
-
-                    // Aktualizovať jednotlivé bunky
-                    foreach (var cellResult in rowValidation.CellResults)
-                    {
-                        var columnIndex = cellResult.Key;
-                        var cellValidation = cellResult.Value;
-
-                        if (columnIndex < uiRow.Count)
+                        var cellData = row.Cells.FirstOrDefault(c => c.ColumnName == rule.ColumnName);
+                        if (cellData != null)
                         {
-                            var uiCell = uiRow[columnIndex];
-                            uiCell.IsValid = cellValidation.IsValid;
-                            if (!cellValidation.IsValid)
+                            // Ak pravidlo vráti TRUE, riadok sa zmaže
+                            if (rule.Validate(cellData.Value))
                             {
-                                uiCell.ErrorMessage = cellValidation.ErrorMessage;
+                                shouldDelete = true;
+                                _logger.LogDebug($"Riadok {row.RowIndex} bude zmazaný - splnil pravidlo: {rule.ColumnName}");
+                                break;
                             }
                         }
                     }
+
+                    if (shouldDelete)
+                    {
+                        rowsToDelete.Add(row);
+                    }
                 }
-            }
 
-            await Task.CompletedTask;
+                // Zmaž označené riadky (vyčisti ich obsah)
+                foreach (var rowToDelete in rowsToDelete)
+                {
+                    await ClearRowDataAsync(rowToDelete);
+                    deletedCount++;
+                }
+
+                // Preusporiadaj riadky (odstráň prázdne medzery)
+                await CompactRowsAsync();
+
+                HideLoadingState();
+                _logger.LogInformation($"Úspešne zmazaných {deletedCount} riadkov podľa custom validačných pravidiel");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri mazaní riadkov podľa custom validácie");
+                HideLoadingState();
+                throw;
+            }
         }
 
         #endregion
 
-        #region Private - Loading UI
+        #region Private Helper Methods
 
-        private async Task ShowLoadingAsync(string message)
+        private void ConfigureServices(IServiceCollection services)
         {
-            await this.DispatcherQueue.EnqueueAsync(() =>
+            // Logging
+            services.AddLogging(builder =>
             {
-                LoadingText.Text = message;
-                LoadingOverlay.Visibility = Visibility.Visible;
+                builder.AddDebug();
+                builder.SetMinimumLevel(LogLevel.Debug);
             });
+
+            // Core services
+            services.AddSingleton<IValidationService, ValidationService>();
+            services.AddSingleton<IDataManagementService, DataManagementService>();
+            services.AddSingleton<ICopyPasteService, CopyPasteService>();
+            services.AddTransient<IExportService, ExportService>();
+            services.AddSingleton<INavigationService, NavigationService>();
         }
-
-        private async Task HideLoadingAsync()
-        {
-            await this.DispatcherQueue.EnqueueAsync(() =>
-            {
-                LoadingOverlay.Visibility = Visibility.Collapsed;
-            });
-        }
-
-        #endregion
-
-        #region Event handlers
-
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            // Dodatočná inicializácia po načítaní UI
-        }
-
-        private void OnKeyDown(object sender, KeyRoutedEventArgs e)
-        {
-            // Delegovať na NavigationService
-            _navigationService?.HandleKeyDown(e);
-        }
-
-        private void OnDataScrollViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
-        {
-            // Synchronizovať scroll header-u s dátami
-            if (!e.IsIntermediate)
-            {
-                HeaderScrollViewer.ScrollToHorizontalOffset(DataScrollViewer.HorizontalOffset);
-            }
-        }
-
-        private void OnDeleteRowClick(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is int rowIndex)
-            {
-                // Vymazať obsah riadku (nie fyzicky riadok)
-                _ = Task.Run(async () => await _dataService!.DeleteRowContentAsync(rowIndex));
-            }
-        }
-
-        private void OnDataChanged(object? sender, DataChangedEventArgs e)
-        {
-            // Spracovať zmenu dát
-            _ = Task.Run(async () => await RefreshUIAsync());
-        }
-
-        private void OnCellValidationChanged(object? sender, CellValidationChangedEventArgs e)
-        {
-            // Aktualizovať UI validáciu pre konkrétnu bunku
-        }
-
-        #endregion
-
-        #region Helper methods
 
         private void EnsureInitialized()
         {
             if (!_isInitialized)
                 throw new InvalidOperationException("DataGrid nie je inicializovaný. Zavolajte InitializeAsync() najprv.");
+        }
+
+        private void GenerateHeaders()
+        {
+            _headers.Clear();
+
+            if (_configuration?.Columns == null) return;
+
+            foreach (var column in _configuration.Columns)
+            {
+                _headers.Add(column.Header ?? column.Name);
+            }
+
+            // Pridaj ValidAlerts stĺpec na koniec
+            _headers.Add("ValidAlerts");
+        }
+
+        private async Task CreateEmptyRowsAsync(int count)
+        {
+            _rows.Clear();
+
+            for (int i = 0; i < count; i++)
+            {
+                var row = CreateEmptyRow(i);
+                _rows.Add(row);
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private RowDataModel CreateEmptyRow(int index)
+        {
+            var row = new RowDataModel { RowIndex = index };
+
+            if (_configuration?.Columns != null)
+            {
+                foreach (var column in _configuration.Columns)
+                {
+                    var cell = new CellDataModel
+                    {
+                        ColumnName = column.Name,
+                        Value = null,
+                        DataType = column.DataType,
+                        IsValid = true,
+                        ValidationErrors = string.Empty
+                    };
+                    row.Cells.Add(cell);
+                }
+
+                // Pridaj ValidAlerts bunku
+                row.Cells.Add(new CellDataModel
+                {
+                    ColumnName = "ValidAlerts",
+                    Value = string.Empty,
+                    DataType = typeof(string),
+                    IsValid = true,
+                    ValidationErrors = string.Empty
+                });
+            }
+
+            return row;
+        }
+
+        private async Task RefreshGridDataAsync()
+        {
+            var data = await _dataManagementService.GetAllDataAsync();
+
+            // Aktualizuj existujúce riadky s dátami
+            for (int i = 0; i < data.Count && i < _rows.Count; i++)
+            {
+                var rowData = data[i];
+                var rowModel = _rows[i];
+
+                foreach (var cell in rowModel.Cells)
+                {
+                    if (rowData.ContainsKey(cell.ColumnName))
+                    {
+                        cell.Value = rowData[cell.ColumnName];
+                    }
+                }
+            }
+
+            // Ak je viac dát ako riadkov, pridaj nové riadky
+            for (int i = _rows.Count; i < data.Count; i++)
+            {
+                var newRow = CreateEmptyRow(i);
+                var rowData = data[i];
+
+                foreach (var cell in newRow.Cells)
+                {
+                    if (rowData.ContainsKey(cell.ColumnName))
+                    {
+                        cell.Value = rowData[cell.ColumnName];
+                    }
+                }
+
+                _rows.Add(newRow);
+            }
+
+            await RefreshValidationStateAsync();
+        }
+
+        private async Task RefreshValidationStateAsync()
+        {
+            foreach (var row in _rows)
+            {
+                await ValidateRowAsync(row);
+            }
+        }
+
+        private async Task ValidateRowAsync(RowDataModel row)
+        {
+            if (IsRowEmpty(row))
+            {
+                // Prázdny riadok - vyčisti validačné chyby
+                foreach (var cell in row.Cells)
+                {
+                    cell.IsValid = true;
+                    cell.ValidationErrors = string.Empty;
+                }
+                return;
+            }
+
+            var validationErrors = new List<string>();
+
+            foreach (var cell in row.Cells.Where(c => c.ColumnName != "ValidAlerts"))
+            {
+                var cellErrors = await _validationService.ValidateCellAsync(cell.ColumnName, cell.Value);
+                if (cellErrors.Any())
+                {
+                    cell.IsValid = false;
+                    cell.ValidationErrors = string.Join("; ", cellErrors);
+                    validationErrors.AddRange(cellErrors);
+                }
+                else
+                {
+                    cell.IsValid = true;
+                    cell.ValidationErrors = string.Empty;
+                }
+            }
+
+            // Aktualizuj ValidAlerts bunku
+            var validAlertsCell = row.Cells.FirstOrDefault(c => c.ColumnName == "ValidAlerts");
+            if (validAlertsCell != null)
+            {
+                validAlertsCell.Value = string.Join("; ", validationErrors);
+                validAlertsCell.IsValid = !validationErrors.Any();
+            }
+        }
+
+        private bool IsRowEmpty(RowDataModel row)
+        {
+            return row.Cells
+                .Where(c => c.ColumnName != "DeleteRows" && c.ColumnName != "ValidAlerts")
+                .All(c => c.Value == null || string.IsNullOrWhiteSpace(c.Value?.ToString()));
+        }
+
+        private async Task ClearRowDataAsync(RowDataModel row)
+        {
+            foreach (var cell in row.Cells.Where(c => c.ColumnName != "ValidAlerts"))
+            {
+                cell.Value = null;
+                cell.IsValid = true;
+                cell.ValidationErrors = string.Empty;
+            }
+
+            // Vyčisti aj ValidAlerts
+            var validAlertsCell = row.Cells.FirstOrDefault(c => c.ColumnName == "ValidAlerts");
+            if (validAlertsCell != null)
+            {
+                validAlertsCell.Value = string.Empty;
+                validAlertsCell.IsValid = true;
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private async Task CompactRowsAsync()
+        {
+            var nonEmptyRows = _rows.Where(r => !IsRowEmpty(r)).ToList();
+            var emptyRowsCount = _rows.Count - nonEmptyRows.Count;
+
+            // Prečísluj riadky
+            for (int i = 0; i < nonEmptyRows.Count; i++)
+            {
+                nonEmptyRows[i].RowIndex = i;
+            }
+
+            // Vytvor prázdne riadky na koniec
+            for (int i = nonEmptyRows.Count; i < _rows.Count; i++)
+            {
+                var emptyRow = CreateEmptyRow(i);
+                nonEmptyRows.Add(emptyRow);
+            }
+
+            // Aktualizuj kolekciu
+            _rows.Clear();
+            foreach (var row in nonEmptyRows)
+            {
+                _rows.Add(row);
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private void ShowLoadingState(string message)
+        {
+            this.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (LoadingOverlay != null)
+                    LoadingOverlay.Visibility = Visibility.Visible;
+
+                if (LoadingText != null)
+                    LoadingText.Text = message;
+            });
+        }
+
+        private void HideLoadingState()
+        {
+            this.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (LoadingOverlay != null)
+                    LoadingOverlay.Visibility = Visibility.Collapsed;
+            });
+        }
+
+        #endregion
+
+        #region Event Handlers
+
+        private async void OnCellKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            try
+            {
+                await _navigationService.HandleKeyDownAsync(sender, e);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri spracovaní KeyDown event");
+            }
+        }
+
+        private async void OnCellLostFocus(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is TextBox textBox && textBox.DataContext is CellDataModel cell)
+                {
+                    await ValidateRowAsync(_rows.FirstOrDefault(r => r.Cells.Contains(cell))!);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri spracovaní LostFocus event");
+            }
+        }
+
+        private void OnCellGotFocus(object sender, RoutedEventArgs e)
+        {
+            // Môže sa použiť pre copy/paste selection logic
+        }
+
+        private async void OnDeleteRowClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is Button button && button.Tag is RowDataModel row)
+                {
+                    await ClearRowDataAsync(row);
+                    await CompactRowsAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri mazaní riadku");
+            }
+        }
+
+        private void OnDataScrollViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+        {
+            // Synchronizácia header scroll s data scroll
+            if (sender is ScrollViewer dataScroll && HeaderScrollViewer != null)
+            {
+                HeaderScrollViewer.ChangeView(dataScroll.HorizontalOffset, null, null, true);
+            }
         }
 
         #endregion
@@ -541,61 +628,24 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         public void Dispose()
         {
-            if (_disposed) return;
+            if (_isDisposed) return;
 
             try
             {
-                // Dispose services
-                _dataService?.Dispose();
-                _validationService?.Dispose();
-                _copyPasteService?.Dispose();
-                _exportService?.Dispose();
-                _navigationService?.Dispose();
-                _logger?.Dispose();
-
-                // Dispose DI container
                 _serviceProvider?.Dispose();
+                _headers.Clear();
+                _rows.Clear();
 
-                // Dispose other resources
-                _configuration?.Dispose();
-                _initializationSemaphore?.Dispose();
-
-                _disposed = true;
+                _isDisposed = true;
+                _logger?.LogInformation("AdvancedDataGrid disposed");
             }
             catch (Exception ex)
             {
-                // Log chybu ak je možné
+                // Log but don't throw during disposal
                 System.Diagnostics.Debug.WriteLine($"Chyba pri dispose: {ex.Message}");
             }
         }
 
         #endregion
     }
-
-    #region Extension methods pre DispatcherQueue
-
-    internal static class DispatcherQueueExtensions
-    {
-        public static async Task EnqueueAsync(this Microsoft.UI.Dispatching.DispatcherQueue dispatcher, Action action)
-        {
-            var tcs = new TaskCompletionSource<bool>();
-
-            dispatcher.TryEnqueue(() =>
-            {
-                try
-                {
-                    action();
-                    tcs.SetResult(true);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            });
-
-            await tcs.Task;
-        }
-    }
-
-    #endregion
 }

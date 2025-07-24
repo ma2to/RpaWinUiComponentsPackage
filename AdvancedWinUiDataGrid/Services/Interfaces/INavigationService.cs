@@ -1,116 +1,57 @@
 ﻿// Services/Interfaces/INavigationService.cs
 using Microsoft.UI.Xaml.Input;
-using System;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
 {
     /// <summary>
-    /// Rozhranie pre klávesovú navigáciu v DataGrid komponente.
-    /// Zabezpečuje Tab/Enter/Esc/Shift+Enter správanie.
+    /// Interface pre navigáciu v DataGrid (Tab, Enter, Esc, atď.)
     /// </summary>
-    internal interface INavigationService : IDisposable
+    public interface INavigationService
     {
-        #region Events
+        /// <summary>
+        /// Inicializuje navigačnú službu
+        /// </summary>
+        Task InitializeAsync();
 
         /// <summary>
-        /// Event vyvolaný keď sa zmení aktuálna pozícia v gridi.
+        /// Spracuje stlačenie klávesy v bunke
         /// </summary>
-        event EventHandler<NavigationEventArgs>? CellNavigated;
+        Task HandleKeyDownAsync(object sender, KeyRoutedEventArgs e);
 
         /// <summary>
-        /// Event vyvolaný keď sa zmení edit mode.
+        /// Presunie fokus na ďalšiu bunku (Tab)
         /// </summary>
-        event EventHandler<EditModeChangedEventArgs>? EditModeChanged;
-
-        #endregion
-
-        #region Inicializácia
+        Task MoveToNextCellAsync(int currentRow, int currentColumn);
 
         /// <summary>
-        /// Inicializuje navigačnú službu s konfiguráciou a referenciou na DataGrid.
+        /// Presunie fokus na predchádzajúcu bunku (Shift+Tab)
         /// </summary>
-        /// <param name="configuration">Konfigurácia gridu</param>
-        /// <param name="dataGrid">Reference na DataGrid komponent</param>
-        /// <returns>Task pre asynchrónnu inicializáciu</returns>
-        Task InitializeAsync(GridConfiguration configuration, AdvancedDataGrid dataGrid);
+        Task MoveToPreviousCellAsync(int currentRow, int currentColumn);
 
         /// <summary>
-        /// Určuje či je služba inicializovaná.
+        /// Presunie fokus na bunku nižšie (Enter)
         /// </summary>
-        bool IsInitialized { get; }
-
-        #endregion
-
-        #region Klávesová navigácia
+        Task MoveToCellBelowAsync(int currentRow, int currentColumn);
 
         /// <summary>
-        /// Spracuje klávesové skratky a navigáciu.
+        /// Presunie fokus na bunku vyššie (Shift+Enter)
         /// </summary>
-        /// <param name="e">Klávesový event</param>
-        void HandleKeyDown(KeyRoutedEventArgs e);
-
-        #endregion
-
-        #region Navigačné operácie
+        Task MoveToCellAboveAsync(int currentRow, int currentColumn);
 
         /// <summary>
-        /// Presunie kurzor na konkrétnu bunku.
+        /// Zruší editáciu bunky (Esc)
         /// </summary>
-        /// <param name="rowIndex">Index riadku</param>
-        /// <param name="columnIndex">Index stĺpca</param>
-        /// <returns>True ak sa operácia podarila</returns>
-        bool MoveToCell(int rowIndex, int columnIndex);
+        Task CancelCellEditAsync(object sender);
 
         /// <summary>
-        /// Presunie kurzor na ďalšiu bunku (Tab správanie).
+        /// Dokončí editáciu bunky
         /// </summary>
-        /// <returns>True ak sa operácia podarila</returns>
-        bool MoveNext();
+        Task FinishCellEditAsync(object sender);
 
         /// <summary>
-        /// Presunie kurzor na predchádzajúcu bunku (Shift+Tab správanie).
+        /// Pridá nový riadok v bunke (Shift+Enter)
         /// </summary>
-        /// <returns>True ak sa operácia podarila</returns>
-        bool MovePrevious();
-
-        /// <summary>
-        /// Presunie kurzor o riadok vyššie.
-        /// </summary>
-        /// <returns>True ak sa operácia podarila</returns>
-        bool MoveUp();
-
-        /// <summary>
-        /// Presunie kurzor o riadok nižšie.
-        /// </summary>
-        /// <returns>True ak sa operácia podarila</returns>
-        bool MoveDown();
-
-        #endregion
-
-        #region Edit mode
-
-        /// <summary>
-        /// Spustí edit mode pre aktuálnu bunku.
-        /// </summary>
-        void StartEdit();
-
-        /// <summary>
-        /// Ukončí edit mode.
-        /// </summary>
-        /// <param name="commitChanges">Či sa majú zmeny potvrdiť alebo zahodiť</param>
-        void StopEdit(bool commitChanges = true);
-
-        /// <summary>
-        /// Určuje či je aktuálne aktívny edit mode.
-        /// </summary>
-        bool IsEditing { get; }
-
-        /// <summary>
-        /// Aktuálna pozícia kurzora v gridi.
-        /// </summary>
-        (int row, int col)? CurrentPosition { get; }
-
-        #endregion
+        Task InsertNewLineInCellAsync(object sender);
     }
 }

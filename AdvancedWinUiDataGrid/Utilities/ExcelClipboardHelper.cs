@@ -1,142 +1,92 @@
 ﻿// Utilities/ExcelClipboardHelper.cs
+using Microsoft.UI.Xaml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Windows.ApplicationModel.DataTransfer;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
 {
     /// <summary>
-    /// Utility trieda pre prácu s Excel formátovaným clipboard obsahom.
-    /// Poskytuje konverzie medzi 2D dátami a TSV (Tab-Separated Values) formátom.
+    /// Helper trieda pre Excel clipboard operácie
     /// </summary>
-    internal static class ExcelClipboardHelper
+    public static class ExcelClipboardHelper
     {
-        #region Konštanty
+        private const string TabSeparator = "\t";
+        private const string LineSeparator = "\r\n";
 
         /// <summary>
-        /// Oddeľovač stĺpcov v TSV formáte.
+        /// Konvertuje 2D array dát na Excel TSV formát
         /// </summary>
-        public const string ColumnSeparator = "\t";
-
-        /// <summary>
-        /// Oddeľovač riadkov v TSV formáte.
-        /// </summary>
-        public const string RowSeparator = "\r\n";
-
-        #endregion
-
-        #region Export do TSV
-
-        /// <summary>
-        /// Konvertuje 2D pole dát na TSV string kompatibilný s Excel.
-        /// </summary>
-        /// <param name="data">2D pole hodnôt</param>
-        /// <returns>TSV formátovaný string</returns>
-        public static string ConvertToTsv(object?[,] data)
+        public static string ConvertToExcelFormat(object?[,] data)
         {
-            if (data == null)
+            if (data == null || data.Length == 0)
                 return string.Empty;
 
             var rows = data.GetLength(0);
             var cols = data.GetLength(1);
-
-            if (rows == 0 || cols == 0)
-                return string.Empty;
-
-            var sb = new StringBuilder();
+            var lines = new List<string>();
 
             for (int row = 0; row < rows; row++)
             {
-                var rowValues = new List<string>();
-
+                var cells = new List<string>();
                 for (int col = 0; col < cols; col++)
                 {
-                    var cellValue = data[row, col];
-                    var formattedValue = FormatCellForTsv(cellValue);
-                    rowValues.Add(formattedValue);
+                    var value = data[row, col];
+                    cells.Add(EscapeExcelCell(value?.ToString() ?? string.Empty));
                 }
-
-                sb.Append(string.Join(ColumnSeparator, rowValues));
-
-                // Pridať row separator okrem posledného riadku
-                if (row < rows - 1)
-                {
-                    sb.Append(RowSeparator);
-                }
+                lines.Add(string.Join(TabSeparator, cells));
             }
 
-            return sb.ToString();
+            return string.Join(LineSeparator, lines);
         }
 
         /// <summary>
-        /// Konvertuje List 2D štruktúru na TSV string.
+        /// Konvertuje List<List<object>> na Excel formát
         /// </summary>
-        /// <param name="data">2D List dát</param>
-        /// <returns>TSV formátovaný string</returns>
-        public static string ConvertToTsv(IEnumerable<IEnumerable<object?>> data)
+        public static string ConvertToExcelFormat(List<List<object?>> data)
         {
-            var dataArray = data.Select(row => row.ToArray()).ToArray();
-
-            if (!dataArray.Any())
+            if (data == null || !data.Any())
                 return string.Empty;
 
-            var maxColumns = dataArray.Max(row => row.Length);
-            var result = new object?[dataArray.Length, maxColumns];
+            var lines = new List<string>();
 
-            for (int row = 0; row < dataArray.Length; row++)
+            foreach (var row in data)
             {
-                for (int col = 0; col < maxColumns; col++)
-                {
-                    result[row, col] = col < dataArray[row].Length ? dataArray[row][col] : null;
-                }
+                var cells = row.Select(cell => EscapeExcelCell(cell?.ToString() ?? string.Empty));
+                lines.Add(string.Join(TabSeparator, cells));
             }
 
-            return ConvertToTsv(result);
+            return string.Join(LineSeparator, lines);
         }
 
-        #endregion
-
-        #region Import z TSV
-
         /// <summary>
-        /// Parsuje TSV string na 2D pole dát.
+        /// Parsuje Excel TSV formát na 2D array
         /// </summary>
-        /// <param name="tsvData">TSV string</param>
-        /// <returns>2D pole hodnôt</returns>
-        public static object?[,] ParseTsvData(string tsvData)
+        public static object?[,] ParseExcelFormat(string excelData)
         {
-            if (string.IsNullOrEmpty(tsvData))
-                return new object?[0, 0];
+            if (string.IsNullOrEmpty(excelData))
+                return new object[0, 0];
 
-            // Split riadky - handle rôzne line endings
-            var lines = tsvData.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            var lines = excelData.Split(new[] { LineSeparator, "\n" }, StringSplitOptions.None);
+            if (!lines.Any())
+                return new object[0, 0];
 
-            // Odstrániť prázdne riadky na konci
-            while (lines.Length > 0 && string.IsNullOrEmpty(lines[^1]))
-            {
-                Array.Resize(ref lines, lines.Length - 1);
-            }
+            // Určí maximálny počet stĺpcov
+            var maxCols = lines.Max(line => line.Split('\t').Length);
+            var rows = lines.Length;
 
-            if (lines.Length == 0)
-                return new object?[0, 0];
+            var result = new object?[rows, maxCols];
 
-            // Určiť maximálny počet stĺpcov
-            var maxColumns = lines.Max(line => line.Split('\t').Length);
-
-            var result = new object?[lines.Length, maxColumns];
-
-            for (int row = 0; row < lines.Length; row++)
+            for (int row = 0; row < rows; row++)
             {
                 var cells = lines[row].Split('\t');
-
-                for (int col = 0; col < maxColumns; col++)
+                for (int col = 0; col < maxCols; col++)
                 {
                     if (col < cells.Length)
                     {
-                        result[row, col] = ParseCellFromTsv(cells[col]);
+                        result[row, col] = UnescapeExcelCell(cells[col]);
                     }
                     else
                     {
@@ -149,278 +99,149 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// Parsuje TSV string na List 2D štruktúru.
+        /// Parsuje Excel formát na List<List<object>>
         /// </summary>
-        /// <param name="tsvData">TSV string</param>
-        /// <returns>2D List dát</returns>
-        public static List<List<object?>> ParseTsvDataToList(string tsvData)
+        public static List<List<object?>> ParseExcelFormatToList(string excelData)
         {
-            var arrayData = ParseTsvData(tsvData);
             var result = new List<List<object?>>();
 
-            var rows = arrayData.GetLength(0);
-            var cols = arrayData.GetLength(1);
+            if (string.IsNullOrEmpty(excelData))
+                return result;
 
-            for (int row = 0; row < rows; row++)
+            var lines = excelData.Split(new[] { LineSeparator, "\n" }, StringSplitOptions.None);
+
+            foreach (var line in lines)
             {
-                var rowList = new List<object?>();
-                for (int col = 0; col < cols; col++)
-                {
-                    rowList.Add(arrayData[row, col]);
-                }
-                result.Add(rowList);
+                var cells = line.Split('\t').Select(cell => (object?)UnescapeExcelCell(cell)).ToList();
+                result.Add(cells);
             }
 
             return result;
         }
 
-        #endregion
-
-        #region Rozmery a validácia
-
         /// <summary>
-        /// Získa rozmery TSV dát.
+        /// Skopíruje dáta do Windows clipboardu
         /// </summary>
-        /// <param name="tsvData">TSV string</param>
-        /// <returns>Tuple s počtom riadkov a stĺpcov</returns>
-        public static (int rows, int columns) GetTsvDimensions(string tsvData)
-        {
-            if (string.IsNullOrEmpty(tsvData))
-                return (0, 0);
-
-            var lines = tsvData.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
-
-            if (lines.Length == 0)
-                return (0, 0);
-
-            var rows = lines.Length;
-            var columns = lines.Max(line => line.Split('\t').Length);
-
-            return (rows, columns);
-        }
-
-        /// <summary>
-        /// Validuje či je TSV string správne formátovaný.
-        /// </summary>
-        /// <param name="tsvData">TSV string na validáciu</param>
-        /// <returns>True ak je TSV validný</returns>
-        public static bool IsValidTsv(string tsvData)
-        {
-            if (string.IsNullOrEmpty(tsvData))
-                return true; // Prázdny string je validný
-
-            try
-            {
-                var dimensions = GetTsvDimensions(tsvData);
-                return dimensions.rows > 0 && dimensions.columns > 0;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        #endregion
-
-        #region Clipboard operácie
-
-        /// <summary>
-        /// Načíta TSV dáta z system clipboardu.
-        /// </summary>
-        /// <returns>TSV string alebo null ak clipboard neobsahuje text</returns>
-        public static async Task<string?> GetClipboardTsvAsync()
+        public static async Task CopyToClipboardAsync(string excelData)
         {
             try
             {
-                var dataPackageView = Clipboard.GetContent();
+                var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                dataPackage.SetText(excelData);
 
-                if (dataPackageView.Contains(StandardDataFormats.Text))
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+                await Task.CompletedTask;
+            }
+            catch (Exception)
+            {
+                // Clipboard operations can fail, ignore silently
+            }
+        }
+
+        /// <summary>
+        /// Získa dáta z Windows clipboardu
+        /// </summary>
+        public static async Task<string> GetFromClipboardAsync()
+        {
+            try
+            {
+                var clipboardContent = Windows.ApplicationModel.DataTransfer.Clipboard.GetContent();
+
+                if (clipboardContent.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text))
                 {
-                    var text = await dataPackageView.GetTextAsync();
-
-                    // Skontrolovať či to vyzerá ako TSV (obsahuje taby)
-                    if (!string.IsNullOrEmpty(text) && text.Contains('\t'))
-                    {
-                        return text;
-                    }
-
-                    // Ak neobsahuje taby, ale je to text, môže to byť single cell
-                    return text;
+                    return await clipboardContent.GetTextAsync();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                System.Diagnostics.Debug.WriteLine($"Chyba pri čítaní z clipboardu: {ex.Message}");
+                // Clipboard operations can fail, return empty
             }
 
-            return null;
+            return string.Empty;
         }
 
         /// <summary>
-        /// Nastaví TSV dáta do system clipboardu.
+        /// Kontroluje či je v clipboarde Excel-kompatibilný obsah
         /// </summary>
-        /// <param name="tsvData">TSV string</param>
-        /// <returns>Task pre asynchrónne nastavenie</returns>
-        public static async Task SetClipboardTsvAsync(string tsvData)
+        public static async Task<bool> HasExcelDataInClipboardAsync()
         {
             try
             {
-                var dataPackage = new DataPackage();
-                dataPackage.SetText(tsvData ?? string.Empty);
+                var clipboardContent = Windows.ApplicationModel.DataTransfer.Clipboard.GetContent();
 
-                Clipboard.SetContent(dataPackage);
-                await Task.CompletedTask;
+                if (clipboardContent.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Text))
+                {
+                    var text = await clipboardContent.GetTextAsync();
+                    return !string.IsNullOrEmpty(text) && (text.Contains('\t') || text.Contains('\n'));
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                System.Diagnostics.Debug.WriteLine($"Chyba pri zápise do clipboardu: {ex.Message}");
-                throw;
+                // Clipboard operations can fail
             }
+
+            return false;
         }
 
         /// <summary>
-        /// Skontroluje či clipboard obsahuje Excel kompatibilné dáta.
+        /// Získa náhľad dát z clipboardu (prvých 3 riadkov)
         /// </summary>
-        /// <returns>True ak clipboard obsahuje TSV alebo text dáta</returns>
-        public static async Task<bool> HasClipboardDataAsync()
+        public static async Task<string> GetClipboardPreviewAsync(int maxRows = 3)
         {
             try
             {
-                var dataPackageView = Clipboard.GetContent();
-                var hasData = dataPackageView.Contains(StandardDataFormats.Text);
-                await Task.CompletedTask;
-                return hasData;
+                var clipboardData = await GetFromClipboardAsync();
+                if (string.IsNullOrEmpty(clipboardData))
+                    return "Clipboard je prázdny";
+
+                var lines = clipboardData.Split(new[] { LineSeparator, "\n" }, StringSplitOptions.None);
+                var previewLines = lines.Take(maxRows);
+
+                var preview = string.Join(Environment.NewLine, previewLines);
+                if (lines.Length > maxRows)
+                {
+                    preview += $"{Environment.NewLine}... (celkom {lines.Length} riadkov)";
+                }
+
+                return preview;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return $"Chyba pri čítaní clipboardu: {ex.Message}";
             }
         }
 
-        #endregion
+        #region Private Helper Methods
 
-        #region Private helper methods
-
-        /// <summary>
-        /// Formátuje hodnotu bunky pre TSV export.
-        /// Zachováva newlines a tabs v bunkách pomocou proper quoting.
-        /// </summary>
-        /// <param name="cellValue">Hodnota bunky</param>
-        /// <returns>Formátovaný string</returns>
-        private static string FormatCellForTsv(object? cellValue)
+        private static string EscapeExcelCell(string cell)
         {
-            if (cellValue == null)
+            if (string.IsNullOrEmpty(cell))
                 return string.Empty;
 
-            var stringValue = cellValue.ToString() ?? string.Empty;
-
-            // Escape a quote value ak obsahuje špeciálne znaky
-            stringValue = EscapeTsvValue(stringValue);
-
-            return stringValue;
-        }
-
-        /// <summary>
-        /// Parsuje hodnotu bunky z TSV importu.
-        /// </summary>
-        /// <param name="cellValue">String hodnota z TSV</param>
-        /// <returns>Parsovaná hodnota</returns>
-        private static object? ParseCellFromTsv(string cellValue)
-        {
-            if (string.IsNullOrEmpty(cellValue))
-                return string.Empty;
-
-            // Unescape TSV value
-            return UnescapeTsvValue(cellValue);
-        }
-
-        /// <summary>
-        /// Escape špeciálne znaky pre TSV formát.
-        /// </summary>
-        /// <param name="value">Pôvodná hodnota</param>
-        /// <returns>Escaped hodnota</returns>
-        private static string EscapeTsvValue(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return value;
-
-            // Nahradiť tabs medzerami (tabs sú separátory)
-            value = value.Replace("\t", "    ");
-
-            // Nahradiť newlines medzerami (môžu narušiť štruktúru)
-            value = value.Replace("\r\n", " ");
-            value = value.Replace("\n", " ");
-            value = value.Replace("\r", " ");
-
-            return value;
-        }
-
-        /// <summary>
-        /// Unescape TSV hodnotu.
-        /// </summary>
-        /// <param name="value">Escaped hodnota</param>
-        /// <returns>Unescaped hodnota</returns>
-        private static string UnescapeTsvValue(string value)
-        {
-            // V základnej implementácii nemáme špeciálne unescaping
-            // Excel TSV formát je pomerne jednoduchý
-            return value;
-        }
-
-        #endregion
-
-        #region Utility metódy
-
-        /// <summary>
-        /// Kombinuje viacero TSV stringov do jedného.
-        /// </summary>
-        /// <param name="tsvDataList">Zoznam TSV stringov</param>
-        /// <returns>Kombinovaný TSV string</returns>
-        public static string CombineTsvData(IEnumerable<string> tsvDataList)
-        {
-            var validTsvData = tsvDataList.Where(tsv => !string.IsNullOrEmpty(tsv));
-            return string.Join(RowSeparator, validTsvData);
-        }
-
-        /// <summary>
-        /// Rozdelí TSV string na menšie bloky.
-        /// </summary>
-        /// <param name="tsvData">TSV string</param>
-        /// <param name="maxRowsPerBlock">Maximálny počet riadkov na blok</param>
-        /// <returns>Zoznam TSV blokov</returns>
-        public static List<string> SplitTsvData(string tsvData, int maxRowsPerBlock)
-        {
-            if (string.IsNullOrEmpty(tsvData) || maxRowsPerBlock <= 0)
-                return new List<string> { tsvData };
-
-            var lines = tsvData.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-            var blocks = new List<string>();
-
-            for (int i = 0; i < lines.Length; i += maxRowsPerBlock)
+            // Ak obsahuje tab alebo newline, obal do úvodzoviek
+            if (cell.Contains('\t') || cell.Contains('\n') || cell.Contains('\r') || cell.Contains('"'))
             {
-                var blockLines = lines.Skip(i).Take(maxRowsPerBlock);
-                var blockTsv = string.Join(RowSeparator, blockLines);
-                blocks.Add(blockTsv);
+                // Zdvojnásob úvodzovky
+                var escaped = cell.Replace("\"", "\"\"");
+                return $"\"{escaped}\"";
             }
 
-            return blocks;
+            return cell;
         }
 
-        /// <summary>
-        /// Vytvorí prázdny TSV string s určenými rozmermi.
-        /// </summary>
-        /// <param name="rows">Počet riadkov</param>
-        /// <param name="columns">Počet stĺpcov</param>
-        /// <returns>Prázdny TSV string</returns>
-        public static string CreateEmptyTsv(int rows, int columns)
+        private static string UnescapeExcelCell(string cell)
         {
-            if (rows <= 0 || columns <= 0)
+            if (string.IsNullOrEmpty(cell))
                 return string.Empty;
 
-            var emptyRow = string.Join(ColumnSeparator, Enumerable.Repeat(string.Empty, columns));
-            var allRows = Enumerable.Repeat(emptyRow, rows);
+            // Ak je obalené úvodzovkami, odstráň ich a un-escape vnútorné úvodzovky
+            if (cell.StartsWith("\"") && cell.EndsWith("\"") && cell.Length >= 2)
+            {
+                var unquoted = cell.Substring(1, cell.Length - 2);
+                return unquoted.Replace("\"\"", "\"");
+            }
 
-            return string.Join(RowSeparator, allRows);
+            return cell;
         }
 
         #endregion

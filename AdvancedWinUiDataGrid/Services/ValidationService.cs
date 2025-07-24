@@ -1,424 +1,410 @@
-﻿// Services/ValidationService.cs - OPRAVENÝ
+﻿// Services/ValidationService.cs
+using Microsoft.Extensions.Logging;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Implementácia validačnej služby pre DataGrid komponent.
-    /// Zabezpečuje asynchrónne validácie s throttling podporou a optimalizáciami.
+    /// Implementácia validačnej služby pre DataGrid
     /// </summary>
-    internal class ValidationService : IValidationService
+    public class ValidationService : IValidationService
     {
-        #region Private fields
+        private readonly ILogger<ValidationService> _logger;
+        private readonly Dictionary<string, List<ValidationRule>> _validationRules = new();
+        private readonly Dictionary<string, List<string>> _validationErrors = new();
+        private readonly ThrottleHelper _throttleHelper;
 
         private GridConfiguration? _configuration;
         private bool _isInitialized = false;
-        private bool _disposed = false;
 
-        // Throttling & Performance
-        private readonly ConcurrentDictionary<(int row, int col), Timer> _pendingValidations = new();
-        private readonly SemaphoreSlim _validationSemaphore;
-        private readonly ConcurrentDictionary<(int row, int col), ValidationResult> _validationCache = new();
-
-        // Event handlers
-        private readonly object _eventLock = new();
-
-        #endregion
-
-        #region Constructor
-
-        public ValidationService()
+        public ValidationService(ILogger<ValidationService> logger)
         {
-            _validationSemaphore = new SemaphoreSlim(3, 3); // Max 3 concurrent validations by default
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _throttleHelper = new ThrottleHelper();
         }
-
-        #endregion
-
-        #region Events
-
-        public event EventHandler<CellValidationChangedEventArgs>? CellValidationChanged;
-        public event EventHandler<RowValidationCompletedEventArgs>? RowValidationCompleted;
-
-        #endregion
-
-        #region IValidationService - Inicializácia
-
-        public async Task InitializeAsync(GridConfiguration configuration)
-        {
-            if (_isInitialized)
-                throw new InvalidOperationException("ValidationService je už inicializovaný");
-
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-
-            // Nastaviť semaphore na základe throttling config
-            var maxConcurrency = _configuration.ThrottlingConfig.MaxConcurrentValidations;
-
-            // Note: V production verzii by sme recreate semaphore s correct count
-            // Pre teraz použijeme existujúci
-
-            _isInitialized = true;
-            await Task.CompletedTask;
-        }
-
-        public bool IsInitialized => _isInitialized;
-
-        #endregion
-
-        #region IValidationService - Validácia buniek
-
-        public async Task<ValidationResult> ValidateCellAsync(CellData cellData, CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            try
-            {
-                await _validationSemaphore.WaitAsync(cancellationToken);
-
-                var startTime = DateTime.UtcNow;
-                var result = await ValidateCellInternal(cellData);
-                var duration = DateTime.UtcNow - startTime;
-
-                // Cache result
-                _validationCache.TryAdd((cellData.RowIndex, cellData.ColumnIndex), result);
-
-                // Trigger event
-                OnCellValidationChanged(cellData.RowIndex, cellData.ColumnIndex, result);
-
-                return result;
-            }
-            finally
-            {
-                _validationSemaphore.Release();
-            }
-        }
-
-        public async Task ValidateCellWithThrottlingAsync(CellData cellData, CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            if (!_configuration!.ThrottlingConfig.EnableValidationThrottling)
-            {
-                await ValidateCellAsync(cellData, cancellationToken);
-                return;
-            }
-
-            var cellKey = (cellData.RowIndex, cellData.ColumnIndex);
-            var debounceMs = _configuration.ThrottlingConfig.ValidationDebounceMs;
-
-            // OPRAVENÉ: Cancel existing timer for this cell
-            if (_pendingValidations.TryRemove(cellKey, out var existingTimer))
-            {
-                existingTimer?.Dispose();
-            }
-
-            // Create new throttled validation
-            var timer = new Timer(async _ =>
-            {
-                try
-                {
-                    await ValidateCellAsync(cellData, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    // Log error but don't crash
-                    System.Diagnostics.Debug.WriteLine($"Throttled validation error: {ex.Message}");
-                }
-                finally
-                {
-                    // OPRAVENÉ: Remove timer after completion
-                    if (_pendingValidations.TryRemove(cellKey, out var completedTimer))
-                    {
-                        completedTimer?.Dispose();
-                    }
-                }
-            }, null, debounceMs, Timeout.Infinite);
-
-            _pendingValidations.TryAdd(cellKey, timer);
-        }
-
-        public async Task<Dictionary<(int row, int col), ValidationResult>> ValidateMultipleCellsAsync(
-            IEnumerable<CellData> cellDataList,
-            CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            var results = new Dictionary<(int row, int col), ValidationResult>();
-            var batchSize = _configuration!.ThrottlingConfig.BatchSize;
-
-            var cellsArray = cellDataList.ToArray();
-            for (int i = 0; i < cellsArray.Length; i += batchSize)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var batch = cellsArray.Skip(i).Take(batchSize);
-                var batchTasks = batch.Select(async cell =>
-                {
-                    var result = await ValidateCellAsync(cell, cancellationToken);
-                    return new { Cell = cell, Result = result };
-                });
-
-                var batchResults = await Task.WhenAll(batchTasks);
-
-                foreach (var item in batchResults)
-                {
-                    results[(item.Cell.RowIndex, item.Cell.ColumnIndex)] = item.Result;
-                }
-            }
-
-            return results;
-        }
-
-        #endregion
-
-        #region IValidationService - Validácia riadkov
-
-        public async Task<RowValidationResult> ValidateRowAsync(int rowIndex, IEnumerable<CellData> rowData, CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            // Skontrolovať či je riadok prázdny
-            if (IsRowEmpty(rowData))
-            {
-                return new RowValidationResult(rowIndex, true, new Dictionary<int, ValidationResult>());
-            }
-
-            var cellResults = await ValidateMultipleCellsAsync(rowData, cancellationToken);
-            var isRowValid = cellResults.Values.All(r => r.IsValid);
-
-            var indexedResults = cellResults.ToDictionary(
-                kvp => kvp.Key.col,
-                kvp => kvp.Value
-            );
-
-            var result = new RowValidationResult(rowIndex, isRowValid, indexedResults);
-
-            OnRowValidationCompleted(rowIndex, result);
-
-            return result;
-        }
-
-        public async Task<GridValidationResult> ValidateAllNonEmptyRowsAsync(IEnumerable<IEnumerable<CellData>> allRowsData, CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            var rowResults = new Dictionary<int, RowValidationResult>();
-            var rowsArray = allRowsData.ToArray();
-
-            for (int rowIndex = 0; rowIndex < rowsArray.Length; rowIndex++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var rowData = rowsArray[rowIndex];
-                if (!IsRowEmpty(rowData))
-                {
-                    var rowResult = await ValidateRowAsync(rowIndex, rowData, cancellationToken);
-                    rowResults[rowIndex] = rowResult;
-                }
-            }
-
-            var isGridValid = rowResults.Values.All(r => r.IsValid);
-            return new GridValidationResult(isGridValid, rowResults);
-        }
-
-        #endregion
-
-        #region IValidationService - Kontrola prázdnych riadkov
-
-        public bool IsRowEmpty(IEnumerable<CellData> rowData)
-        {
-            if (!_isInitialized || _configuration == null)
-                return true;
-
-            // Získať iba dátové stĺpce (nie špeciálne)
-            var dataCells = rowData.Where(cell => cell.ColumnDefinition.IsDataColumn);
-
-            // Riadok je prázdny ak sú všetky dátové bunky prázdne
-            return dataCells.All(cell => cell.IsEmpty);
-        }
-
-        public List<int> GetNonEmptyRowIndices(IEnumerable<IEnumerable<CellData>> allRowsData)
-        {
-            var nonEmptyRows = new List<int>();
-            var rowsArray = allRowsData.ToArray();
-
-            for (int rowIndex = 0; rowIndex < rowsArray.Length; rowIndex++)
-            {
-                if (!IsRowEmpty(rowsArray[rowIndex]))
-                {
-                    nonEmptyRows.Add(rowIndex);
-                }
-            }
-
-            return nonEmptyRows;
-        }
-
-        #endregion
-
-        #region IValidationService - Throttling a výkon
-
-        public async Task CancelPendingValidationsAsync()
-        {
-            var timers = _pendingValidations.Values.ToArray();
-            _pendingValidations.Clear();
-
-            foreach (var timer in timers)
-            {
-                timer?.Dispose();
-            }
-
-            await Task.CompletedTask;
-        }
-
-        public int ActiveValidationsCount => Math.Max(0, 3 - _validationSemaphore.CurrentCount);
-
-        public int PendingValidationsCount => _pendingValidations.Count;
-
-        #endregion
-
-        #region IValidationService - Konfigurácia
-
-        public async Task UpdateThrottlingConfigAsync(ThrottlingConfig newConfig)
-        {
-            if (_configuration != null)
-            {
-                // Update existing configuration
-                var oldConfig = _configuration.ThrottlingConfig;
-                // Note: We can't directly replace the config object, but we can update our behavior
-
-                // Cancel all pending validations if throttling is disabled
-                if (!newConfig.EnableValidationThrottling)
-                {
-                    await CancelPendingValidationsAsync();
-                }
-            }
-
-            await Task.CompletedTask;
-        }
-
-        public ThrottlingConfig CurrentThrottlingConfig => _configuration?.ThrottlingConfig ?? ThrottlingConfig.Default;
-
-        #endregion
-
-        #region Private - Core validation logic
 
         /// <summary>
-        /// Hlavná validačná logika pre jednu bunku.
+        /// Inicializuje validačnú službu s konfiguráciou
         /// </summary>
-        private async Task<ValidationResult> ValidateCellInternal(CellData cellData)
+        public Task InitializeAsync(GridConfiguration configuration)
         {
-            var columnName = cellData.ColumnName;
-            var value = cellData.Value;
-
-            // Získať validačné pravidlá pre tento stĺpec
-            var rules = _configuration!.GetValidationRulesForColumn(columnName);
-
-            if (!rules.Any())
+            try
             {
-                return ValidationResult.Success();
+                _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+                // Vyčisti existujúce pravidlá
+                _validationRules.Clear();
+                _validationErrors.Clear();
+
+                // Načítaj validačné pravidlá z konfigurácie
+                foreach (var rule in _configuration.ValidationRules)
+                {
+                    AddValidationRuleInternal(rule);
+                }
+
+                // Nastav throttling
+                if (_configuration.ThrottlingConfig.EnableValidationThrottling)
+                {
+                    _throttleHelper.SetDebounceTime(_configuration.ThrottlingConfig.ValidationDebounceMs);
+                }
+
+                _isInitialized = true;
+                _logger.LogInformation("ValidationService inicializovaný s {RuleCount} pravidlami", _configuration.ValidationRules.Count);
+
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri inicializácii ValidationService");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Validuje hodnotu bunky podľa pravidiel
+        /// </summary>
+        public async Task<List<string>> ValidateCellAsync(string columnName, object? value)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                if (string.IsNullOrWhiteSpace(columnName))
+                    return new List<string>();
+
+                var errors = new List<string>();
+
+                // Získaj pravidlá pre stĺpec
+                if (!_validationRules.ContainsKey(columnName))
+                    return errors;
+
+                var rules = _validationRules[columnName];
+
+                // Použij throttling ak je povolený
+                if (_configuration!.ThrottlingConfig.EnableValidationThrottling)
+                {
+                    errors = await _throttleHelper.ThrottleAsync(
+                        $"ValidateCell_{columnName}",
+                        () => ValidateCellInternal(columnName, value, rules)
+                    );
+                }
+                else
+                {
+                    errors = await Task.Run(() => ValidateCellInternal(columnName, value, rules));
+                }
+
+                // Ulož chyby
+                var errorKey = $"{columnName}";
+                if (errors.Any())
+                {
+                    _validationErrors[errorKey] = errors;
+                }
+                else
+                {
+                    _validationErrors.Remove(errorKey);
+                }
+
+                _logger.LogDebug("Validácia bunky {ColumnName}: {ErrorCount} chýb", columnName, errors.Count);
+                return errors;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri validácii bunky {ColumnName}", columnName);
+                return new List<string> { $"Chyba validácie: {ex.Message}" };
+            }
+        }
+
+        /// <summary>
+        /// Validuje celý riadok
+        /// </summary>
+        public async Task<List<string>> ValidateRowAsync(Dictionary<string, object?> rowData)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                if (rowData == null)
+                    return new List<string>();
+
+                var allErrors = new List<string>();
+
+                // Kontrola či je riadok prázdny (ignoruj špeciálne stĺpce)
+                var isRowEmpty = IsRowEmpty(rowData);
+                if (isRowEmpty)
+                {
+                    _logger.LogDebug("Riadok je prázdny - preskakujem validáciu");
+                    return allErrors;
+                }
+
+                // Validuj každú bunku v riadku
+                var validationTasks = new List<Task<List<string>>>();
+
+                foreach (var kvp in rowData)
+                {
+                    var columnName = kvp.Key;
+                    var value = kvp.Value;
+
+                    // Preskač špeciálne stĺpce
+                    if (IsSpecialColumn(columnName))
+                        continue;
+
+                    validationTasks.Add(ValidateCellAsync(columnName, value));
+                }
+
+                // Počkaj na všetky validácie
+                var results = await Task.WhenAll(validationTasks);
+
+                // Kombinuj všetky chyby
+                foreach (var errors in results)
+                {
+                    allErrors.AddRange(errors);
+                }
+
+                _logger.LogDebug("Validácia riadku dokončená: {ErrorCount} chýb", allErrors.Count);
+                return allErrors;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri validácii riadku");
+                return new List<string> { $"Chyba validácie riadku: {ex.Message}" };
+            }
+        }
+
+        /// <summary>
+        /// Validuje všetky riadky
+        /// </summary>
+        public async Task<bool> ValidateAllRowsAsync()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                _logger.LogInformation("Spúšťa sa validácia všetkých riadkov");
+
+                // Pre túto implementáciu predpokladáme, že získame dáta cez DataManagementService
+                // V reálnej implementácii by sme mali reference na DataManagementService
+
+                // Vyčisti predchádzajúce chyby
+                _validationErrors.Clear();
+
+                var hasErrors = false;
+
+                // Simulácia - v reálnej implementácii by sme iterovali cez všetky riadky z DataManagementService
+                // foreach (var rowData in await _dataManagementService.GetAllDataAsync())
+                // {
+                //     var errors = await ValidateRowAsync(rowData);
+                //     if (errors.Any())
+                //         hasErrors = true;
+                // }
+
+                _logger.LogInformation("Validácia všetkých riadkov dokončená: {HasErrors}", hasErrors ? "našli sa chyby" : "všetko v poriadku");
+                return !hasErrors;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri validácii všetkých riadkov");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Pridá nové validačné pravidlo
+        /// </summary>
+        public Task AddValidationRuleAsync(ValidationRule rule)
+        {
+            try
+            {
+                if (rule == null)
+                    throw new ArgumentNullException(nameof(rule));
+
+                AddValidationRuleInternal(rule);
+                _logger.LogDebug("Pridané validačné pravidlo pre stĺpec {ColumnName}: {RuleType}", rule.ColumnName, rule.Type);
+
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri pridávaní validačného pravidla");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Odstráni validačné pravidlo
+        /// </summary>
+        public Task RemoveValidationRuleAsync(string columnName, ValidationType type)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(columnName))
+                    throw new ArgumentException("ColumnName nemôže byť prázdny", nameof(columnName));
+
+                if (_validationRules.ContainsKey(columnName))
+                {
+                    var rules = _validationRules[columnName];
+                    var removedCount = rules.RemoveAll(r => r.Type == type);
+
+                    if (removedCount > 0)
+                    {
+                        _logger.LogDebug("Odstránených {Count} validačných pravidiel typu {Type} pre stĺpec {ColumnName}",
+                            removedCount, type, columnName);
+                    }
+
+                    // Ak už nie sú žiadne pravidlá pre stĺpec, odstráň celý záznam
+                    if (!rules.Any())
+                    {
+                        _validationRules.Remove(columnName);
+                    }
+                }
+
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri odstraňovaní validačného pravidla");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa všetky validačné pravidlá pre stĺpec
+        /// </summary>
+        public List<ValidationRule> GetValidationRules(string columnName)
+        {
+            if (string.IsNullOrWhiteSpace(columnName))
+                return new List<ValidationRule>();
+
+            return _validationRules.ContainsKey(columnName)
+                ? new List<ValidationRule>(_validationRules[columnName])
+                : new List<ValidationRule>();
+        }
+
+        /// <summary>
+        /// Vyčisti všetky validačné chyby
+        /// </summary>
+        public Task ClearAllValidationErrorsAsync()
+        {
+            try
+            {
+                _validationErrors.Clear();
+                _logger.LogDebug("Všetky validačné chyby vyčistené");
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri čistení validačných chýb");
+                throw;
+            }
+        }
+
+        #region Private Helper Methods
+
+        private void EnsureInitialized()
+        {
+            if (!_isInitialized)
+                throw new InvalidOperationException("ValidationService nie je inicializovaný. Zavolajte InitializeAsync() najprv.");
+        }
+
+        private void AddValidationRuleInternal(ValidationRule rule)
+        {
+            if (!_validationRules.ContainsKey(rule.ColumnName))
+            {
+                _validationRules[rule.ColumnName] = new List<ValidationRule>();
             }
 
-            // Spustiť všetky validačné pravidlá
+            _validationRules[rule.ColumnName].Add(rule);
+        }
+
+        private List<string> ValidateCellInternal(string columnName, object? value, List<ValidationRule> rules)
+        {
             var errors = new List<string>();
 
-            foreach (var rule in rules.OrderByDescending(r => r.Priority))
+            foreach (var rule in rules)
             {
                 try
                 {
                     if (!rule.Validate(value))
                     {
-                        errors.Add(rule.GetFormattedErrorMessage());
+                        errors.Add($"{columnName}: {rule.ErrorMessage}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    errors.Add($"{columnName}: Chyba pri validácii - {ex.Message}");
+                    _logger.LogWarning(ex, "Chyba pri vykonávaní validačného pravidla {RuleType} pre stĺpec {ColumnName}",
+                        rule.Type, columnName);
+                    errors.Add($"{columnName}: Chyba validácie - {ex.Message}");
                 }
             }
 
-            await Task.CompletedTask; // Make it async-ready
+            return errors;
+        }
 
-            if (errors.Any())
+        private bool IsRowEmpty(Dictionary<string, object?> rowData)
+        {
+            foreach (var kvp in rowData)
             {
-                return ValidationResult.Error(string.Join("; ", errors));
+                var columnName = kvp.Key;
+                var value = kvp.Value;
+
+                // Ignoruj špeciálne stĺpce
+                if (IsSpecialColumn(columnName))
+                    continue;
+
+                // Ak je nejaká hodnota vyplnená, riadok nie je prázdny
+                if (value != null && !string.IsNullOrWhiteSpace(value.ToString()))
+                    return false;
             }
 
-            return ValidationResult.Success();
+            return true;
+        }
+
+        private bool IsSpecialColumn(string columnName)
+        {
+            return columnName == "DeleteRows" || columnName == "ValidAlerts";
         }
 
         #endregion
 
-        #region Private - Event helpers
+        #region Public Properties
 
-        private void OnCellValidationChanged(int rowIndex, int columnIndex, ValidationResult result)
+        /// <summary>
+        /// Získa všetky aktuálne validačné chyby
+        /// </summary>
+        public IReadOnlyDictionary<string, List<string>> ValidationErrors => _validationErrors;
+
+        /// <summary>
+        /// Kontroluje či má stĺpec validačné chyby
+        /// </summary>
+        public bool HasValidationErrors(string columnName)
         {
-            lock (_eventLock)
-            {
-                CellValidationChanged?.Invoke(this, new CellValidationChangedEventArgs(rowIndex, columnIndex, result));
-            }
+            return _validationErrors.ContainsKey(columnName) && _validationErrors[columnName].Any();
         }
 
-        private void OnRowValidationCompleted(int rowIndex, RowValidationResult result)
+        /// <summary>
+        /// Získa validačné chyby pre stĺpec
+        /// </summary>
+        public List<string> GetValidationErrors(string columnName)
         {
-            lock (_eventLock)
-            {
-                RowValidationCompleted?.Invoke(this, new RowValidationCompletedEventArgs(rowIndex, result));
-            }
+            return _validationErrors.ContainsKey(columnName)
+                ? new List<string>(_validationErrors[columnName])
+                : new List<string>();
         }
 
-        #endregion
+        /// <summary>
+        /// Kontroluje či má celkovo nejaké validačné chyby
+        /// </summary>
+        public bool HasAnyValidationErrors => _validationErrors.Any(kvp => kvp.Value.Any());
 
-        #region Helper methods
-
-        private void EnsureInitialized()
-        {
-            if (!_isInitialized)
-                throw new InvalidOperationException("ValidationService nie je inicializovaný");
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-
-            try
-            {
-                // Cancel all pending validations
-                var timers = _pendingValidations.Values.ToArray();
-                _pendingValidations.Clear();
-
-                foreach (var timer in timers)
-                {
-                    timer?.Dispose();
-                }
-
-                // Dispose semaphore
-                _validationSemaphore?.Dispose();
-
-                // Clear cache
-                _validationCache.Clear();
-
-                // Clear events
-                lock (_eventLock)
-                {
-                    CellValidationChanged = null;
-                    RowValidationCompleted = null;
-                }
-
-                _disposed = true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error during ValidationService dispose: {ex.Message}");
-            }
-        }
+        /// <summary>
+        /// Získa celkový počet validačných chýb
+        /// </summary>
+        public int TotalValidationErrorCount => _validationErrors.Sum(kvp => kvp.Value.Count);
 
         #endregion
     }

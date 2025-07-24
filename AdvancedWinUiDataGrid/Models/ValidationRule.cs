@@ -1,339 +1,293 @@
 ﻿// Models/ValidationRule.cs
 using System;
-using System.Text.RegularExpressions;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Definícia validačného pravidla pre bunky v DataGrid.
-    /// Podporuje predvolené aj custom validácie.
+    /// Definícia validačného pravidla pre stĺpec v DataGrid
     /// </summary>
     public class ValidationRule
     {
-        #region Delegates
-
         /// <summary>
-        /// Delegate pre custom validačnú funkciu.
+        /// Delegate pre custom validačnú funkciu
         /// </summary>
         /// <param name="value">Hodnota na validáciu</param>
-        /// <returns>True ak je hodnota validná</returns>
+        /// <returns>True ak je hodnota validná, False ak nie</returns>
         public delegate bool ValidationFunction(object? value);
 
-        #endregion
-
-        #region Konštruktory
+        /// <summary>
+        /// Názov stĺpca na ktorý sa validácia aplikuje
+        /// </summary>
+        public string ColumnName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Privátny konštruktor - používajte factory metódy.
+        /// Typ validácie
         /// </summary>
-        private ValidationRule(string columnName, ValidationFunction validationFunc, string errorMessage, ValidationRuleType ruleType)
+        public ValidationType Type { get; set; }
+
+        /// <summary>
+        /// Custom validačná funkcia (pre Type = Custom)
+        /// </summary>
+        public ValidationFunction? CustomValidator { get; set; }
+
+        /// <summary>
+        /// Chybová správa pri neúspešnej validácii
+        /// </summary>
+        public string ErrorMessage { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Minimálna hodnota (pre Range validácie)
+        /// </summary>
+        public object? MinValue { get; set; }
+
+        /// <summary>
+        /// Maximálna hodnota (pre Range validácie)
+        /// </summary>
+        public object? MaxValue { get; set; }
+
+        /// <summary>
+        /// Minimálna dĺžka (pre string validácie)
+        /// </summary>
+        public int? MinLength { get; set; }
+
+        /// <summary>
+        /// Maximálna dĺžka (pre string validácie)
+        /// </summary>
+        public int? MaxLength { get; set; }
+
+        /// <summary>
+        /// Regex pattern (pre Pattern validácie)
+        /// </summary>
+        public string? Pattern { get; set; }
+
+        /// <summary>
+        /// Či je validácia povinná
+        /// </summary>
+        public bool IsRequired { get; set; }
+
+        // Konštruktory
+        public ValidationRule() { }
+
+        public ValidationRule(string columnName, ValidationType type, string errorMessage)
         {
-            ColumnName = columnName ?? throw new ArgumentNullException(nameof(columnName));
-            ValidationFunc = validationFunc ?? throw new ArgumentNullException(nameof(validationFunc));
-            ErrorMessage = errorMessage ?? throw new ArgumentNullException(nameof(errorMessage));
-            RuleType = ruleType;
+            ColumnName = columnName;
+            Type = type;
+            ErrorMessage = errorMessage;
         }
 
-        #endregion
-
-        #region Properties
-
+        // ✅ OPRAVENÉ: Len jedna Custom metóda s ValidationFunction delegátom
         /// <summary>
-        /// Názov stĺpca na ktorý sa pravidlo aplikuje.
+        /// Vytvorí custom validačné pravidlo
         /// </summary>
-        public string ColumnName { get; }
+        /// <param name="columnName">Názov stĺpca</param>
+        /// <param name="validator">Custom validačná funkcia</param>
+        /// <param name="errorMessage">Chybová správa</param>
+        /// <returns>ValidationRule</returns>
+        public static ValidationRule Custom(string columnName, ValidationFunction validator, string errorMessage)
+        {
+            return new ValidationRule
+            {
+                ColumnName = columnName,
+                Type = ValidationType.Custom,
+                CustomValidator = validator,
+                ErrorMessage = errorMessage
+            };
+        }
 
         /// <summary>
-        /// Funkcia ktorá vykoná validáciu.
+        /// Vytvorí Required validačné pravidlo
         /// </summary>
-        public ValidationFunction ValidationFunc { get; }
+        public static ValidationRule Required(string columnName, string errorMessage = "Pole je povinné")
+        {
+            return new ValidationRule
+            {
+                ColumnName = columnName,
+                Type = ValidationType.Required,
+                ErrorMessage = errorMessage,
+                IsRequired = true
+            };
+        }
 
         /// <summary>
-        /// Chybová správa zobrazená pri nevalidnej hodnote.
+        /// Vytvorí Email validačné pravidlo
         /// </summary>
-        public string ErrorMessage { get; }
+        public static ValidationRule Email(string columnName, string errorMessage = "Neplatný email formát")
+        {
+            return new ValidationRule
+            {
+                ColumnName = columnName,
+                Type = ValidationType.Email,
+                ErrorMessage = errorMessage,
+                Pattern = @"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+            };
+        }
 
         /// <summary>
-        /// Typ validačného pravidla.
+        /// Vytvorí Range validačné pravidlo pre čísla
         /// </summary>
-        public ValidationRuleType RuleType { get; }
+        public static ValidationRule Range(string columnName, object minValue, object maxValue, string errorMessage)
+        {
+            return new ValidationRule
+            {
+                ColumnName = columnName,
+                Type = ValidationType.Range,
+                MinValue = minValue,
+                MaxValue = maxValue,
+                ErrorMessage = errorMessage
+            };
+        }
 
         /// <summary>
-        /// Priorita pravidla (vyššie číslo = vyššia priorita).
+        /// Vytvorí MinLength validačné pravidlo
         /// </summary>
-        public int Priority { get; set; } = 0;
-
-        #endregion
-
-        #region Validácia
+        public static ValidationRule MinLength(string columnName, int minLength, string errorMessage)
+        {
+            return new ValidationRule
+            {
+                ColumnName = columnName,
+                Type = ValidationType.MinLength,
+                MinLength = minLength,
+                ErrorMessage = errorMessage
+            };
+        }
 
         /// <summary>
-        /// Vykoná validáciu na danej hodnote.
+        /// Vytvorí MaxLength validačné pravidlo
+        /// </summary>
+        public static ValidationRule MaxLength(string columnName, int maxLength, string errorMessage)
+        {
+            return new ValidationRule
+            {
+                ColumnName = columnName,
+                Type = ValidationType.MaxLength,
+                MaxLength = maxLength,
+                ErrorMessage = errorMessage
+            };
+        }
+
+        /// <summary>
+        /// Vytvorí Pattern validačné pravidlo (regex)
+        /// </summary>
+        public static ValidationRule Pattern(string columnName, string pattern, string errorMessage)
+        {
+            return new ValidationRule
+            {
+                ColumnName = columnName,
+                Type = ValidationType.Pattern,
+                Pattern = pattern,
+                ErrorMessage = errorMessage
+            };
+        }
+
+        /// <summary>
+        /// Validuje hodnotu podľa tohto pravidla
         /// </summary>
         /// <param name="value">Hodnota na validáciu</param>
         /// <returns>True ak je hodnota validná</returns>
         public bool Validate(object? value)
         {
+            return Type switch
+            {
+                ValidationType.Required => ValidateRequired(value),
+                ValidationType.Email => ValidateEmail(value),
+                ValidationType.Range => ValidateRange(value),
+                ValidationType.MinLength => ValidateMinLength(value),
+                ValidationType.MaxLength => ValidateMaxLength(value),
+                ValidationType.Pattern => ValidatePattern(value),
+                ValidationType.Custom => ValidateCustom(value),
+                _ => true
+            };
+        }
+
+        private bool ValidateRequired(object? value)
+        {
+            return value != null && !string.IsNullOrWhiteSpace(value.ToString());
+        }
+
+        private bool ValidateEmail(object? value)
+        {
+            if (value == null) return !IsRequired;
+            var emailStr = value.ToString();
+            if (string.IsNullOrWhiteSpace(emailStr)) return !IsRequired;
+
             try
             {
-                return ValidationFunc(value);
+                var addr = new System.Net.Mail.MailAddress(emailStr);
+                return addr.Address == emailStr;
             }
             catch
             {
-                // Ak nastane chyba pri validácii, považujeme hodnotu za nevalidnú
                 return false;
             }
         }
 
-        /// <summary>
-        /// Vráti formátovanú chybovú správu s názvom stĺpca.
-        /// </summary>
-        public string GetFormattedErrorMessage()
+        private bool ValidateRange(object? value)
         {
-            return $"{ColumnName}: {ErrorMessage}";
-        }
+            if (value == null) return !IsRequired;
+            if (MinValue == null || MaxValue == null) return true;
 
-        #endregion
-
-        #region Factory Methods - Required
-
-        /// <summary>
-        /// Vytvorí pravidlo pre povinné pole.
-        /// </summary>
-        public static ValidationRule Required(string columnName, string? errorMessage = null)
-        {
-            var message = errorMessage ?? "Pole je povinné";
-
-            return new ValidationRule(
-                columnName,
-                value => !IsNullOrEmpty(value),
-                message,
-                ValidationRuleType.Required
-            );
-        }
-
-        #endregion
-
-        #region Factory Methods - Email
-
-        /// <summary>
-        /// Vytvorí pravidlo pre validáciu email adresy.
-        /// </summary>
-        public static ValidationRule Email(string columnName, string? errorMessage = null)
-        {
-            var message = errorMessage ?? "Neplatný email formát";
-            var emailRegex = new Regex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.Compiled);
-
-            return new ValidationRule(
-                columnName,
-                value => {
-                    if (IsNullOrEmpty(value)) return true; // Email nie je povinný ak nie je definované Required
-                    return emailRegex.IsMatch(value.ToString()!);
-                },
-                message,
-                ValidationRuleType.Email
-            );
-        }
-
-        #endregion
-
-        #region Factory Methods - Range
-
-        /// <summary>
-        /// Vytvorí pravidlo pre číselný rozsah (int).
-        /// </summary>
-        public static ValidationRule Range(string columnName, int min, int max, string? errorMessage = null)
-        {
-            var message = errorMessage ?? $"Hodnota musí byť medzi {min} a {max}";
-
-            return new ValidationRule(
-                columnName,
-                value => {
-                    if (IsNullOrEmpty(value)) return true; // Range nie je povinný ak nie je definované Required
-
-                    if (int.TryParse(value.ToString(), out int intValue))
-                    {
-                        return intValue >= min && intValue <= max;
-                    }
-                    return false;
-                },
-                message,
-                ValidationRuleType.Range
-            );
-        }
-
-        /// <summary>
-        /// Vytvorí pravidlo pre číselný rozsah (decimal).
-        /// </summary>
-        public static ValidationRule Range(string columnName, decimal min, decimal max, string? errorMessage = null)
-        {
-            var message = errorMessage ?? $"Hodnota musí byť medzi {min} a {max}";
-
-            return new ValidationRule(
-                columnName,
-                value => {
-                    if (IsNullOrEmpty(value)) return true;
-
-                    if (decimal.TryParse(value.ToString(), out decimal decimalValue))
-                    {
-                        return decimalValue >= min && decimalValue <= max;
-                    }
-                    return false;
-                },
-                message,
-                ValidationRuleType.Range
-            );
-        }
-
-        /// <summary>
-        /// Vytvorí pravidlo pre číselný rozsah (double).
-        /// </summary>
-        public static ValidationRule Range(string columnName, double min, double max, string? errorMessage = null)
-        {
-            var message = errorMessage ?? $"Hodnota musí byť medzi {min} a {max}";
-
-            return new ValidationRule(
-                columnName,
-                value => {
-                    if (IsNullOrEmpty(value)) return true;
-
-                    if (double.TryParse(value.ToString(), out double doubleValue))
-                    {
-                        return doubleValue >= min && doubleValue <= max;
-                    }
-                    return false;
-                },
-                message,
-                ValidationRuleType.Range
-            );
-        }
-
-        #endregion
-
-        #region Factory Methods - MinLength/MaxLength
-
-        /// <summary>
-        /// Vytvorí pravidlo pre minimálnu dĺžku textu.
-        /// </summary>
-        public static ValidationRule MinLength(string columnName, int minLength, string? errorMessage = null)
-        {
-            var message = errorMessage ?? $"Minimálna dĺžka je {minLength} znakov";
-
-            return new ValidationRule(
-                columnName,
-                value => {
-                    if (IsNullOrEmpty(value)) return true;
-                    return value.ToString()!.Length >= minLength;
-                },
-                message,
-                ValidationRuleType.MinLength
-            );
-        }
-
-        /// <summary>
-        /// Vytvorí pravidlo pre maximálnu dĺžku textu.
-        /// </summary>
-        public static ValidationRule MaxLength(string columnName, int maxLength, string? errorMessage = null)
-        {
-            var message = errorMessage ?? $"Maximálna dĺžka je {maxLength} znakov";
-
-            return new ValidationRule(
-                columnName,
-                value => {
-                    if (IsNullOrEmpty(value)) return true;
-                    return value.ToString()!.Length <= maxLength;
-                },
-                message,
-                ValidationRuleType.MaxLength
-            );
-        }
-
-        #endregion
-
-        #region Factory Methods - Custom
-
-        /// <summary>
-        /// Vytvorí custom validačné pravidlo.
-        /// </summary>
-        /// <param name="columnName">Názov stĺpca</param>
-        /// <param name="validationFunc">Custom validačná funkcia</param>
-        /// <param name="errorMessage">Chybová správa</param>
-        /// <returns>ValidationRule s custom logikou</returns>
-        public static ValidationRule Custom(string columnName, ValidationFunction validationFunc, string errorMessage)
-        {
-            return new ValidationRule(columnName, validationFunc, errorMessage, ValidationRuleType.Custom);
-        }
-
-        /// <summary>
-        /// Vytvorí custom validačné pravidlo s Func&lt;object?, bool&gt;.
-        /// </summary>
-        public static ValidationRule Custom(string columnName, Func<object?, bool> validationFunc, string errorMessage)
-        {
-            return new ValidationRule(columnName, value => validationFunc(value), errorMessage, ValidationRuleType.Custom);
-        }
-
-        #endregion
-
-        #region Helper Methods
-
-        /// <summary>
-        /// Skontroluje či je hodnota null alebo prázdna.
-        /// </summary>
-        private static bool IsNullOrEmpty(object? value)
-        {
-            if (value == null) return true;
-            if (value is string str) return string.IsNullOrWhiteSpace(str);
-            return false;
-        }
-
-        #endregion
-
-        #region Overrides
-
-        public override string ToString()
-        {
-            return $"ValidationRule for '{ColumnName}' ({RuleType}): {ErrorMessage}";
-        }
-
-        public override bool Equals(object? obj)
-        {
-            if (obj is ValidationRule other)
+            try
             {
-                return ColumnName.Equals(other.ColumnName, StringComparison.OrdinalIgnoreCase)
-                    && RuleType == other.RuleType;
+                var numericValue = Convert.ToDecimal(value);
+                var minDecimal = Convert.ToDecimal(MinValue);
+                var maxDecimal = Convert.ToDecimal(MaxValue);
+                return numericValue >= minDecimal && numericValue <= maxDecimal;
             }
-            return false;
+            catch
+            {
+                return false;
+            }
         }
 
-        public override int GetHashCode()
+        private bool ValidateMinLength(object? value)
         {
-            return HashCode.Combine(ColumnName.ToLowerInvariant(), RuleType);
+            if (value == null) return !IsRequired;
+            var str = value.ToString();
+            if (string.IsNullOrEmpty(str)) return !IsRequired;
+            return MinLength == null || str.Length >= MinLength;
         }
 
-        #endregion
+        private bool ValidateMaxLength(object? value)
+        {
+            if (value == null) return !IsRequired;
+            var str = value.ToString() ?? "";
+            return MaxLength == null || str.Length <= MaxLength;
+        }
+
+        private bool ValidatePattern(object? value)
+        {
+            if (value == null) return !IsRequired;
+            var str = value.ToString();
+            if (string.IsNullOrEmpty(str)) return !IsRequired;
+            if (string.IsNullOrEmpty(Pattern)) return true;
+
+            try
+            {
+                return System.Text.RegularExpressions.Regex.IsMatch(str, Pattern);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool ValidateCustom(object? value)
+        {
+            return CustomValidator?.Invoke(value) ?? true;
+        }
     }
 
     /// <summary>
-    /// Typ validačného pravidla.
+    /// Typ validácie
     /// </summary>
-    public enum ValidationRuleType
+    public enum ValidationType
     {
-        /// <summary>Povinné pole</summary>
         Required,
-
-        /// <summary>Email validácia</summary>
         Email,
-
-        /// <summary>Číselný rozsah</summary>
         Range,
-
-        /// <summary>Minimálna dĺžka textu</summary>
         MinLength,
-
-        /// <summary>Maximálna dĺžka textu</summary>
         MaxLength,
-
-        /// <summary>Custom validácia</summary>
+        Pattern,
         Custom
     }
 }

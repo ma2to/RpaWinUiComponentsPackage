@@ -1,434 +1,304 @@
 ﻿// Services/NavigationService.cs
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
 using System;
 using System.Threading.Tasks;
-using Windows.System;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Služba pre klávesovú navigáciu v DataGrid komponente.
-    /// Zabezpečuje Tab/Enter/Esc/Shift+Enter správanie.
+    /// Implementácia navigačnej služby pre DataGrid
     /// </summary>
-    internal class NavigationService : INavigationService
+    public class NavigationService : INavigationService
     {
-        #region Private fields
-
-        private GridConfiguration? _configuration;
-        private AdvancedDataGrid? _dataGrid;
+        private readonly ILogger<NavigationService> _logger;
         private bool _isInitialized = false;
-        private bool _disposed = false;
 
-        // Aktuálna pozícia
-        private (int row, int col)? _currentPosition = null;
-        private bool _isEditing = false;
-
-        #endregion
-
-        #region Events
-
-        public event EventHandler<NavigationEventArgs>? CellNavigated;
-        public event EventHandler<EditModeChangedEventArgs>? EditModeChanged;
-
-        #endregion
-
-        #region INavigationService - Inicializácia
-
-        public async Task InitializeAsync(GridConfiguration configuration, AdvancedDataGrid dataGrid)
+        public NavigationService(ILogger<NavigationService> logger)
         {
-            if (_isInitialized)
-                throw new InvalidOperationException("NavigationService je už inicializovaný");
-
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _dataGrid = dataGrid ?? throw new ArgumentNullException(nameof(dataGrid));
-
-            _isInitialized = true;
-            await Task.CompletedTask;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public bool IsInitialized => _isInitialized;
-
-        #endregion
-
-        #region INavigationService - Klávesová navigácia
-
-        public void HandleKeyDown(KeyRoutedEventArgs e)
+        /// <summary>
+        /// Inicializuje navigačnú službu
+        /// </summary>
+        public Task InitializeAsync()
         {
-            if (!_isInitialized || _dataGrid == null)
-                return;
+            _logger.LogInformation("NavigationService inicializovaný");
+            _isInitialized = true;
+            return Task.CompletedTask;
+        }
 
-            var key = e.Key;
-            var isShiftPressed = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-            var isCtrlPressed = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-
+        /// <summary>
+        /// Spracuje stlačenie klávesy v bunke
+        /// </summary>
+        public async Task HandleKeyDownAsync(object sender, KeyRoutedEventArgs e)
+        {
             try
             {
-                switch (key)
+                if (!_isInitialized)
+                    return;
+
+                if (sender is not TextBox textBox)
+                    return;
+
+                _logger.LogDebug("Spracovávam klávesovú skratku: {Key}", e.Key);
+
+                switch (e.Key)
                 {
-                    case VirtualKey.Tab:
-                        if (!isShiftPressed)
+                    case Windows.System.VirtualKey.Tab:
+                        e.Handled = true;
+                        if (IsShiftPressed())
                         {
-                            HandleTabNavigation();
-                            e.Handled = true;
+                            await HandleShiftTabAsync(textBox);
                         }
                         else
                         {
-                            HandleShiftTabNavigation();
-                            e.Handled = true;
+                            await HandleTabAsync(textBox);
                         }
                         break;
 
-                    case VirtualKey.Enter:
-                        if (!isShiftPressed)
+                    case Windows.System.VirtualKey.Enter:
+                        e.Handled = true;
+                        if (IsShiftPressed())
                         {
-                            HandleEnterNavigation();
-                            e.Handled = true;
+                            await HandleShiftEnterAsync(textBox);
                         }
                         else
                         {
-                            HandleShiftEnterNavigation();
-                            e.Handled = true;
+                            await HandleEnterAsync(textBox);
                         }
                         break;
 
-                    case VirtualKey.Escape:
-                        HandleEscapeNavigation();
+                    case Windows.System.VirtualKey.Escape:
                         e.Handled = true;
+                        await HandleEscapeAsync(textBox);
                         break;
 
-                    case VirtualKey.F2:
-                        HandleF2Edit();
-                        e.Handled = true;
+                    case Windows.System.VirtualKey.C when IsCtrlPressed():
+                        // Copy - nechaj systém spracovať, ale zalógujem
+                        _logger.LogDebug("Copy operation detected");
                         break;
 
-                    // Copy/Paste shortcuts
-                    case VirtualKey.C when isCtrlPressed:
-                        _ = HandleCopyAsync();
-                        e.Handled = true;
+                    case Windows.System.VirtualKey.V when IsCtrlPressed():
+                        // Paste - nechaj systém spracovať, ale zalógujem
+                        _logger.LogDebug("Paste operation detected");
                         break;
 
-                    case VirtualKey.V when isCtrlPressed:
-                        _ = HandlePasteAsync();
-                        e.Handled = true;
-                        break;
-
-                    case VirtualKey.X when isCtrlPressed:
-                        _ = HandleCutAsync();
-                        e.Handled = true;
+                    case Windows.System.VirtualKey.X when IsCtrlPressed():
+                        // Cut - nechaj systém spracovať, ale zalógujem
+                        _logger.LogDebug("Cut operation detected");
                         break;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Chyba pri klávesovej navigácii: {ex.Message}");
+                _logger.LogError(ex, "Chyba pri spracovaní KeyDown event");
             }
         }
 
-        #endregion
-
-        #region INavigationService - Navigačné operácie
-
-        public bool MoveToCell(int rowIndex, int columnIndex)
+        /// <summary>
+        /// Presunie fokus na ďalšiu bunku (Tab)
+        /// </summary>
+        public async Task MoveToNextCellAsync(int currentRow, int currentColumn)
         {
-            if (!IsValidPosition(rowIndex, columnIndex))
-                return false;
-
-            var oldPosition = _currentPosition;
-            _currentPosition = (rowIndex, columnIndex);
-
-            OnCellNavigated(oldPosition, _currentPosition);
-            return true;
-        }
-
-        public bool MoveNext()
-        {
-            if (_currentPosition == null)
-            {
-                return MoveToCell(0, 0);
-            }
-
-            var (row, col) = _currentPosition.Value;
-            var dataColumnCount = _configuration?.DataColumnCount ?? 0;
-
-            // Ďalší stĺpec v riadku
-            if (col + 1 < dataColumnCount)
-            {
-                return MoveToCell(row, col + 1);
-            }
-
-            // Ďalší riadok, prvý stĺpec
-            return MoveToCell(row + 1, 0);
-        }
-
-        public bool MovePrevious()
-        {
-            if (_currentPosition == null)
-                return false;
-
-            var (row, col) = _currentPosition.Value;
-            var dataColumnCount = _configuration?.DataColumnCount ?? 0;
-
-            // Predchádzajúci stĺpec v riadku
-            if (col > 0)
-            {
-                return MoveToCell(row, col - 1);
-            }
-
-            // Predchádzajúci riadok, posledný stĺpec
-            if (row > 0)
-            {
-                return MoveToCell(row - 1, dataColumnCount - 1);
-            }
-
-            return false;
-        }
-
-        public bool MoveUp()
-        {
-            if (_currentPosition == null)
-                return false;
-
-            var (row, col) = _currentPosition.Value;
-            return MoveToCell(row - 1, col);
-        }
-
-        public bool MoveDown()
-        {
-            if (_currentPosition == null)
-                return false;
-
-            var (row, col) = _currentPosition.Value;
-            return MoveToCell(row + 1, col);
-        }
-
-        #endregion
-
-        #region INavigationService - Edit mode
-
-        public void StartEdit()
-        {
-            if (_isEditing)
-                return;
-
-            _isEditing = true;
-            OnEditModeChanged(true);
-        }
-
-        public void StopEdit(bool commitChanges = true)
-        {
-            if (!_isEditing)
-                return;
-
-            _isEditing = false;
-
-            if (commitChanges && _currentPosition.HasValue)
-            {
-                _ = CommitCurrentCellAsync();
-            }
-            else if (!commitChanges && _currentPosition.HasValue)
-            {
-                _ = RevertCurrentCellAsync();
-            }
-
-            OnEditModeChanged(false);
-        }
-
-        public bool IsEditing => _isEditing;
-
-        public (int row, int col)? CurrentPosition => _currentPosition;
-
-        #endregion
-
-        #region Private - Klávesové operácie
-
-        private void HandleTabNavigation()
-        {
-            if (_isEditing)
-            {
-                StopEdit(commitChanges: true);
-            }
-
-            MoveNext();
-        }
-
-        private void HandleShiftTabNavigation()
-        {
-            if (_isEditing)
-            {
-                StopEdit(commitChanges: true);
-            }
-
-            MovePrevious();
-        }
-
-        private void HandleEnterNavigation()
-        {
-            if (_isEditing)
-            {
-                StopEdit(commitChanges: true);
-                MoveDown();
-            }
-            else
-            {
-                StartEdit();
-            }
-        }
-
-        private void HandleShiftEnterNavigation()
-        {
-            if (_isEditing)
-            {
-                // Shift+Enter v edit mode = nový riadok v bunke
-                // Toto by malo byť handled by TextBox directly
-                return;
-            }
-
-            MoveUp();
-        }
-
-        private void HandleEscapeNavigation()
-        {
-            if (_isEditing)
-            {
-                StopEdit(commitChanges: false);
-            }
-        }
-
-        private void HandleF2Edit()
-        {
-            if (!_isEditing)
-            {
-                StartEdit();
-            }
-        }
-
-        #endregion
-
-        #region Private - Copy/Paste operácie
-
-        private async Task HandleCopyAsync()
-        {
-            // Implementation bude závisieť od selection service
-            await Task.CompletedTask;
-        }
-
-        private async Task HandlePasteAsync()
-        {
-            // Implementation bude závisieť od copy/paste service
-            await Task.CompletedTask;
-        }
-
-        private async Task HandleCutAsync()
-        {
-            // Implementation bude závisieť od copy/paste service
-            await Task.CompletedTask;
-        }
-
-        #endregion
-
-        #region Private - Helper methods
-
-        private bool IsValidPosition(int rowIndex, int columnIndex)
-        {
-            if (_configuration == null)
-                return false;
-
-            var dataColumnCount = _configuration.DataColumnCount;
-
-            return rowIndex >= 0 &&
-                   columnIndex >= 0 &&
-                   columnIndex < dataColumnCount;
-        }
-
-        private async Task CommitCurrentCellAsync()
-        {
-            if (!_currentPosition.HasValue)
-                return;
-
-            // Implementation by delegoval na DataManagementService
-            await Task.CompletedTask;
-        }
-
-        private async Task RevertCurrentCellAsync()
-        {
-            if (!_currentPosition.HasValue)
-                return;
-
-            // Implementation by delegoval na DataManagementService  
-            await Task.CompletedTask;
-        }
-
-        #endregion
-
-        #region Event helpers
-
-        private void OnCellNavigated((int row, int col)? oldPosition, (int row, int col)? newPosition)
-        {
-            CellNavigated?.Invoke(this, new NavigationEventArgs(oldPosition, newPosition));
-        }
-
-        private void OnEditModeChanged(bool isEditing)
-        {
-            EditModeChanged?.Invoke(this, new EditModeChangedEventArgs(isEditing));
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        public void Dispose()
-        {
-            if (_disposed)
-                return;
-
             try
             {
-                CellNavigated = null;
-                EditModeChanged = null;
-                _dataGrid = null;
-                _configuration = null;
+                _logger.LogDebug("Presúvam na ďalšiu bunku z [{CurrentRow}, {CurrentColumn}]", currentRow, currentColumn);
 
-                _disposed = true;
+                // TODO: Implementácia presunu fokusu
+                // Táto metóda by mala interagovať s UI a presunúť fokus na ďalšiu bunku
+
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error during NavigationService dispose: {ex.Message}");
+                _logger.LogError(ex, "Chyba pri presune na ďalšiu bunku");
             }
+        }
+
+        /// <summary>
+        /// Presunie fokus na predchádzajúcu bunku (Shift+Tab)
+        /// </summary>
+        public async Task MoveToPreviousCellAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                _logger.LogDebug("Presúvam na predchádzajúcu bunku z [{CurrentRow}, {CurrentColumn}]", currentRow, currentColumn);
+
+                // TODO: Implementácia presunu fokusu
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri presune na predchádzajúcu bunku");
+            }
+        }
+
+        /// <summary>
+        /// Presunie fokus na bunku nižšie (Enter)
+        /// </summary>
+        public async Task MoveToCellBelowAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                _logger.LogDebug("Presúvam na bunku nižšie z [{CurrentRow}, {CurrentColumn}]", currentRow, currentColumn);
+
+                // TODO: Implementácia presunu fokusu
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri presune na bunku nižšie");
+            }
+        }
+
+        /// <summary>
+        /// Presunie fokus na bunku vyššie (Shift+Enter)
+        /// </summary>
+        public async Task MoveToCellAboveAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                _logger.LogDebug("Presúvam na bunku vyššie z [{CurrentRow}, {CurrentColumn}]", currentRow, currentColumn);
+
+                // TODO: Implementácia presunu fokusu
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri presune na bunku vyššie");
+            }
+        }
+
+        /// <summary>
+        /// Zruší editáciu bunky (Esc)
+        /// </summary>
+        public async Task CancelCellEditAsync(object sender)
+        {
+            try
+            {
+                if (sender is TextBox textBox)
+                {
+                    _logger.LogDebug("Zrušujem editáciu bunky");
+
+                    // TODO: Obnoviť pôvodnú hodnotu bunky
+                    // textBox.Text = originalValue;
+
+                    // Presun fokus mimo TextBox
+                    textBox.IsEnabled = false;
+                    textBox.IsEnabled = true;
+                }
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri zrušovaní editácie bunky");
+            }
+        }
+
+        /// <summary>
+        /// Dokončí editáciu bunky
+        /// </summary>
+        public async Task FinishCellEditAsync(object sender)
+        {
+            try
+            {
+                if (sender is TextBox textBox)
+                {
+                    _logger.LogDebug("Dokončujem editáciu bunky s hodnotou: {Value}", textBox.Text);
+
+                    // TODO: Uložiť hodnotu bunky a spustiť validáciu
+                }
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri dokončovaní editácie bunky");
+            }
+        }
+
+        /// <summary>
+        /// Pridá nový riadok v bunke (Shift+Enter)
+        /// </summary>
+        public async Task InsertNewLineInCellAsync(object sender)
+        {
+            try
+            {
+                if (sender is TextBox textBox)
+                {
+                    _logger.LogDebug("Pridávam nový riadok v bunke");
+
+                    var currentPosition = textBox.SelectionStart;
+                    var currentText = textBox.Text;
+
+                    var newText = currentText.Insert(currentPosition, Environment.NewLine);
+                    textBox.Text = newText;
+                    textBox.SelectionStart = currentPosition + Environment.NewLine.Length;
+                }
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri pridávaní nového riadku v bunke");
+            }
+        }
+
+        #region Private Helper Methods
+
+        private async Task HandleTabAsync(TextBox textBox)
+        {
+            await FinishCellEditAsync(textBox);
+            // TODO: Presun na ďalšiu bunku
+            _logger.LogDebug("Tab: Presúvam na ďalšiu bunku");
+        }
+
+        private async Task HandleShiftTabAsync(TextBox textBox)
+        {
+            await FinishCellEditAsync(textBox);
+            // TODO: Presun na predchádzajúcu bunku
+            _logger.LogDebug("Shift+Tab: Presúvam na predchádzajúcu bunku");
+        }
+
+        private async Task HandleEnterAsync(TextBox textBox)
+        {
+            await FinishCellEditAsync(textBox);
+            // TODO: Presun na bunku nižšie
+            _logger.LogDebug("Enter: Presúvam na bunku nižšie");
+        }
+
+        private async Task HandleShiftEnterAsync(TextBox textBox)
+        {
+            await InsertNewLineInCellAsync(textBox);
+            _logger.LogDebug("Shift+Enter: Pridaný nový riadok v bunke");
+        }
+
+        private async Task HandleEscapeAsync(TextBox textBox)
+        {
+            await CancelCellEditAsync(textBox);
+            _logger.LogDebug("Escape: Zrušená editácia bunky");
+        }
+
+        private static bool IsCtrlPressed()
+        {
+            var ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+            return (ctrlState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+        }
+
+        private static bool IsShiftPressed()
+        {
+            var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
+            return (shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
         }
 
         #endregion
     }
-
-    #region Event Args
-
-    /// <summary>
-    /// Event args pre navigáciu medzi bunkami.
-    /// </summary>
-    internal class NavigationEventArgs : EventArgs
-    {
-        public NavigationEventArgs((int row, int col)? oldPosition, (int row, int col)? newPosition)
-        {
-            OldPosition = oldPosition;
-            NewPosition = newPosition;
-        }
-
-        public (int row, int col)? OldPosition { get; }
-        public (int row, int col)? NewPosition { get; }
-    }
-
-    /// <summary>
-    /// Event args pre zmenu edit mode.
-    /// </summary>
-    internal class EditModeChangedEventArgs : EventArgs
-    {
-        public EditModeChangedEventArgs(bool isEditing)
-        {
-            IsEditing = isEditing;
-        }
-
-        public bool IsEditing { get; }
-    }
-
-    #endregion
 }

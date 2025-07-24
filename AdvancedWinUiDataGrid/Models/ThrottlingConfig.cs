@@ -1,272 +1,152 @@
 ﻿// Models/ThrottlingConfig.cs
 using System;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
 {
     /// <summary>
-    /// Konfigurácia pre throttling a performance optimalizácie DataGrid komponentu.
-    /// Obsahuje nastavenia pre debounce časovače, batch operácie a optimalizácie.
+    /// Konfigurácia pre throttling operácií v DataGrid
     /// </summary>
     public class ThrottlingConfig
     {
-        #region Konštruktory
-
         /// <summary>
-        /// Vytvorí novú ThrottlingConfig s predvolenými hodnotami.
+        /// Debounce delay pre validácie v ms (default 300ms)
         /// </summary>
-        public ThrottlingConfig()
-        {
-            ValidationDebounceMs = 300;
-            UIUpdateDebounceMs = 100;
-            BatchSize = 50;
-            EnableValidationThrottling = true;
-            EnableUIThrottling = true;
-            MaxConcurrentValidations = 3;
-            VirtualizationThreshold = 1000;
-            LazyLoadingThreshold = 2000;
-        }
-
-        #endregion
-
-        #region Základné throttling nastavenia
+        public int ValidationDebounceMs { get; set; } = 300;
 
         /// <summary>
-        /// Debounce timeout pre validácie v milisekundách.
-        /// Default: 300ms - optimálne pre používateľa ktorý píše rýchlo.
+        /// Debounce delay pre UI updates v ms (default 100ms)
         /// </summary>
-        public int ValidationDebounceMs { get; set; }
+        public int UIUpdateDebounceMs { get; set; } = 100;
 
         /// <summary>
-        /// Debounce timeout pre UI updates v milisekundách.
-        /// Default: 100ms - rýchla odozva UI.
+        /// Debounce delay pre search/filter operácie v ms (default 500ms)
         /// </summary>
-        public int UIUpdateDebounceMs { get; set; }
+        public int SearchDebounceMs { get; set; } = 500;
 
         /// <summary>
-        /// Povoliť throttling validácií.
-        /// Default: true - odporúčané pre výkon.
+        /// Batch size pre bulk operácie (default 50)
         /// </summary>
-        public bool EnableValidationThrottling { get; set; }
+        public int BatchSize { get; set; } = 50;
 
         /// <summary>
-        /// Povoliť throttling UI updates.
-        /// Default: true - odporúčané pre plynulé UI.
+        /// Maximálny počet batch operácií za sekundu (default 10)
         /// </summary>
-        public bool EnableUIThrottling { get; set; }
-
-        #endregion
-
-        #region Batch operácie
+        public int MaxBatchesPerSecond { get; set; } = 10;
 
         /// <summary>
-        /// Počet položiek spracovaných v jednom batch-u.
-        /// Default: 50 - vyvážené medzi výkonom a odozvou.
+        /// Či je povolený throttling pre validácie
         /// </summary>
-        public int BatchSize { get; set; }
+        public bool EnableValidationThrottling { get; set; } = true;
 
         /// <summary>
-        /// Časový limit pre batch operácie v milisekundách.
-        /// Default: 16ms (~60 FPS) - zabránenie blokovania UI.
+        /// Či je povolený throttling pre UI updates
         /// </summary>
-        public int BatchTimeoutMs { get; set; } = 16;
+        public bool EnableUIThrottling { get; set; } = true;
 
         /// <summary>
-        /// Povoliť batch spracovanie.
-        /// Default: true - výrazne zlepšuje výkon pri veľkých datasetoch.
+        /// Či je povolený throttling pre search operácie
         /// </summary>
-        public bool EnableBatchProcessing { get; set; } = true;
-
-        #endregion
-
-        #region Pokročilé optimalizácie
+        public bool EnableSearchThrottling { get; set; } = true;
 
         /// <summary>
-        /// Maximálny počet súčasne bežiacich validácií.
-        /// Default: 3 - zabránenie preťaženia CPU.
+        /// Timeout pre async operácie v ms (default 5000ms)
         /// </summary>
-        public int MaxConcurrentValidations { get; set; }
+        public int AsyncOperationTimeoutMs { get; set; } = 5000;
 
         /// <summary>
-        /// Prah počtu riadkov pre zapnutie virtualizácie.
-        /// Default: 1000 riadkov - nad týmto limitom sa zapne virtualizácia.
+        /// Či sa majú throttle operácie v background thread
         /// </summary>
-        public int VirtualizationThreshold { get; set; }
+        public bool UseBackgroundProcessing { get; set; } = true;
 
         /// <summary>
-        /// Prah počtu riadkov pre zapnutie lazy loading.
-        /// Default: 2000 riadkov - nad týmto limitom sa zapne lazy loading.
+        /// Priorita thread pre background operácie
         /// </summary>
-        public int LazyLoadingThreshold { get; set; }
+        public System.Threading.ThreadPriority BackgroundThreadPriority { get; set; } = System.Threading.ThreadPriority.BelowNormal;
 
         /// <summary>
-        /// Povoliť preemptive validáciu na pozadí.
-        /// Default: false - môže byť užitočné pre veľké datasety.
-        /// </summary>
-        public bool EnableBackgroundValidation { get; set; } = false;
-
-        #endregion
-
-        #region Memory management
-
-        /// <summary>
-        /// Interval pre cleanup nepoužívaných zdrojov v milisekundách.
-        /// Default: 30000ms (30 sekúnd).
-        /// </summary>
-        public int ResourceCleanupIntervalMs { get; set; } = 30000;
-
-        /// <summary>
-        /// Povoliť automatický cleanup zdrojov.
-        /// Default: true - odporúčané pre dlhodobo bežiace aplikácie.
-        /// </summary>
-        public bool EnableAutoCleanup { get; set; } = true;
-
-        /// <summary>
-        /// Maximálna veľkosť cache pre UI elementy.
-        /// Default: 500 - vyvážené medzi pamäťou a výkonom.
-        /// </summary>
-        public int UIElementCacheSize { get; set; } = 500;
-
-        #endregion
-
-        #region Predvolené konfigurácie
-
-        /// <summary>
-        /// Predvolená konfigurácia pre všeobecné použitie.
-        /// Vyvážené medzi výkonom a responsiveness.
+        /// Default konfigurácia
         /// </summary>
         public static ThrottlingConfig Default => new ThrottlingConfig();
 
         /// <summary>
-        /// Konfigurácia optimalizovaná pre vysoký výkon.
-        /// Agresívnejšie throttling, väčšie batch-e.
+        /// Konfigurácia pre rýchle operácie (menšie delays)
         /// </summary>
-        public static ThrottlingConfig HighPerformance => new ThrottlingConfig
-        {
-            ValidationDebounceMs = 500,
-            UIUpdateDebounceMs = 150,
-            BatchSize = 100,
-            MaxConcurrentValidations = 2,
-            VirtualizationThreshold = 500,
-            LazyLoadingThreshold = 1000,
-            EnableBackgroundValidation = true
-        };
-
-        /// <summary>
-        /// Konfigurácia optimalizovaná pre responsiveness.
-        /// Menšie throttling, menšie batch-e, rychlejšia odozva.
-        /// </summary>
-        public static ThrottlingConfig HighResponsiveness => new ThrottlingConfig
+        public static ThrottlingConfig Fast => new ThrottlingConfig
         {
             ValidationDebounceMs = 150,
             UIUpdateDebounceMs = 50,
-            BatchSize = 25,
-            MaxConcurrentValidations = 5,
-            VirtualizationThreshold = 2000,
-            LazyLoadingThreshold = 5000,
-            EnableBackgroundValidation = false
+            SearchDebounceMs = 250,
+            BatchSize = 100,
+            MaxBatchesPerSecond = 20
         };
 
         /// <summary>
-        /// Konfigurácia pre veľké datasety (10k+ riadkov).
-        /// Maximálne optimalizácie pre výkon.
+        /// Konfigurácia pre pomalé operácie (väčšie delays)
         /// </summary>
-        public static ThrottlingConfig LargeDataset => new ThrottlingConfig
+        public static ThrottlingConfig Slow => new ThrottlingConfig
         {
-            ValidationDebounceMs = 1000,
+            ValidationDebounceMs = 500,
             UIUpdateDebounceMs = 200,
-            BatchSize = 200,
-            MaxConcurrentValidations = 1,
-            VirtualizationThreshold = 100,
-            LazyLoadingThreshold = 500,
-            EnableBackgroundValidation = true,
-            ResourceCleanupIntervalMs = 10000
+            SearchDebounceMs = 800,
+            BatchSize = 25,
+            MaxBatchesPerSecond = 5
         };
 
         /// <summary>
-        /// Konfigurácia pre debugging - vypnuté všetky optimalizácie.
-        /// Iba pre development a ladenie.
+        /// Konfigurácia pre performance kritické aplikácie
         /// </summary>
-        public static ThrottlingConfig Debug => new ThrottlingConfig
+        public static ThrottlingConfig PerformanceCritical => new ThrottlingConfig
+        {
+            ValidationDebounceMs = 100,
+            UIUpdateDebounceMs = 30,
+            SearchDebounceMs = 200,
+            BatchSize = 200,
+            MaxBatchesPerSecond = 50,
+            UseBackgroundProcessing = true,
+            BackgroundThreadPriority = System.Threading.ThreadPriority.Normal
+        };
+
+        /// <summary>
+        /// Konfigurácia bez throttling (immediate operácie)
+        /// </summary>
+        public static ThrottlingConfig NoThrottling => new ThrottlingConfig
         {
             ValidationDebounceMs = 0,
             UIUpdateDebounceMs = 0,
-            BatchSize = 1,
+            SearchDebounceMs = 0,
             EnableValidationThrottling = false,
             EnableUIThrottling = false,
-            EnableBatchProcessing = false,
-            MaxConcurrentValidations = 1,
-            EnableBackgroundValidation = false,
-            EnableAutoCleanup = false
+            EnableSearchThrottling = false,
+            BatchSize = 1000,
+            MaxBatchesPerSecond = 1000
         };
 
-        #endregion
-
-        #region Validácia konfigurácie
-
         /// <summary>
-        /// Skontroluje či je konfigurácia validná a opraví neplatné hodnoty.
+        /// Validuje konfiguráciu
         /// </summary>
-        public void ValidateAndFix()
+        public void Validate()
         {
-            // Throttling timeouts
-            ValidationDebounceMs = Math.Max(0, ValidationDebounceMs);
-            UIUpdateDebounceMs = Math.Max(0, UIUpdateDebounceMs);
-            BatchTimeoutMs = Math.Max(1, BatchTimeoutMs);
+            if (ValidationDebounceMs < 0)
+                throw new ArgumentException("ValidationDebounceMs nemôže byť záporný");
 
-            // Batch size
-            BatchSize = Math.Max(1, BatchSize);
-            BatchSize = Math.Min(1000, BatchSize); // Maximum 1000 per batch
+            if (UIUpdateDebounceMs < 0)
+                throw new ArgumentException("UIUpdateDebounceMs nemôže byť záporný");
 
-            // Concurrency
-            MaxConcurrentValidations = Math.Max(1, MaxConcurrentValidations);
-            MaxConcurrentValidations = Math.Min(10, MaxConcurrentValidations); // Maximum 10
+            if (SearchDebounceMs < 0)
+                throw new ArgumentException("SearchDebounceMs nemôže byť záporný");
 
-            // Thresholds
-            VirtualizationThreshold = Math.Max(0, VirtualizationThreshold);
-            LazyLoadingThreshold = Math.Max(0, LazyLoadingThreshold);
+            if (BatchSize <= 0)
+                throw new ArgumentException("BatchSize musí byť väčší ako 0");
 
-            // Cleanup
-            ResourceCleanupIntervalMs = Math.Max(1000, ResourceCleanupIntervalMs); // Minimum 1 second
-            UIElementCacheSize = Math.Max(10, UIElementCacheSize);
-            UIElementCacheSize = Math.Min(2000, UIElementCacheSize); // Maximum 2000
+            if (MaxBatchesPerSecond <= 0)
+                throw new ArgumentException("MaxBatchesPerSecond musí byť väčší ako 0");
+
+            if (AsyncOperationTimeoutMs <= 0)
+                throw new ArgumentException("AsyncOperationTimeoutMs musí byť väčší ako 0");
         }
 
         /// <summary>
-        /// Vráti zoznam varovaní o potenciálne problematických nastaveniach.
-        /// </summary>
-        public List<string> GetConfigurationWarnings()
-        {
-            var warnings = new List<string>();
-
-            if (ValidationDebounceMs < 100)
-                warnings.Add("ValidationDebounceMs < 100ms môže spôsobiť vysoké CPU utilizácie");
-
-            if (BatchSize > 200)
-                warnings.Add("BatchSize > 200 môže spôsobiť blokovanie UI");
-
-            if (MaxConcurrentValidations > 5)
-                warnings.Add("MaxConcurrentValidations > 5 môže preťažiť CPU");
-
-            if (!EnableValidationThrottling && !EnableUIThrottling)
-                warnings.Add("Vypnuté throttling môže spôsobiť performance problémy");
-
-            if (VirtualizationThreshold > 5000)
-                warnings.Add("VirtualizationThreshold > 5000 môže spôsobiť pomalé UI");
-
-            return warnings;
-        }
-
-        #endregion
-
-        #region Overrides
-
-        public override string ToString()
-        {
-            return $"ThrottlingConfig: Validation={ValidationDebounceMs}ms, UI={UIUpdateDebounceMs}ms, Batch={BatchSize}";
-        }
-
-        /// <summary>
-        /// Vytvorí kópiu konfigurácie.
+        /// Vytvorí kópiu konfigurácie
         /// </summary>
         public ThrottlingConfig Clone()
         {
@@ -274,21 +154,42 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 ValidationDebounceMs = ValidationDebounceMs,
                 UIUpdateDebounceMs = UIUpdateDebounceMs,
+                SearchDebounceMs = SearchDebounceMs,
                 BatchSize = BatchSize,
+                MaxBatchesPerSecond = MaxBatchesPerSecond,
                 EnableValidationThrottling = EnableValidationThrottling,
                 EnableUIThrottling = EnableUIThrottling,
-                MaxConcurrentValidations = MaxConcurrentValidations,
-                VirtualizationThreshold = VirtualizationThreshold,
-                LazyLoadingThreshold = LazyLoadingThreshold,
-                EnableBackgroundValidation = EnableBackgroundValidation,
-                BatchTimeoutMs = BatchTimeoutMs,
-                EnableBatchProcessing = EnableBatchProcessing,
-                ResourceCleanupIntervalMs = ResourceCleanupIntervalMs,
-                EnableAutoCleanup = EnableAutoCleanup,
-                UIElementCacheSize = UIElementCacheSize
+                EnableSearchThrottling = EnableSearchThrottling,
+                AsyncOperationTimeoutMs = AsyncOperationTimeoutMs,
+                UseBackgroundProcessing = UseBackgroundProcessing,
+                BackgroundThreadPriority = BackgroundThreadPriority
             };
         }
 
-        #endregion
+        /// <summary>
+        /// Kombinuje túto konfiguráciu s inou (táto má prioritu)
+        /// </summary>
+        public ThrottlingConfig MergeWith(ThrottlingConfig other)
+        {
+            if (other == null) return Clone();
+
+            var merged = Clone();
+
+            // Použije menšie delays (rýchlejšie operácie)
+            merged.ValidationDebounceMs = Math.Min(ValidationDebounceMs, other.ValidationDebounceMs);
+            merged.UIUpdateDebounceMs = Math.Min(UIUpdateDebounceMs, other.UIUpdateDebounceMs);
+            merged.SearchDebounceMs = Math.Min(SearchDebounceMs, other.SearchDebounceMs);
+
+            // Použije väčší batch size (efektívnejšie operácie)
+            merged.BatchSize = Math.Max(BatchSize, other.BatchSize);
+            merged.MaxBatchesPerSecond = Math.Max(MaxBatchesPerSecond, other.MaxBatchesPerSecond);
+
+            return merged;
+        }
+
+        public override string ToString()
+        {
+            return $"ThrottlingConfig(Validation:{ValidationDebounceMs}ms, UI:{UIUpdateDebounceMs}ms, Search:{SearchDebounceMs}ms, Batch:{BatchSize})";
+        }
     }
 }

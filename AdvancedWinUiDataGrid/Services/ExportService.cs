@@ -1,668 +1,423 @@
 ﻿// Services/ExportService.cs
+using Microsoft.Extensions.Logging;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Implementácia služby pre export funkcionalitu DataGrid komponentu.
-    /// Podporuje export do DataTable, CSV, Excel a iných formátov.
+    /// Služba pre export dát z DataGrid
     /// </summary>
-    internal class ExportService : IExportService
+    public class ExportService : IExportService
     {
-        #region Private fields
-
+        private readonly ILogger<ExportService> _logger;
+        private readonly IDataManagementService _dataManagementService;
         private GridConfiguration? _configuration;
-        private IDataManagementService? _dataService;
-        private bool _isInitialized = false;
-        private bool _disposed = false;
 
-        // Event handling
-        private readonly object _eventLock = new();
-
-        // Custom formatters
-        private readonly Dictionary<string, Func<object?, string>> _columnFormatters = new();
-
-        #endregion
-
-        #region Properties
-
-        public ExportConfiguration Configuration { get; set; } = ExportConfiguration.Default;
-
-        #endregion
-
-        #region Events
-
-        public event EventHandler<ExportProgressEventArgs>? ExportProgressChanged;
-        public event EventHandler<ExportCompletedEventArgs>? ExportCompleted;
-
-        #endregion
-
-        #region IExportService - Inicializácia
-
-        public async Task InitializeAsync(GridConfiguration configuration)
+        public ExportService(ILogger<ExportService> logger, IDataManagementService dataManagementService)
         {
-            if (_isInitialized)
-                throw new InvalidOperationException("ExportService je už inicializovaný");
-
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-
-            _isInitialized = true;
-            await Task.CompletedTask;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _dataManagementService = dataManagementService ?? throw new ArgumentNullException(nameof(dataManagementService));
         }
 
-        public bool IsInitialized => _isInitialized;
-
-        #endregion
-
-        #region IExportService - Export do DataTable
-
-        public async Task<DataTable> ExportToDataTableAsync(bool includeEmptyRows = false, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Inicializuje export službu s konfiguráciou
+        /// </summary>
+        public Task InitializeAsync(GridConfiguration configuration)
         {
-            EnsureInitialized();
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger.LogInformation("ExportService inicializovaný");
+            return Task.CompletedTask;
+        }
 
+        /// <summary>
+        /// Exportuje všetky dáta do DataTable (bez DeleteRows stĺpca, s ValidAlerts)
+        /// </summary>
+        public async Task<DataTable> ExportToDataTableAsync()
+        {
             try
             {
-                var dataTable = new DataTable();
-                var allRows = _dataService!.GetAllRowsData().ToArray();
+                _logger.LogInformation("Začína export do DataTable");
 
-                OnProgressChanged(0, allRows.Length, "Pripravuje sa štruktúra DataTable...");
+                if (_configuration == null)
+                    throw new InvalidOperationException("ExportService nie je inicializovaný");
 
-                // Pridať stĺpce (bez DeleteRows, s ValidAlerts)
-                var columnsToExport = _configuration!.Columns
-                    .Where(c => !c.IsDeleteColumn)
-                    .ToArray();
+                var dataTable = new DataTable("ExportedData");
 
-                foreach (var column in columnsToExport)
-                {
-                    var dataColumn = new DataColumn(column.Name, GetDataTableType(column.DataType));
-                    dataTable.Columns.Add(dataColumn);
-                }
+                // Vytvor štruktúru stĺpcov (bez DeleteRows, s ValidAlerts)
+                CreateDataTableStructure(dataTable);
 
-                // Pridať riadky
-                int processedRows = 0;
-                foreach (var rowData in allRows)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
+                // Získaj dáta
+                var allData = await _dataManagementService.GetAllDataAsync();
 
-                    var cellsArray = rowData.ToArray();
-                    var isRowEmpty = IsRowEmpty(cellsArray);
+                // Naplň dáta
+                await Task.Run(() => PopulateDataTable(dataTable, allData));
 
-                    if (!includeEmptyRows && isRowEmpty)
-                        continue;
-
-                    var dataRow = dataTable.NewRow();
-
-                    foreach (var column in columnsToExport)
-                    {
-                        var columnIndex = _configuration.GetColumnIndex(column.Name);
-                        if (columnIndex >= 0 && columnIndex < cellsArray.Length)
-                        {
-                            var cell = cellsArray[columnIndex];
-                            var value = FormatCellValueForExport(cell, column.Name);
-                            dataRow[column.Name] = value ?? DBNull.Value;
-                        }
-                    }
-
-                    dataTable.Rows.Add(dataRow);
-                    processedRows++;
-
-                    // Progress update
-                    if (processedRows % 100 == 0)
-                    {
-                        OnProgressChanged(processedRows, allRows.Length, $"Spracovaných {processedRows} riadkov...");
-                    }
-                }
-
-                OnProgressChanged(processedRows, allRows.Length, "Export dokončený");
-                OnExportCompleted(true, ExportFormat.DataTable, processedRows);
-
+                _logger.LogInformation($"Export dokončený: {dataTable.Rows.Count} riadkov, {dataTable.Columns.Count} stĺpcov");
                 return dataTable;
             }
             catch (Exception ex)
             {
-                OnExportCompleted(false, ExportFormat.DataTable, 0, ex.Message);
+                _logger.LogError(ex, "Chyba pri exporte do DataTable");
                 throw;
             }
         }
 
-        public async Task<DataTable> ExportValidRowsToDataTableAsync(CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Exportuje len validné riadky do DataTable
+        /// </summary>
+        public async Task<DataTable> ExportValidRowsOnlyAsync()
         {
-            EnsureInitialized();
+            try
+            {
+                _logger.LogInformation("Začína export len validných riadkov");
 
-            // Pre túto implementáciu exportujeme všetky neprázdne riadky
-            // V plnej implementácii by sme mali validačný service reference
-            return await ExportToDataTableAsync(includeEmptyRows: false, cancellationToken);
+                var fullDataTable = await ExportToDataTableAsync();
+                var validDataTable = fullDataTable.Clone(); // Skopíruj štruktúru
+
+                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
+                await Task.Run(() =>
+                {
+                    foreach (DataRow row in fullDataTable.Rows)
+                    {
+                        // Skontroluj ValidAlerts stĺpec
+                        var validAlerts = row["ValidAlerts"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(validAlerts))
+                        {
+                            validDataTable.ImportRow(row);
+                        }
+                    }
+                });
+
+                _logger.LogInformation($"Export validných riadkov dokončený: {validDataTable.Rows.Count} z {fullDataTable.Rows.Count} riadkov");
+                return validDataTable;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri exporte validných riadkov");
+                throw;
+            }
         }
 
-        public async Task<DataTable> ExportRowsToDataTableAsync(IEnumerable<int> rowIndices, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Exportuje len nevalidné riadky do DataTable (pre debugging)
+        /// </summary>
+        public async Task<DataTable> ExportInvalidRowsOnlyAsync()
         {
-            EnsureInitialized();
-
-            var dataTable = new DataTable();
-            var indices = rowIndices.ToArray();
-
-            OnProgressChanged(0, indices.Length, "Pripravuje sa export vybraných riadkov...");
-
-            // Pridať stĺpce
-            var columnsToExport = _configuration!.Columns
-                .Where(c => !c.IsDeleteColumn)
-                .ToArray();
-
-            foreach (var column in columnsToExport)
+            try
             {
-                var dataColumn = new DataColumn(column.Name, GetDataTableType(column.DataType));
-                dataTable.Columns.Add(dataColumn);
+                _logger.LogInformation("Začína export len nevalidných riadkov");
+
+                var fullDataTable = await ExportToDataTableAsync();
+                var invalidDataTable = fullDataTable.Clone();
+
+                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
+                await Task.Run(() =>
+                {
+                    foreach (DataRow row in fullDataTable.Rows)
+                    {
+                        var validAlerts = row["ValidAlerts"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(validAlerts))
+                        {
+                            invalidDataTable.ImportRow(row);
+                        }
+                    }
+                });
+
+                _logger.LogInformation($"Export nevalidných riadkov dokončený: {invalidDataTable.Rows.Count} z {fullDataTable.Rows.Count} riadkov");
+                return invalidDataTable;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri exporte nevalidných riadkov");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Exportuje len špecifické stĺpce
+        /// </summary>
+        public async Task<DataTable> ExportSpecificColumnsAsync(string[] columnNames)
+        {
+            try
+            {
+                _logger.LogInformation($"Začína export špecifických stĺpcov: {string.Join(", ", columnNames)}");
+
+                var fullDataTable = await ExportToDataTableAsync();
+                var specificDataTable = new DataTable("SpecificColumnsExport");
+
+                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
+                await Task.Run(() =>
+                {
+                    // Vytvor stĺpce len pre požadované
+                    foreach (var columnName in columnNames)
+                    {
+                        if (fullDataTable.Columns.Contains(columnName))
+                        {
+                            var originalColumn = fullDataTable.Columns[columnName]!;
+                            specificDataTable.Columns.Add(columnName, originalColumn.DataType);
+                        }
+                    }
+
+                    // Skopíruj dáta len pre požadované stĺpce
+                    foreach (DataRow originalRow in fullDataTable.Rows)
+                    {
+                        var newRow = specificDataTable.NewRow();
+                        foreach (var columnName in columnNames)
+                        {
+                            if (specificDataTable.Columns.Contains(columnName))
+                            {
+                                newRow[columnName] = originalRow[columnName];
+                            }
+                        }
+                        specificDataTable.Rows.Add(newRow);
+                    }
+                });
+
+                _logger.LogInformation($"Export špecifických stĺpcov dokončený: {specificDataTable.Columns.Count} stĺpcov, {specificDataTable.Rows.Count} riadkov");
+                return specificDataTable;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri exporte špecifických stĺpcov");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Exportuje dáta do CSV formátu
+        /// </summary>
+        public async Task<string> ExportToCsvAsync(bool includeHeaders = true)
+        {
+            try
+            {
+                _logger.LogInformation("Začína export do CSV");
+
+                var dataTable = await ExportToDataTableAsync();
+
+                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
+                var csvContent = await Task.Run(() => ConvertDataTableToCsv(dataTable, includeHeaders));
+
+                _logger.LogInformation($"Export do CSV dokončený: {csvContent.Split('\n').Length} riadkov");
+                return csvContent;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri exporte do CSV");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa štatistiky exportovaných dát
+        /// </summary>
+        public async Task<ExportStatistics> GetExportStatisticsAsync()
+        {
+            try
+            {
+                var dataTable = await ExportToDataTableAsync();
+
+                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
+                var statistics = await Task.Run(() => CalculateStatistics(dataTable));
+
+                return statistics;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri výpočte exportných štatistík");
+                throw;
+            }
+        }
+
+        #region Private Helper Methods
+
+        private void CreateDataTableStructure(DataTable dataTable)
+        {
+            if (_configuration?.Columns == null) return;
+
+            foreach (var column in _configuration.Columns)
+            {
+                // Preskač DeleteRows stĺpec
+                if (column.Name == "DeleteRows") continue;
+
+                dataTable.Columns.Add(column.Name, column.DataType);
             }
 
-            // Pridať vybrané riadky
-            int processedRows = 0;
-            foreach (var rowIndex in indices)
+            // Pridaj ValidAlerts stĺpec
+            dataTable.Columns.Add("ValidAlerts", typeof(string));
+        }
+
+        private void PopulateDataTable(DataTable dataTable, List<Dictionary<string, object?>> allData)
+        {
+            foreach (var rowData in allData)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var rowData = _dataService!.GetRowData(rowIndex);
-                if (rowData == null) continue;
-
-                var cellsArray = rowData.ToArray();
                 var dataRow = dataTable.NewRow();
 
-                foreach (var column in columnsToExport)
+                foreach (DataColumn column in dataTable.Columns)
                 {
-                    var columnIndex = _configuration.GetColumnIndex(column.Name);
-                    if (columnIndex >= 0 && columnIndex < cellsArray.Length)
+                    if (rowData.ContainsKey(column.ColumnName))
                     {
-                        var cell = cellsArray[columnIndex];
-                        var value = FormatCellValueForExport(cell, column.Name);
-                        dataRow[column.Name] = value ?? DBNull.Value;
+                        var value = rowData[column.ColumnName];
+                        dataRow[column.ColumnName] = value ?? DBNull.Value;
+                    }
+                    else
+                    {
+                        dataRow[column.ColumnName] = DBNull.Value;
                     }
                 }
 
                 dataTable.Rows.Add(dataRow);
-                processedRows++;
-
-                OnProgressChanged(processedRows, indices.Length, $"Spracovaných {processedRows}/{indices.Length} riadkov...");
-            }
-
-            OnExportCompleted(true, ExportFormat.DataTable, processedRows);
-            return dataTable;
-        }
-
-        #endregion
-
-        #region IExportService - Export do CSV
-
-        public async Task<string> ExportToCsvAsync(bool includeHeaders = true, bool includeEmptyRows = false, string separator = ",", CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            try
-            {
-                var sb = new StringBuilder();
-                var allRows = _dataService!.GetAllRowsData().ToArray();
-
-                OnProgressChanged(0, allRows.Length, "Pripravuje sa CSV export...");
-
-                // Stĺpce na export
-                var columnsToExport = _configuration!.Columns
-                    .Where(c => !c.IsDeleteColumn)
-                    .ToArray();
-
-                // Hlavičky
-                if (includeHeaders)
-                {
-                    var headers = columnsToExport.Select(c => EscapeCsvValue(c.Header, separator));
-                    sb.AppendLine(string.Join(separator, headers));
-                }
-
-                // Dáta
-                int processedRows = 0;
-                foreach (var rowData in allRows)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var cellsArray = rowData.ToArray();
-                    var isRowEmpty = IsRowEmpty(cellsArray);
-
-                    if (!includeEmptyRows && isRowEmpty)
-                        continue;
-
-                    var values = new List<string>();
-                    foreach (var column in columnsToExport)
-                    {
-                        var columnIndex = _configuration.GetColumnIndex(column.Name);
-                        if (columnIndex >= 0 && columnIndex < cellsArray.Length)
-                        {
-                            var cell = cellsArray[columnIndex];
-                            var value = FormatCellValueForExport(cell, column.Name);
-                            values.Add(EscapeCsvValue(value?.ToString() ?? "", separator));
-                        }
-                        else
-                        {
-                            values.Add("");
-                        }
-                    }
-
-                    sb.AppendLine(string.Join(separator, values));
-                    processedRows++;
-
-                    if (processedRows % 100 == 0)
-                    {
-                        OnProgressChanged(processedRows, allRows.Length, $"Spracovaných {processedRows} riadkov...");
-                    }
-                }
-
-                OnExportCompleted(true, ExportFormat.Csv, processedRows);
-                return sb.ToString();
-            }
-            catch (Exception ex)
-            {
-                OnExportCompleted(false, ExportFormat.Csv, 0, ex.Message);
-                throw;
             }
         }
 
-        #endregion
-
-        #region IExportService - Export do TSV
-
-        public async Task<string> ExportToTsvAsync(bool includeHeaders = true, bool includeEmptyRows = false, CancellationToken cancellationToken = default)
+        private string ConvertDataTableToCsv(DataTable dataTable, bool includeHeaders)
         {
-            return await ExportToCsvAsync(includeHeaders, includeEmptyRows, "\t", cancellationToken);
+            var lines = new List<string>();
+
+            // Hlavičky
+            if (includeHeaders)
+            {
+                var headers = dataTable.Columns.Cast<DataColumn>()
+                    .Select(column => EscapeCsvField(column.ColumnName));
+                lines.Add(string.Join(",", headers));
+            }
+
+            // Dáta
+            foreach (DataRow row in dataTable.Rows)
+            {
+                var fields = row.ItemArray
+                    .Select(field => EscapeCsvField(field?.ToString() ?? string.Empty));
+                lines.Add(string.Join(",", fields));
+            }
+
+            return string.Join(Environment.NewLine, lines);
         }
 
-        #endregion
-
-        #region IExportService - Export metadát
-
-        public async Task<string> ExportMetadataAsync(CancellationToken cancellationToken = default)
+        private string EscapeCsvField(string field)
         {
-            EnsureInitialized();
+            if (string.IsNullOrEmpty(field)) return "\"\"";
 
-            await Task.CompletedTask; // Make async compliant
-
-            var metadata = new
+            // Ak obsahuje čiarku, úvodzovky alebo nový riadok, obal do úvodzoviek
+            if (field.Contains(',') || field.Contains('"') || field.Contains('\n') || field.Contains('\r'))
             {
-                Version = "1.0.0",
-                Timestamp = DateTime.UtcNow,
-                Configuration = new
-                {
-                    TotalColumns = _configuration!.TotalColumnCount,
-                    DataColumns = _configuration.DataColumnCount,
-                    HasDeleteColumn = _configuration.HasDeleteColumn,
-                    EmptyRowsCount = _configuration.EmptyRowsCount,
-                    ValidationRulesCount = _configuration.ValidationRules.Count
-                },
-                Columns = _configuration.Columns.Select(c => new
-                {
-                    c.Name,
-                    c.Header,
-                    DataType = c.DataType.Name,
-                    c.Width,
-                    c.MinWidth,
-                    c.MaxWidth,
-                    c.IsReadOnly,
-                    c.IsVisible,
-                    c.IsDataColumn,
-                    c.IsDeleteColumn,
-                    c.IsValidationColumn
-                }),
-                ValidationRules = _configuration.ValidationRules.Select(r => new
-                {
-                    r.ColumnName,
-                    RuleType = r.RuleType.ToString(),
-                    r.ErrorMessage,
-                    r.Priority
-                }),
-                ThrottlingConfig = new
-                {
-                    _configuration.ThrottlingConfig.ValidationDebounceMs,
-                    _configuration.ThrottlingConfig.UIUpdateDebounceMs,
-                    _configuration.ThrottlingConfig.BatchSize,
-                    _configuration.ThrottlingConfig.EnableValidationThrottling,
-                    _configuration.ThrottlingConfig.EnableUIThrottling
-                }
-            };
+                // Zdvojnásob úvodzovky vnútri
+                field = field.Replace("\"", "\"\"");
+                return $"\"{field}\"";
+            }
 
-            var json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true });
-            return json;
+            return field;
         }
 
-        public async Task<GridStatistics> ExportStatisticsAsync(CancellationToken cancellationToken = default)
+        private ExportStatistics CalculateStatistics(DataTable dataTable)
         {
-            EnsureInitialized();
-
-            var allRows = _dataService!.GetAllRowsData().ToArray();
-            var nonEmptyRows = allRows.Where(row => !IsRowEmpty(row.ToArray())).ToArray();
-
-            var statistics = new GridStatistics
+            var statistics = new ExportStatistics
             {
-                TotalRows = allRows.Length,
-                NonEmptyRows = nonEmptyRows.Length,
-                ValidRows = nonEmptyRows.Length, // Simplified - would need validation service
+                TotalRows = dataTable.Rows.Count,
+                TotalColumns = dataTable.Columns.Count,
+                ValidRows = 0,
                 InvalidRows = 0,
-                TotalColumns = _configuration!.TotalColumnCount,
-                DataColumns = _configuration.DataColumnCount,
-                ExportTimestamp = DateTime.Now
+                EmptyRows = 0,
+                ColumnStatistics = new Dictionary<string, ColumnStatistics>()
             };
 
-            // Column statistics
-            foreach (var column in _configuration.DataColumns)
+            foreach (DataRow row in dataTable.Rows)
             {
-                var columnIndex = _configuration.GetColumnIndex(column.Name);
-                var nonEmptyValues = 0;
-
-                foreach (var row in nonEmptyRows)
+                // Počítaj validné/nevalidné riadky
+                var validAlerts = row["ValidAlerts"]?.ToString();
+                if (string.IsNullOrWhiteSpace(validAlerts))
                 {
-                    var cell = row.ElementAtOrDefault(columnIndex);
-                    if (cell != null && !cell.IsEmpty)
+                    statistics.ValidRows++;
+                }
+                else
+                {
+                    statistics.InvalidRows++;
+                }
+
+                // Počítaj prázdne riadky
+                bool isEmpty = true;
+                foreach (DataColumn column in dataTable.Columns)
+                {
+                    if (column.ColumnName == "ValidAlerts") continue;
+
+                    var value = row[column.ColumnName];
+                    if (value != null && value != DBNull.Value && !string.IsNullOrWhiteSpace(value.ToString()))
                     {
-                        nonEmptyValues++;
+                        isEmpty = false;
+                        break;
                     }
                 }
 
-                statistics.ColumnStatistics[column.Name] = nonEmptyValues;
+                if (isEmpty)
+                {
+                    statistics.EmptyRows++;
+                }
             }
 
-            await Task.CompletedTask;
+            // Štatistiky stĺpcov
+            foreach (DataColumn column in dataTable.Columns)
+            {
+                var columnStats = new ColumnStatistics
+                {
+                    ColumnName = column.ColumnName,
+                    DataType = column.DataType.Name,
+                    NonNullCount = 0,
+                    NullCount = 0,
+                    UniqueValueCount = 0
+                };
+
+                var uniqueValues = new HashSet<object>();
+
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    var value = row[column.ColumnName];
+                    if (value == null || value == DBNull.Value)
+                    {
+                        columnStats.NullCount++;
+                    }
+                    else
+                    {
+                        columnStats.NonNullCount++;
+                        uniqueValues.Add(value);
+                    }
+                }
+
+                columnStats.UniqueValueCount = uniqueValues.Count;
+                statistics.ColumnStatistics[column.ColumnName] = columnStats;
+            }
+
             return statistics;
         }
 
         #endregion
-
-        #region IExportService - Parciálny export
-
-        public async Task<DataTable> ExportColumnsToDataTableAsync(IEnumerable<string> columnNames, bool includeEmptyRows = false, CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            var dataTable = new DataTable();
-            var allRows = _dataService!.GetAllRowsData().ToArray();
-            var requestedColumns = columnNames.ToArray();
-
-            OnProgressChanged(0, allRows.Length, "Pripravuje sa export vybraných stĺpcov...");
-
-            // Pridať iba požadované stĺpce
-            var columnsToExport = _configuration!.Columns
-                .Where(c => requestedColumns.Contains(c.Name, StringComparer.OrdinalIgnoreCase) && !c.IsDeleteColumn)
-                .ToArray();
-
-            foreach (var column in columnsToExport)
-            {
-                var dataColumn = new DataColumn(column.Name, GetDataTableType(column.DataType));
-                dataTable.Columns.Add(dataColumn);
-            }
-
-            // Pridať riadky
-            int processedRows = 0;
-            foreach (var rowData in allRows)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var cellsArray = rowData.ToArray();
-                var isRowEmpty = IsRowEmpty(cellsArray);
-
-                if (!includeEmptyRows && isRowEmpty)
-                    continue;
-
-                var dataRow = dataTable.NewRow();
-
-                foreach (var column in columnsToExport)
-                {
-                    var columnIndex = _configuration.GetColumnIndex(column.Name);
-                    if (columnIndex >= 0 && columnIndex < cellsArray.Length)
-                    {
-                        var cell = cellsArray[columnIndex];
-                        var value = FormatCellValueForExport(cell, column.Name);
-                        dataRow[column.Name] = value ?? DBNull.Value;
-                    }
-                }
-
-                dataTable.Rows.Add(dataRow);
-                processedRows++;
-
-                if (processedRows % 100 == 0)
-                {
-                    OnProgressChanged(processedRows, allRows.Length, $"Spracovaných {processedRows} riadkov...");
-                }
-            }
-
-            OnExportCompleted(true, ExportFormat.DataTable, processedRows);
-            return dataTable;
-        }
-
-        public async Task<DataTable> ExportRangeToDataTableAsync(int startRow, int startColumn, int endRow, int endColumn, CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            var dataTable = new DataTable();
-
-            // Validovať rozsah
-            if (startRow < 0 || startColumn < 0 || endRow < startRow || endColumn < startColumn)
-                throw new ArgumentException("Neplatný rozsah pre export");
-
-            var totalRows = endRow - startRow + 1;
-            OnProgressChanged(0, totalRows, "Pripravuje sa export oblasti...");
-
-            // Pripraviť stĺpce
-            var columnsInRange = _configuration!.Columns
-                .Skip(startColumn)
-                .Take(endColumn - startColumn + 1)
-                .Where(c => !c.IsDeleteColumn)
-                .ToArray();
-
-            foreach (var column in columnsInRange)
-            {
-                var dataColumn = new DataColumn(column.Name, GetDataTableType(column.DataType));
-                dataTable.Columns.Add(dataColumn);
-            }
-
-            // Spracovať riadky v rozsahu
-            for (int rowIndex = startRow; rowIndex <= endRow; rowIndex++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var rowData = _dataService!.GetRowData(rowIndex);
-                if (rowData == null) continue;
-
-                var cellsArray = rowData.ToArray();
-                var dataRow = dataTable.NewRow();
-
-                foreach (var column in columnsInRange)
-                {
-                    var columnIndex = _configuration.GetColumnIndex(column.Name);
-                    if (columnIndex >= 0 && columnIndex < cellsArray.Length)
-                    {
-                        var cell = cellsArray[columnIndex];
-                        var value = FormatCellValueForExport(cell, column.Name);
-                        dataRow[column.Name] = value ?? DBNull.Value;
-                    }
-                }
-
-                dataTable.Rows.Add(dataRow);
-
-                var processed = rowIndex - startRow + 1;
-                OnProgressChanged(processed, totalRows, $"Spracovaných {processed}/{totalRows} riadkov...");
-            }
-
-            OnExportCompleted(true, ExportFormat.DataTable, dataTable.Rows.Count);
-            return dataTable;
-        }
-
-        #endregion
-
-        #region IExportService - Konfigurácia
-
-        public void SetColumnFormatter(string columnName, Func<object?, string> formatter)
-        {
-            _columnFormatters[columnName] = formatter ?? throw new ArgumentNullException(nameof(formatter));
-        }
-
-        public void RemoveColumnFormatter(string columnName)
-        {
-            _columnFormatters.Remove(columnName);
-        }
-
-        #endregion
-
-        #region IExportService - Validácia
-
-        public ExportValidationResult ValidateExport(ExportFormat format)
-        {
-            var warnings = new List<string>();
-
-            if (!_isInitialized)
-                return ExportValidationResult.Invalid("ExportService nie je inicializovaný");
-
-            if (_dataService == null)
-                return ExportValidationResult.Invalid("DataManagementService nie je dostupný");
-
-            // Format-specific validácie
-            switch (format)
-            {
-                case ExportFormat.DataTable:
-                    if (_dataService.RowCount > 100000)
-                        warnings.Add("Veľký počet riadkov môže ovplyvniť výkon DataTable exportu");
-                    break;
-
-                case ExportFormat.Csv:
-                case ExportFormat.Tsv:
-                    if (_configuration!.Columns.Any(c => c.Name.Contains(",")))
-                        warnings.Add("Názvy stĺpcov obsahujú čiarky - môže ovplyvniť CSV formát");
-                    break;
-            }
-
-            return ExportValidationResult.Valid(warnings);
-        }
-
-        #endregion
-
-        #region Dependency injection
-
-        /// <summary>
-        /// Nastaví referenciu na DataManagementService (dependency injection).
-        /// </summary>
-        public void SetDataService(IDataManagementService dataService)
-        {
-            _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
-        }
-
-        #endregion
-
-        #region Private helper methods
-
-        private void EnsureInitialized()
-        {
-            if (!_isInitialized)
-                throw new InvalidOperationException("ExportService nie je inicializovaný");
-        }
-
-        private Type GetDataTableType(Type originalType)
-        {
-            // DataTable nepodporuje nullable typy
-            var nullableType = Nullable.GetUnderlyingType(originalType);
-            return nullableType ?? originalType;
-        }
-
-        private bool IsRowEmpty(CellData[] rowCells)
-        {
-            return rowCells.Where(cell => cell.ColumnDefinition.IsDataColumn)
-                          .All(cell => cell.IsEmpty);
-        }
-
-        private object? FormatCellValueForExport(CellData cell, string columnName)
-        {
-            // Custom formatter
-            if (_columnFormatters.TryGetValue(columnName, out var formatter))
-            {
-                return formatter(cell.Value);
-            }
-
-            // Default formatting
-            var value = cell.Value;
-            if (value == null) return null;
-
-            return value switch
-            {
-                DateTime dt => dt.ToString(Configuration.DateTimeFormat),
-                decimal dec => dec.ToString(Configuration.DecimalFormat),
-                double dbl => dbl.ToString(Configuration.DecimalFormat),
-                float flt => flt.ToString(Configuration.DecimalFormat),
-                _ => value
-            };
-        }
-
-        private string EscapeCsvValue(string value, string separator)
-        {
-            if (string.IsNullOrEmpty(value))
-                return value;
-
-            // Escape ak obsahuje separator, quotes alebo newlines
-            if (value.Contains(separator) || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
-            {
-                // Escape quotes
-                value = value.Replace("\"", "\"\"");
-                // Wrap in quotes
-                return $"\"{value}\"";
-            }
-
-            return value;
-        }
-
-        #endregion
-
-        #region Event helpers
-
-        private void OnProgressChanged(int processedRows, int totalRows, string operation)
-        {
-            lock (_eventLock)
-            {
-                ExportProgressChanged?.Invoke(this, new ExportProgressEventArgs(processedRows, totalRows, operation));
-            }
-        }
-
-        private void OnExportCompleted(bool success, ExportFormat format, int exportedRows, string? errorMessage = null)
-        {
-            lock (_eventLock)
-            {
-                ExportCompleted?.Invoke(this, new ExportCompletedEventArgs(success, format, exportedRows, errorMessage));
-            }
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-
-            try
-            {
-                // Clear formatters
-                _columnFormatters.Clear();
-
-                // Clear events
-                lock (_eventLock)
-                {
-                    ExportProgressChanged = null;
-                    ExportCompleted = null;
-                }
-
-                _disposed = true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error during ExportService dispose: {ex.Message}");
-            }
-        }
-
-        #endregion
+    }
+
+    /// <summary>
+    /// Štatistiky exportu
+    /// </summary>
+    public class ExportStatistics
+    {
+        public int TotalRows { get; set; }
+        public int TotalColumns { get; set; }
+        public int ValidRows { get; set; }
+        public int InvalidRows { get; set; }
+        public int EmptyRows { get; set; }
+        public Dictionary<string, ColumnStatistics> ColumnStatistics { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Štatistiky stĺpca
+    /// </summary>
+    public class ColumnStatistics
+    {
+        public string ColumnName { get; set; } = string.Empty;
+        public string DataType { get; set; } = string.Empty;
+        public int NonNullCount { get; set; }
+        public int NullCount { get; set; }
+        public int UniqueValueCount { get; set; }
     }
 }

@@ -1,612 +1,590 @@
 ﻿// Services/DataManagementService.cs
+using Microsoft.Extensions.Logging;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
+using RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Implementácia služby pre správu dát v DataGrid komponente.
-    /// Zabezpečuje CRUD operácie, správu riadkov a optimalizované načítanie dát.
+    /// Implementácia služby pre správu dát v DataGrid
     /// </summary>
-    internal class DataManagementService : IDataManagementService
+    public class DataManagementService : IDataManagementService
     {
-        #region Private fields
+        private readonly ILogger<DataManagementService> _logger;
+        private readonly List<Dictionary<string, object?>> _gridData = new();
+        private readonly Dictionary<string, Type> _columnTypes = new();
+        private readonly ResourceCleanupHelper _cleanupHelper;
 
         private GridConfiguration? _configuration;
         private bool _isInitialized = false;
-        private bool _disposed = false;
+        private readonly object _dataLock = new object();
 
-        // Dátové štruktúry
-        private readonly List<List<CellData>> _dataRows = new();
-        private readonly object _dataLock = new();
-
-        // Event handling
-        private readonly object _eventLock = new();
-
-        #endregion
-
-        #region Events
-
-        public event EventHandler<DataChangedEventArgs>? DataChanged;
-        public event EventHandler<RowAddedEventArgs>? RowAdded;
-        public event EventHandler<RowDeletedEventArgs>? RowDeleted;
-
-        #endregion
-
-        #region IDataManagementService - Inicializácia
-
-        public async Task InitializeAsync(GridConfiguration configuration)
+        public DataManagementService(ILogger<DataManagementService> logger)
         {
-            if (_isInitialized)
-                throw new InvalidOperationException("DataManagementService je už inicializovaný");
-
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-
-            lock (_dataLock)
-            {
-                _dataRows.Clear();
-            }
-
-            _isInitialized = true;
-            await Task.CompletedTask;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cleanupHelper = new ResourceCleanupHelper();
         }
 
-        public bool IsInitialized => _isInitialized;
-
-        public GridConfiguration? Configuration => _configuration;
-
-        #endregion
-
-        #region IDataManagementService - Základné operácie s dátami
-
-        public async Task LoadDataAsync(IEnumerable<Dictionary<string, object?>> data, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Inicializuje dátovú službu s konfiguráciou
+        /// </summary>
+        public Task InitializeAsync(GridConfiguration configuration)
         {
-            EnsureInitialized();
-
-            var dataArray = data.ToArray();
-            var batchSize = _configuration!.ThrottlingConfig.BatchSize;
-
-            lock (_dataLock)
+            try
             {
-                _dataRows.Clear();
-            }
+                _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
-            // Spracovať data po batch-och
-            for (int i = 0; i < dataArray.Length; i += batchSize)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var batch = dataArray.Skip(i).Take(batchSize);
-                await ProcessDataBatch(batch, i);
-
-                // Krátka pauza pre UI responsiveness
-                if (_configuration.ThrottlingConfig.EnableBatchProcessing)
+                lock (_dataLock)
                 {
-                    await Task.Delay(1, cancellationToken);
-                }
-            }
+                    // Vyčisti existujúce dáta
+                    _gridData.Clear();
+                    _columnTypes.Clear();
 
-            OnDataChanged(-1, -1, null, null); // Signal complete data reload
-        }
-
-        public async Task LoadDataAsync(DataTable dataTable, CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            var dictionaries = new List<Dictionary<string, object?>>();
-
-            foreach (DataRow row in dataTable.Rows)
-            {
-                var dict = new Dictionary<string, object?>();
-                foreach (DataColumn column in dataTable.Columns)
-                {
-                    dict[column.ColumnName] = row[column] == DBNull.Value ? null : row[column];
-                }
-                dictionaries.Add(dict);
-            }
-
-            await LoadDataAsync(dictionaries, cancellationToken);
-        }
-
-        public async Task ClearAllDataAsync(CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-
-            lock (_dataLock)
-            {
-                // Dispose všetkých CellData objektov
-                foreach (var row in _dataRows)
-                {
-                    foreach (var cell in row)
+                    // Načítaj typy stĺpcov z konfigurácie
+                    foreach (var column in _configuration.Columns)
                     {
-                        cell?.Dispose();
+                        _columnTypes[column.Name] = column.DataType;
+                    }
+
+                    // Vytvor prázdne riadky podľa konfigurácie
+                    for (int i = 0; i < _configuration.EmptyRowsCount; i++)
+                    {
+                        _gridData.Add(CreateEmptyRow());
                     }
                 }
 
-                _dataRows.Clear();
+                _isInitialized = true;
+                _logger.LogInformation("DataManagementService inicializovaný s {ColumnCount} stĺpcami a {RowCount} riadkami",
+                    _configuration.Columns.Count, _configuration.EmptyRowsCount);
+
+                return Task.CompletedTask;
             }
-
-            // Force garbage collection po veľkom cleanup
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-
-            OnDataChanged(-1, -1, null, null); // Signal complete clear
-            await Task.CompletedTask;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri inicializácii DataManagementService");
+                throw;
+            }
         }
 
-        public async Task CreateEmptyRowsAsync(int rowCount)
+        /// <summary>
+        /// Načíta dáta do gridu
+        /// </summary>
+        public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
         {
-            EnsureInitialized();
-
-            lock (_dataLock)
+            try
             {
-                for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
+                EnsureInitialized();
+
+                if (data == null)
                 {
-                    var row = CreateEmptyRow(rowIndex);
-                    _dataRows.Add(row);
-                }
-            }
-
-            await Task.CompletedTask;
-        }
-
-        #endregion
-
-        #region IDataManagementService - Operácie s riadkami
-
-        public IEnumerable<IEnumerable<CellData>> GetAllRowsData()
-        {
-            lock (_dataLock)
-            {
-                return _dataRows.Select(row => row.AsEnumerable()).ToList();
-            }
-        }
-
-        public IEnumerable<CellData>? GetRowData(int rowIndex)
-        {
-            lock (_dataLock)
-            {
-                if (rowIndex < 0 || rowIndex >= _dataRows.Count)
-                    return null;
-
-                return _dataRows[rowIndex].AsEnumerable();
-            }
-        }
-
-        public async Task<int> AddEmptyRowAsync()
-        {
-            EnsureInitialized();
-
-            int newRowIndex;
-            lock (_dataLock)
-            {
-                newRowIndex = _dataRows.Count;
-                var newRow = CreateEmptyRow(newRowIndex);
-                _dataRows.Add(newRow);
-            }
-
-            OnRowAdded(newRowIndex);
-            await Task.CompletedTask;
-            return newRowIndex;
-        }
-
-        public async Task DeleteRowContentAsync(int rowIndex)
-        {
-            EnsureInitialized();
-
-            lock (_dataLock)
-            {
-                if (rowIndex < 0 || rowIndex >= _dataRows.Count)
+                    _logger.LogWarning("Pokus o načítanie null dát");
                     return;
-
-                var row = _dataRows[rowIndex];
-
-                // Vyčistiť iba dátové bunky
-                foreach (var cell in row.Where(c => c.ColumnDefinition.IsDataColumn))
-                {
-                    cell.Clear();
                 }
-            }
 
-            // Posunúť riadky nahor
-            await CompactRowsAsync(rowIndex);
-
-            OnRowDeleted(rowIndex);
-        }
-
-        public async Task CompactRowsAsync(int fromRowIndex)
-        {
-            lock (_dataLock)
-            {
-                bool anyMove = false;
-
-                for (int i = fromRowIndex; i < _dataRows.Count - 1; i++)
+                await Task.Run(() =>
                 {
-                    var currentRow = _dataRows[i];
-                    var nextRow = _dataRows[i + 1];
-
-                    // Ak je aktuálny riadok prázdny a ďalší nie, presuň dáta
-                    if (IsRowEmptyInternal(currentRow) && !IsRowEmptyInternal(nextRow))
+                    lock (_dataLock)
                     {
-                        MoveRowData(nextRow, currentRow);
-                        ClearRowData(nextRow);
-                        anyMove = true;
+                        _logger.LogInformation("Načítavajú sa dáta: {RowCount} riadkov", data.Count);
+
+                        // Vyčisti existujúce dáta
+                        _gridData.Clear();
+
+                        // Načítaj nové dáta
+                        foreach (var rowData in data)
+                        {
+                            var processedRow = ProcessAndValidateRowData(rowData);
+                            _gridData.Add(processedRow);
+                        }
+
+                        // Pridaj dodatočné prázdne riadky ak je potrebné
+                        var currentRowCount = _gridData.Count;
+                        var requiredRowCount = Math.Max(currentRowCount, _configuration!.EmptyRowsCount);
+
+                        for (int i = currentRowCount; i < requiredRowCount; i++)
+                        {
+                            _gridData.Add(CreateEmptyRow());
+                        }
+
+                        _logger.LogInformation("Dáta načítané: {TotalRows} riadkov ({DataRows} s dátami, {EmptyRows} prázdnych)",
+                            _gridData.Count, data.Count, _gridData.Count - data.Count);
                     }
-                }
+                });
 
-                // Aktualizovať row indexy
-                if (anyMove)
-                {
-                    UpdateRowIndices();
-                }
+                // Vyvolaj garbage collection pre uvoľnenie pamäte
+                await _cleanupHelper.ForceGarbageCollectionAsync();
             }
-
-            await Task.CompletedTask;
-        }
-
-        #endregion
-
-        #region IDataManagementService - Operácie s bunkami
-
-        public CellData? GetCellData(int rowIndex, int columnIndex)
-        {
-            lock (_dataLock)
+            catch (Exception ex)
             {
-                if (rowIndex < 0 || rowIndex >= _dataRows.Count)
-                    return null;
-
-                var row = _dataRows[rowIndex];
-                if (columnIndex < 0 || columnIndex >= row.Count)
-                    return null;
-
-                return row[columnIndex];
+                _logger.LogError(ex, "Chyba pri načítavaní dát");
+                throw;
             }
         }
 
-        public async Task SetCellValueAsync(int rowIndex, int columnIndex, object? value)
+        /// <summary>
+        /// Získa všetky dáta z gridu
+        /// </summary>
+        public Task<List<Dictionary<string, object?>>> GetAllDataAsync()
         {
-            var cellData = GetCellData(rowIndex, columnIndex);
-            if (cellData == null) return;
-
-            var oldValue = cellData.Value;
-            cellData.Value = value;
-
-            OnDataChanged(rowIndex, columnIndex, oldValue, value);
-            await Task.CompletedTask;
-        }
-
-        public async Task CommitCellChangesAsync(int rowIndex, int columnIndex)
-        {
-            var cellData = GetCellData(rowIndex, columnIndex);
-            if (cellData == null) return;
-
-            cellData.CommitChanges();
-            await Task.CompletedTask;
-        }
-
-        public async Task RevertCellChangesAsync(int rowIndex, int columnIndex)
-        {
-            var cellData = GetCellData(rowIndex, columnIndex);
-            if (cellData == null) return;
-
-            var oldValue = cellData.Value;
-            cellData.RevertChanges();
-            var newValue = cellData.Value;
-
-            OnDataChanged(rowIndex, columnIndex, oldValue, newValue);
-            await Task.CompletedTask;
-        }
-
-        #endregion
-
-        #region IDataManagementService - Bulk operácie
-
-        public async Task SetMultipleCellValuesAsync(Dictionary<(int row, int col), object?> cellUpdates, CancellationToken cancellationToken = default)
-        {
-            var batchSize = _configuration!.ThrottlingConfig.BatchSize;
-            var updates = cellUpdates.ToArray();
-
-            for (int i = 0; i < updates.Length; i += batchSize)
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                EnsureInitialized();
 
-                var batch = updates.Skip(i).Take(batchSize);
+                List<Dictionary<string, object?>> result;
 
-                foreach (var update in batch)
-                {
-                    await SetCellValueAsync(update.Key.row, update.Key.col, update.Value);
-                }
-
-                // Pauza pre responsiveness
-                if (_configuration.ThrottlingConfig.EnableBatchProcessing)
-                {
-                    await Task.Delay(1, cancellationToken);
-                }
-            }
-        }
-
-        public async Task EnsureCapacityAsync(int requiredRows, int requiredColumns)
-        {
-            EnsureInitialized();
-
-            lock (_dataLock)
-            {
-                // Pridať riadky ak je potreba
-                while (_dataRows.Count < requiredRows)
-                {
-                    var newRow = CreateEmptyRow(_dataRows.Count);
-                    _dataRows.Add(newRow);
-                }
-
-                // Stĺpce sa nedajú dynamicky pridávať (sú definované konfiguráciou)
-                // Toto je len validácia
-                var maxDataColumns = _configuration!.DataColumnCount;
-                if (requiredColumns > maxDataColumns)
-                {
-                    throw new InvalidOperationException($"Požadované stĺpce ({requiredColumns}) prekračujú konfiguráciu ({maxDataColumns})");
-                }
-            }
-
-            await Task.CompletedTask;
-        }
-
-        #endregion
-
-        #region IDataManagementService - Štatistiky a info
-
-        public int RowCount
-        {
-            get
-            {
                 lock (_dataLock)
                 {
-                    return _dataRows.Count;
+                    // Vytvor deep copy dát
+                    result = _gridData.Select(row => new Dictionary<string, object?>(row)).ToList();
                 }
+
+                _logger.LogDebug("Získaných {RowCount} riadkov dát", result.Count);
+                return Task.FromResult(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri získavaní všetkých dát");
+                throw;
             }
         }
 
-        public int ColumnCount => _configuration?.TotalColumnCount ?? 0;
-
-        public int DataColumnCount => _configuration?.DataColumnCount ?? 0;
-
-        public int NonEmptyRowCount
+        /// <summary>
+        /// Získa dáta špecifického riadku
+        /// </summary>
+        public Task<Dictionary<string, object?>> GetRowDataAsync(int rowIndex)
         {
-            get
+            try
             {
+                EnsureInitialized();
+
                 lock (_dataLock)
                 {
-                    return _dataRows.Count(row => !IsRowEmptyInternal(row));
-                }
-            }
-        }
-
-        public bool HasPendingChanges
-        {
-            get
-            {
-                lock (_dataLock)
-                {
-                    return _dataRows.SelectMany(row => row).Any(cell => cell.HasChanges);
-                }
-            }
-        }
-
-        #endregion
-
-        #region IDataManagementService - Memory management
-
-        public async Task CleanupUnusedResourcesAsync()
-        {
-            lock (_dataLock)
-            {
-                // Nájsť prázdne riadky na konci a odstrániť ich
-                while (_dataRows.Count > 0 && IsRowEmptyInternal(_dataRows.Last()))
-                {
-                    var lastRow = _dataRows.Last();
-                    foreach (var cell in lastRow)
+                    if (rowIndex < 0 || rowIndex >= _gridData.Count)
                     {
-                        cell?.Dispose();
+                        _logger.LogWarning("Neplatný index riadku: {RowIndex} (celkom {TotalRows} riadkov)", rowIndex, _gridData.Count);
+                        return Task.FromResult(new Dictionary<string, object?>());
                     }
-                    _dataRows.RemoveAt(_dataRows.Count - 1);
+
+                    var result = new Dictionary<string, object?>(_gridData[rowIndex]);
+                    _logger.LogDebug("Získané dáta riadku {RowIndex}", rowIndex);
+                    return Task.FromResult(result);
                 }
             }
-
-            // Force garbage collection
-            GC.Collect();
-            await Task.CompletedTask;
-        }
-
-        public MemoryUsageInfo GetMemoryUsage()
-        {
-            lock (_dataLock)
+            catch (Exception ex)
             {
-                var totalCells = _dataRows.SelectMany(row => row).Count();
-                var activeCells = _dataRows.SelectMany(row => row).Count(cell => !cell.IsEmpty);
-                var estimatedBytes = totalCells * 100; // Rough estimate
-
-                return new MemoryUsageInfo
-                {
-                    TotalCellsAllocated = totalCells,
-                    ActiveCellsCount = activeCells,
-                    EstimatedMemoryUsageBytes = estimatedBytes,
-                    CachedUIElementsCount = 0 // Would need UI reference
-                };
+                _logger.LogError(ex, "Chyba pri získavaní dát riadku {RowIndex}", rowIndex);
+                throw;
             }
         }
 
-        #endregion
-
-        #region Private helper methods
-
-        private async Task ProcessDataBatch(IEnumerable<Dictionary<string, object?>> batch, int startIndex)
+        /// <summary>
+        /// Nastaví hodnotu bunky
+        /// </summary>
+        public Task SetCellValueAsync(int rowIndex, string columnName, object? value)
         {
-            var batchArray = batch.ToArray();
-
-            for (int i = 0; i < batchArray.Length; i++)
+            try
             {
-                var rowData = batchArray[i];
-                var rowIndex = startIndex + i;
+                EnsureInitialized();
 
-                var row = CreateRowFromDictionary(rowData, rowIndex);
+                if (string.IsNullOrWhiteSpace(columnName))
+                    throw new ArgumentException("ColumnName nemôže byť prázdny", nameof(columnName));
 
                 lock (_dataLock)
                 {
-                    _dataRows.Add(row);
-                }
-            }
-
-            await Task.CompletedTask;
-        }
-
-        private List<CellData> CreateEmptyRow(int rowIndex)
-        {
-            var row = new List<CellData>();
-
-            foreach (var column in _configuration!.Columns)
-            {
-                var cell = new CellData(rowIndex, row.Count, column);
-                row.Add(cell);
-            }
-
-            return row;
-        }
-
-        private List<CellData> CreateRowFromDictionary(Dictionary<string, object?> data, int rowIndex)
-        {
-            var row = new List<CellData>();
-
-            foreach (var column in _configuration!.Columns)
-            {
-                var cell = new CellData(rowIndex, row.Count, column);
-
-                // Nastaviť hodnotu ak existuje v dátach
-                if (data.TryGetValue(column.Name, out var value))
-                {
-                    if (cell.TryConvertValue(value, out var convertedValue))
+                    if (rowIndex < 0 || rowIndex >= _gridData.Count)
                     {
-                        cell.SetValueWithoutChange(convertedValue);
+                        _logger.LogWarning("Neplatný index riadku pri nastavovaní hodnoty: {RowIndex}", rowIndex);
+                        return Task.CompletedTask;
                     }
+
+                    var row = _gridData[rowIndex];
+                    var convertedValue = ConvertValueToColumnType(columnName, value);
+                    row[columnName] = convertedValue;
+
+                    _logger.LogDebug("Nastavená hodnota bunky [{RowIndex}, {ColumnName}] = {Value}",
+                        rowIndex, columnName, convertedValue);
                 }
 
-                row.Add(cell);
+                return Task.CompletedTask;
             }
-
-            return row;
-        }
-
-        private bool IsRowEmptyInternal(List<CellData> row)
-        {
-            // Riadok je prázdny ak sú všetky dátové bunky prázdne
-            return row.Where(cell => cell.ColumnDefinition.IsDataColumn)
-                      .All(cell => cell.IsEmpty);
-        }
-
-        private void MoveRowData(List<CellData> sourceRow, List<CellData> targetRow)
-        {
-            for (int i = 0; i < Math.Min(sourceRow.Count, targetRow.Count); i++)
+            catch (Exception ex)
             {
-                var sourceCell = sourceRow[i];
-                var targetCell = targetRow[i];
+                _logger.LogError(ex, "Chyba pri nastavovaní hodnoty bunky [{RowIndex}, {ColumnName}]", rowIndex, columnName);
+                throw;
+            }
+        }
 
-                if (sourceCell.ColumnDefinition.IsDataColumn && targetCell.ColumnDefinition.IsDataColumn)
+        /// <summary>
+        /// Získa hodnotu bunky
+        /// </summary>
+        public Task<object?> GetCellValueAsync(int rowIndex, string columnName)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                if (string.IsNullOrWhiteSpace(columnName))
+                    throw new ArgumentException("ColumnName nemôže byť prázdny", nameof(columnName));
+
+                lock (_dataLock)
                 {
-                    targetCell.SetValueWithoutChange(sourceCell.Value);
+                    if (rowIndex < 0 || rowIndex >= _gridData.Count)
+                    {
+                        _logger.LogWarning("Neplatný index riadku pri získavaní hodnoty: {RowIndex}", rowIndex);
+                        return Task.FromResult<object?>(null);
+                    }
+
+                    var row = _gridData[rowIndex];
+                    var value = row.ContainsKey(columnName) ? row[columnName] : null;
+
+                    _logger.LogDebug("Získaná hodnota bunky [{RowIndex}, {ColumnName}] = {Value}",
+                        rowIndex, columnName, value);
+
+                    return Task.FromResult(value);
                 }
             }
-        }
-
-        private void ClearRowData(List<CellData> row)
-        {
-            foreach (var cell in row.Where(c => c.ColumnDefinition.IsDataColumn))
+            catch (Exception ex)
             {
-                cell.Clear();
+                _logger.LogError(ex, "Chyba pri získavaní hodnoty bunky [{RowIndex}, {ColumnName}]", rowIndex, columnName);
+                throw;
             }
         }
 
-        private void UpdateRowIndices()
+        /// <summary>
+        /// Pridá nový riadok
+        /// </summary>
+        public Task<int> AddRowAsync(Dictionary<string, object?>? initialData = null)
         {
-            // CellData má readonly RowIndex, takže by sme museli recreate cells
-            // Pre jednoduchosť zatiaľ nechávame staré indexy
-            // V produkčnej verzii by sme mali recreate all cells s novými indexmi
+            try
+            {
+                EnsureInitialized();
+
+                int newRowIndex;
+
+                lock (_dataLock)
+                {
+                    // Kontrola maxRows limitu
+                    if (_configuration!.MaxRows > 0 && _gridData.Count >= _configuration.MaxRows)
+                    {
+                        _logger.LogWarning("Dosiahnutý maximálny počet riadkov: {MaxRows}", _configuration.MaxRows);
+                        return Task.FromResult(-1);
+                    }
+
+                    Dictionary<string, object?> newRow;
+
+                    if (initialData != null)
+                    {
+                        newRow = ProcessAndValidateRowData(initialData);
+                    }
+                    else
+                    {
+                        newRow = CreateEmptyRow();
+                    }
+
+                    _gridData.Add(newRow);
+                    newRowIndex = _gridData.Count - 1;
+
+                    _logger.LogDebug("Pridaný nový riadok na index {RowIndex}", newRowIndex);
+                }
+
+                return Task.FromResult(newRowIndex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri pridávaní nového riadku");
+                throw;
+            }
         }
+
+        /// <summary>
+        /// Zmaže riadok (vyčisti jeho obsah)
+        /// </summary>
+        public async Task DeleteRowAsync(int rowIndex)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                lock (_dataLock)
+                {
+                    if (rowIndex < 0 || rowIndex >= _gridData.Count)
+                    {
+                        _logger.LogWarning("Neplatný index riadku pri mazaní: {RowIndex}", rowIndex);
+                        return;
+                    }
+
+                    // Vyčisti obsah riadku (ale nenechávaj ho prázdny - nahraď prázdnym riadkom)
+                    var emptyRow = CreateEmptyRow();
+                    _gridData[rowIndex] = emptyRow;
+
+                    _logger.LogDebug("Vymazaný riadok {RowIndex}", rowIndex);
+                }
+
+                // Kompaktuj riadky
+                await CompactRowsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri mazaní riadku {RowIndex}", rowIndex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Vymaže všetky dáta
+        /// </summary>
+        public async Task ClearAllDataAsync()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                await Task.Run(async () =>
+                {
+                    lock (_dataLock)
+                    {
+                        _logger.LogInformation("Vymazávajú sa všetky dáta ({RowCount} riadkov)", _gridData.Count);
+
+                        // Vyčisti všetky dáta
+                        _gridData.Clear();
+
+                        // Vytvor nové prázdne riadky
+                        for (int i = 0; i < _configuration!.EmptyRowsCount; i++)
+                        {
+                            _gridData.Add(CreateEmptyRow());
+                        }
+
+                        _logger.LogInformation("Všetky dáta vymazané, vytvorených {EmptyRows} prázdnych riadkov",
+                            _configuration.EmptyRowsCount);
+                    }
+
+                    // Vyčisti pamäť
+                    await _cleanupHelper.ForceGarbageCollectionAsync();
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri vymazávaní všetkých dát");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Kompaktuje riadky (odstráni prázdne medzery)
+        /// </summary>
+        public Task CompactRowsAsync()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                return Task.Run(() =>
+                {
+                    lock (_dataLock)
+                    {
+                        _logger.LogDebug("Spúšťa sa kompaktovanie riadkov");
+
+                        var nonEmptyRows = new List<Dictionary<string, object?>>();
+                        var emptyRowCount = 0;
+
+                        // Rozdeľ na neprázdne a prázdne riadky
+                        foreach (var row in _gridData)
+                        {
+                            if (IsRowEmpty(row))
+                            {
+                                emptyRowCount++;
+                            }
+                            else
+                            {
+                                nonEmptyRows.Add(row);
+                            }
+                        }
+
+                        // Vyčisti kolekciu a pridaj najprv neprázdne riadky
+                        _gridData.Clear();
+                        _gridData.AddRange(nonEmptyRows);
+
+                        // Pridaj potrebný počet prázdnych riadkov
+                        var requiredEmptyRows = Math.Max(_configuration!.EmptyRowsCount, emptyRowCount);
+                        for (int i = 0; i < requiredEmptyRows; i++)
+                        {
+                            _gridData.Add(CreateEmptyRow());
+                        }
+
+                        _logger.LogDebug("Kompaktovanie dokončené: {NonEmptyRows} neprázdnych, {EmptyRows} prázdnych riadkov",
+                            nonEmptyRows.Count, requiredEmptyRows);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri kompaktovaní riadkov");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa počet neprázdnych riadkov
+        /// </summary>
+        public Task<int> GetNonEmptyRowCountAsync()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                int count;
+
+                lock (_dataLock)
+                {
+                    count = _gridData.Count(row => !IsRowEmpty(row));
+                }
+
+                _logger.LogDebug("Počet neprázdnych riadkov: {Count}", count);
+                return Task.FromResult(count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri počítaní neprázdnych riadkov");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Kontroluje či je riadok prázdny
+        /// </summary>
+        public Task<bool> IsRowEmptyAsync(int rowIndex)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                lock (_dataLock)
+                {
+                    if (rowIndex < 0 || rowIndex >= _gridData.Count)
+                    {
+                        _logger.LogWarning("Neplatný index riadku pri kontrole prázdnosti: {RowIndex}", rowIndex);
+                        return Task.FromResult(true);
+                    }
+
+                    var isEmpty = IsRowEmpty(_gridData[rowIndex]);
+                    _logger.LogDebug("Riadok {RowIndex} je prázdny: {IsEmpty}", rowIndex, isEmpty);
+                    return Task.FromResult(isEmpty);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri kontrole prázdnosti riadku {RowIndex}", rowIndex);
+                throw;
+            }
+        }
+
+        #region Private Helper Methods
 
         private void EnsureInitialized()
         {
             if (!_isInitialized)
-                throw new InvalidOperationException("DataManagementService nie je inicializovaný");
+                throw new InvalidOperationException("DataManagementService nie je inicializovaný. Zavolajte InitializeAsync() najprv.");
+        }
+
+        private Dictionary<string, object?> CreateEmptyRow()
+        {
+            var row = new Dictionary<string, object?>();
+
+            if (_configuration?.Columns != null)
+            {
+                foreach (var column in _configuration.Columns)
+                {
+                    row[column.Name] = column.DefaultValue;
+                }
+
+                // Pridaj ValidAlerts stĺpec
+                row["ValidAlerts"] = string.Empty;
+            }
+
+            return row;
+        }
+
+        private Dictionary<string, object?> ProcessAndValidateRowData(Dictionary<string, object?> rowData)
+        {
+            var processedRow = CreateEmptyRow();
+
+            foreach (var kvp in rowData)
+            {
+                var columnName = kvp.Key;
+                var value = kvp.Value;
+
+                // Konvertuj hodnotu na správny typ pre stĺpec
+                var convertedValue = ConvertValueToColumnType(columnName, value);
+                processedRow[columnName] = convertedValue;
+            }
+
+            return processedRow;
+        }
+
+        private object? ConvertValueToColumnType(string columnName, object? value)
+        {
+            if (value == null) return null;
+
+            if (_columnTypes.ContainsKey(columnName))
+            {
+                var targetType = _columnTypes[columnName];
+                return DataTypeConverter.ConvertValue(value, targetType);
+            }
+
+            return value;
+        }
+
+        private bool IsRowEmpty(Dictionary<string, object?> row)
+        {
+            foreach (var kvp in row)
+            {
+                var columnName = kvp.Key;
+                var value = kvp.Value;
+
+                // Ignoruj špeciálne stĺpce
+                if (columnName == "DeleteRows" || columnName == "ValidAlerts")
+                    continue;
+
+                // Ak je nejaká hodnota vyplnená, riadok nie je prázdny
+                if (value != null && !string.IsNullOrWhiteSpace(value.ToString()))
+                    return false;
+            }
+
+            return true;
         }
 
         #endregion
 
-        #region Event helpers
+        #region Public Properties
 
-        private void OnDataChanged(int rowIndex, int columnIndex, object? oldValue, object? newValue)
+        /// <summary>
+        /// Celkový počet riadkov
+        /// </summary>
+        public int TotalRowCount
         {
-            lock (_eventLock)
-            {
-                DataChanged?.Invoke(this, new DataChangedEventArgs(rowIndex, columnIndex, oldValue, newValue));
-            }
-        }
-
-        private void OnRowAdded(int rowIndex)
-        {
-            lock (_eventLock)
-            {
-                RowAdded?.Invoke(this, new RowAddedEventArgs(rowIndex));
-            }
-        }
-
-        private void OnRowDeleted(int rowIndex)
-        {
-            lock (_eventLock)
-            {
-                RowDeleted?.Invoke(this, new RowDeletedEventArgs(rowIndex));
-            }
-        }
-
-        #endregion
-
-        #region IDisposable
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-
-            try
+            get
             {
                 lock (_dataLock)
                 {
-                    // Dispose všetkých buniek
-                    foreach (var row in _dataRows)
-                    {
-                        foreach (var cell in row)
-                        {
-                            cell?.Dispose();
-                        }
-                    }
-                    _dataRows.Clear();
+                    return _gridData.Count;
                 }
-
-                // Clear events
-                lock (_eventLock)
-                {
-                    DataChanged = null;
-                    RowAdded = null;
-                    RowDeleted = null;
-                }
-
-                _disposed = true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error during DataManagementService dispose: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Počet stĺpcov
+        /// </summary>
+        public int ColumnCount => _columnTypes.Count;
+
+        /// <summary>
+        /// Názvy všetkých stĺpcov
+        /// </summary>
+        public IReadOnlyList<string> ColumnNames => _columnTypes.Keys.ToList();
 
         #endregion
     }

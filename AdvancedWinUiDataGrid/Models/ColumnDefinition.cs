@@ -1,219 +1,247 @@
-﻿// Models/ColumnDefinition.cs
+﻿// Models/ColumnDefinition.cs - ROZŠÍRENÉ
 using System;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
 {
     /// <summary>
-    /// Definícia stĺpca pre AdvancedDataGrid komponent.
-    /// Obsahuje všetky potrebné informácie pre dynamické generovanie stĺpcov.
+    /// Definícia stĺpca v DataGrid
     /// </summary>
     public class ColumnDefinition
     {
-        #region Konštruktory
+        /// <summary>
+        /// Názov stĺpca (jedinečný identifikátor)
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// Vytvára novú definíciu stĺpca.
+        /// Dátový typ stĺpca
         /// </summary>
-        /// <param name="name">Názov stĺpca (kľúč v dátach)</param>
-        /// <param name="dataType">Dátový typ stĺpca</param>
+        public Type DataType { get; set; } = typeof(string);
+
+        /// <summary>
+        /// Header text (zobrazovaný názov)
+        /// </summary>
+        public string? Header { get; set; }
+
+        /// <summary>
+        /// Šírka stĺpca
+        /// </summary>
+        public double Width { get; set; } = 150;
+
+        /// <summary>
+        /// Minimálna šírka stĺpca
+        /// </summary>
+        public double MinWidth { get; set; } = 50;
+
+        /// <summary>
+        /// Maximálna šírka stĺpca (0 = neobmedzená)
+        /// </summary>
+        public double MaxWidth { get; set; } = 0;
+
+        /// <summary>
+        /// Či je stĺpec viditeľný
+        /// </summary>
+        public bool IsVisible { get; set; } = true;
+
+        /// <summary>
+        /// Či je stĺpec editovateľný
+        /// </summary>
+        public bool IsEditable { get; set; } = true;
+
+        /// <summary>
+        /// Či je stĺpec sortovateľný
+        /// </summary>
+        public bool IsSortable { get; set; } = true;
+
+        /// <summary>
+        /// Či je stĺpec filtrovateľný
+        /// </summary>
+        public bool IsFilterable { get; set; } = true;
+
+        /// <summary>
+        /// Či sa má stĺpec zmeniť podľa obsahu
+        /// </summary>
+        public bool AutoResize { get; set; } = false;
+
+        /// <summary>
+        /// Výchozí hodnota pre nové bunky
+        /// </summary>
+        public object? DefaultValue { get; set; }
+
+        /// <summary>
+        /// Format string pre zobrazenie hodnôt
+        /// </summary>
+        public string? DisplayFormat { get; set; }
+
+        /// <summary>
+        /// Tooltip text pre header
+        /// </summary>
+        public string? ToolTip { get; set; }
+
+        /// <summary>
+        /// CSS class alebo style pre stĺpec
+        /// </summary>
+        public string? CssClass { get; set; }
+
+        /// <summary>
+        /// Poradie stĺpca (pre sorting)
+        /// </summary>
+        public int Order { get; set; } = 0;
+
+        /// <summary>
+        /// Či je toto špeciálny stĺpec (DeleteRows, ValidAlerts)
+        /// </summary>
+        public bool IsSpecialColumn => Name == "DeleteRows" || Name == "ValidAlerts";
+
+        /// <summary>
+        /// Typ špeciálneho stĺpca
+        /// </summary>
+        public SpecialColumnType SpecialColumnType
+        {
+            get
+            {
+                return Name switch
+                {
+                    "DeleteRows" => SpecialColumnType.DeleteButton,
+                    "ValidAlerts" => SpecialColumnType.ValidationAlerts,
+                    _ => SpecialColumnType.None
+                };
+            }
+        }
+
+        // Konštruktory
+        public ColumnDefinition() { }
+
         public ColumnDefinition(string name, Type dataType)
         {
-            Name = name ?? throw new ArgumentNullException(nameof(name));
-            DataType = dataType ?? throw new ArgumentNullException(nameof(dataType));
+            Name = name;
+            DataType = dataType;
             Header = name; // Default header je názov stĺpca
-            Width = 150; // Default šírka
-            MinWidth = 60; // Default minimálna šírka
-            MaxWidth = double.PositiveInfinity; // Bez limitu
-            IsReadOnly = false;
-            IsVisible = true;
         }
 
-        #endregion
-
-        #region Základné properties
-
-        /// <summary>
-        /// Názov stĺpca - kľúč v dátach. Nesmie byť null alebo prázdny.
-        /// </summary>
-        public string Name { get; }
-
-        /// <summary>
-        /// Dátový typ stĺpca (string, int, DateTime, atď.)
-        /// </summary>
-        public Type DataType { get; }
-
-        /// <summary>
-        /// Text ktorý sa zobrazí v hlavičke stĺpca. Môže obsahovať emoji a špeciálne znaky.
-        /// </summary>
-        public string Header { get; set; }
-
-        #endregion
-
-        #region Rozmery stĺpca
-
-        /// <summary>
-        /// Šírka stĺpca v pixeloch. Default: 150px
-        /// </summary>
-        public double Width { get; set; }
-
-        /// <summary>
-        /// Minimálna šírka stĺpca v pixeloch. Default: 60px
-        /// </summary>
-        public double MinWidth { get; set; }
-
-        /// <summary>
-        /// Maximálna šírka stĺpca v pixeloch. Default: neobmedzené
-        /// </summary>
-        public double MaxWidth { get; set; }
-
-        #endregion
-
-        #region Správanie stĺpca
-
-        /// <summary>
-        /// Určuje či je stĺpec iba na čítanie. Default: false
-        /// </summary>
-        public bool IsReadOnly { get; set; }
-
-        /// <summary>
-        /// Určuje či je stĺpec viditeľný. Default: true
-        /// </summary>
-        public bool IsVisible { get; set; }
-
-        /// <summary>
-        /// Placeholder text pre prázdne bunky.
-        /// </summary>
-        public string? PlaceholderText { get; set; }
-
-        #endregion
-
-        #region Špeciálne stĺpce
-
-        /// <summary>
-        /// Určuje či je to špeciálny "DeleteRows" stĺpec.
-        /// </summary>
-        public bool IsDeleteColumn => Name.Equals("DeleteRows", StringComparison.OrdinalIgnoreCase);
-
-        /// <summary>
-        /// Určuje či je to špeciálny "ValidAlerts" stĺpec.
-        /// </summary>
-        public bool IsValidationColumn => Name.Equals("ValidAlerts", StringComparison.OrdinalIgnoreCase);
-
-        /// <summary>
-        /// Určuje či je to štandardný dátový stĺpec (nie špeciálny).
-        /// </summary>
-        public bool IsDataColumn => !IsDeleteColumn && !IsValidationColumn;
-
-        #endregion
-
-        #region Validácia
-
-        /// <summary>
-        /// Validuje či je definícia stĺpca správna.
-        /// </summary>
-        /// <returns>True ak je definícia validná</returns>
-        public bool IsValid()
+        public ColumnDefinition(string name, Type dataType, string header) : this(name, dataType)
         {
-            if (string.IsNullOrWhiteSpace(Name))
-                return false;
-
-            if (DataType == null)
-                return false;
-
-            if (Width < 0 || MinWidth < 0 || MaxWidth < 0)
-                return false;
-
-            if (MinWidth > MaxWidth)
-                return false;
-
-            return true;
+            Header = header;
         }
 
         /// <summary>
-        /// Vráti chybové správy validácie ako zoznam.
+        /// Validuje definíciu stĺpca
         /// </summary>
-        public List<string> GetValidationErrors()
+        public void Validate()
         {
-            var errors = new List<string>();
-
             if (string.IsNullOrWhiteSpace(Name))
-                errors.Add("Column name cannot be null or empty");
+                throw new ArgumentException("Názov stĺpca nemôže byť prázdny");
 
             if (DataType == null)
-                errors.Add("DataType cannot be null");
+                throw new ArgumentException("DataType nemôže byť null");
 
             if (Width < 0)
-                errors.Add("Width cannot be negative");
+                throw new ArgumentException("Width nemôže byť záporná");
 
             if (MinWidth < 0)
-                errors.Add("MinWidth cannot be negative");
+                throw new ArgumentException("MinWidth nemôže byť záporná");
 
             if (MaxWidth < 0)
-                errors.Add("MaxWidth cannot be negative");
+                throw new ArgumentException("MaxWidth nemôže byť záporná");
 
-            if (MinWidth > MaxWidth)
-                errors.Add("MinWidth cannot be greater than MaxWidth");
+            if (MaxWidth > 0 && MinWidth > MaxWidth)
+                throw new ArgumentException("MinWidth nemôže byť väčšia ako MaxWidth");
 
-            return errors;
+            if (Width < MinWidth)
+                throw new ArgumentException("Width nemôže byť menšia ako MinWidth");
+
+            if (MaxWidth > 0 && Width > MaxWidth)
+                throw new ArgumentException("Width nemôže byť väčšia ako MaxWidth");
         }
 
-        #endregion
+        /// <summary>
+        /// Vytvorí kópiu definície stĺpca
+        /// </summary>
+        public ColumnDefinition Clone()
+        {
+            return new ColumnDefinition
+            {
+                Name = Name,
+                DataType = DataType,
+                Header = Header,
+                Width = Width,
+                MinWidth = MinWidth,
+                MaxWidth = MaxWidth,
+                IsVisible = IsVisible,
+                IsEditable = IsEditable,
+                IsSortable = IsSortable,
+                IsFilterable = IsFilterable,
+                AutoResize = AutoResize,
+                DefaultValue = DefaultValue,
+                DisplayFormat = DisplayFormat,
+                ToolTip = ToolTip,
+                CssClass = CssClass,
+                Order = Order
+            };
+        }
 
-        #region Overrides
+        /// <summary>
+        /// Konvertuje hodnotu na správny typ pre tento stĺpec
+        /// </summary>
+        public object? ConvertValue(object? value)
+        {
+            if (value == null) return DefaultValue;
+
+            try
+            {
+                if (DataType == typeof(string))
+                    return value.ToString();
+
+                if (DataType.IsAssignableFrom(value.GetType()))
+                    return value;
+
+                return Convert.ChangeType(value, DataType);
+            }
+            catch
+            {
+                return DefaultValue;
+            }
+        }
+
+        /// <summary>
+        /// Formatuje hodnotu pre zobrazenie
+        /// </summary>
+        public string FormatDisplayValue(object? value)
+        {
+            if (value == null) return string.Empty;
+
+            if (!string.IsNullOrEmpty(DisplayFormat))
+            {
+                try
+                {
+                    if (value is IFormattable formattable)
+                        return formattable.ToString(DisplayFormat, null);
+                }
+                catch
+                {
+                    // Ak formátovanie zlyhá, vráť základný string
+                }
+            }
+
+            return value.ToString() ?? string.Empty;
+        }
 
         public override string ToString()
         {
-            return $"Column '{Name}' ({DataType.Name}) - Width: {Width}, Header: '{Header}'";
+            return $"{Name} ({DataType.Name}) - {Header}";
         }
+    }
 
-        public override bool Equals(object? obj)
-        {
-            if (obj is ColumnDefinition other)
-            {
-                return Name.Equals(other.Name, StringComparison.OrdinalIgnoreCase);
-            }
-            return false;
-        }
-
-        public override int GetHashCode()
-        {
-            return Name.ToLowerInvariant().GetHashCode();
-        }
-
-        #endregion
-
-        #region Factory Methods
-
-        /// <summary>
-        /// Vytvorí DeleteRows stĺpec s predvolenými nastaveniami.
-        /// </summary>
-        public static ColumnDefinition CreateDeleteColumn()
-        {
-            return new ColumnDefinition("DeleteRows", typeof(string))
-            {
-                Header = "🗑️",
-                Width = 40,
-                MinWidth = 30,
-                MaxWidth = 50,
-                IsReadOnly = true
-            };
-        }
-
-        /// <summary>
-        /// Vytvorí ValidAlerts stĺpec s predvolenými nastaveniami.
-        /// </summary>
-        public static ColumnDefinition CreateValidationColumn()
-        {
-            return new ColumnDefinition("ValidAlerts", typeof(string))
-            {
-                Header = "⚠️ Validácie",
-                Width = 200,
-                MinWidth = 150,
-                MaxWidth = 400,
-                IsReadOnly = true
-            };
-        }
-
-        #endregion
+    /// <summary>
+    /// Typ špeciálneho stĺpca
+    /// </summary>
+    public enum SpecialColumnType
+    {
+        None,
+        DeleteButton,
+        ValidationAlerts,
+        RowIndex,
+        Checkbox,
+        Action
     }
 }
