@@ -37,20 +37,6 @@
                     MinWidth="{Binding MinWidth, FallbackValue=100}"
                     MaxWidth="{Binding MaxWidth, FallbackValue=300}">
 
-                <!-- ✅ OPRAVENÉ XLS0415: Bez Triggers, použitím PointerEntered/Exited events -->
-                <Border.PointerEntered>
-                    <EventTrigger RoutedEvent="PointerEntered">
-                        <BeginStoryboard>
-                            <Storyboard>
-                                <ColorAnimation Duration="0:0:0.2" 
-                                               Storyboard.TargetName="HeaderBorder"
-                                               Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                               To="{x:Bind ColorTheme.HoverColor, Mode=OneWay}"/>
-                            </Storyboard>
-                        </BeginStoryboard>
-                    </EventTrigger>
-                </Border.PointerEntered>
-
                 <TextBlock Text="{Binding Header}" 
                           FontWeight="SemiBold"
                           Foreground="{StaticResource HeaderTextBrush}"
@@ -89,16 +75,16 @@
                         TextChanged="OnCellTextChanged"
                         Tag="{Binding}">
 
-                    <!-- ✅ OPRAVENÉ: VisualStateManager namiesto Triggers -->
+                    <!-- ✅ OPRAVENÉ: VisualStateManager s StaticResource namiesto {x:Bind} -->
                     <VisualStateManager.VisualStateGroups>
                         <VisualStateGroup x:Name="EditingStates">
                             <VisualState x:Name="Normal"/>
                             <VisualState x:Name="Editing">
                                 <Storyboard>
-                                    <ColorAnimation Duration="0:0:0.1"
-                                                   Storyboard.TargetName="CellBorder"
-                                                   Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                   To="{x:Bind ColorTheme.EditingCellColor, Mode=OneWay}"/>
+                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="CellBorder"
+                                                                   Storyboard.TargetProperty="Background">
+                                        <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource EditingCellBrush}"/>
+                                    </ObjectAnimationUsingKeyFrames>
                                 </Storyboard>
                             </VisualState>
                         </VisualStateGroup>
@@ -107,10 +93,10 @@
                             <VisualState x:Name="Valid"/>
                             <VisualState x:Name="Invalid">
                                 <Storyboard>
-                                    <ColorAnimation Duration="0:0:0.2"
-                                                   Storyboard.TargetName="CellBorder"
-                                                   Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
-                                                   To="{x:Bind ColorTheme.ValidationErrorColor, Mode=OneWay}"/>
+                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="CellBorder"
+                                                                   Storyboard.TargetProperty="BorderBrush">
+                                        <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource ValidationErrorBrush}"/>
+                                    </ObjectAnimationUsingKeyFrames>
                                 </Storyboard>
                             </VisualState>
                         </VisualStateGroup>
@@ -127,6 +113,7 @@
                     Padding="4"
                     MinHeight="36"
                     Width="40">
+
                 <Button Background="Transparent"
                         BorderThickness="0"
                         Width="24"
@@ -150,6 +137,7 @@
                     Padding="8,6"
                     MinHeight="36"
                     MinWidth="200">
+
                 <ScrollViewer VerticalScrollBarVisibility="Auto" 
                               HorizontalScrollBarVisibility="Disabled"
                               MaxHeight="100">

@@ -762,7 +762,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             // Multi-selection logic
         }
 
-        private void OnSelectionCanvasPointerMoved(object sender, PointerEventArgs e)
+        private void OnSelectionCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
         {
             // Multi-selection logic
         }
@@ -778,12 +778,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (Equals(field, value)) return false;
             field = value;
