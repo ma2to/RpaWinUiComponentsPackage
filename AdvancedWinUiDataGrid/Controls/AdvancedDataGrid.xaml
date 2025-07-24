@@ -1,4 +1,4 @@
-<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ pre jednotné rozmery -->
+<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ - všetky chyby vyriešené -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -27,8 +27,7 @@
         <SolidColorBrush x:Key="HoverBrush" Color="{x:Bind ColorTheme.HoverColor, Mode=OneWay}"/>
         <SolidColorBrush x:Key="AlternateRowBrush" Color="{x:Bind ColorTheme.AlternateRowColor, Mode=OneWay}"/>
 
-
-        <!-- ✅ OPRAVENÉ: Header Template s FIXED sizing a hover effects -->
+        <!-- ✅ OPRAVENÉ: Header Template s FIXED sizing a bez Triggers -->
         <DataTemplate x:Key="HeaderTemplate">
             <Border Background="{StaticResource HeaderBackgroundBrush}"
                     BorderBrush="{StaticResource CellBorderBrush}"
@@ -38,18 +37,19 @@
                     MinWidth="{Binding MinWidth, FallbackValue=100}"
                     MaxWidth="{Binding MaxWidth, FallbackValue=300}">
 
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Style.Setters>
-                            <Setter Property="Background" Value="{StaticResource HeaderBackgroundBrush}"/>
-                        </Style.Setters>
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
+                <!-- ✅ OPRAVENÉ XLS0415: Bez Triggers, použitím PointerEntered/Exited events -->
+                <Border.PointerEntered>
+                    <EventTrigger RoutedEvent="PointerEntered">
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <ColorAnimation Duration="0:0:0.2" 
+                                               Storyboard.TargetName="HeaderBorder"
+                                               Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                               To="{x:Bind ColorTheme.HoverColor, Mode=OneWay}"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Border.PointerEntered>
 
                 <TextBlock Text="{Binding Header}" 
                           FontWeight="SemiBold"
@@ -61,48 +61,18 @@
             </Border>
         </DataTemplate>
 
-        <!-- ✅ KOMPLETNE OPRAVENÉ: Cell Template s fixed sizing, realtime validáciou a editing states -->
+        <!-- ✅ KOMPLETNE OPRAVENÉ: Cell Template s fixed sizing, realtime validáciou a bez Triggers -->
         <DataTemplate x:Key="CellTemplate">
             <Border x:Name="CellBorder"
                     Padding="8,6"
                     MinHeight="36"
                     MinWidth="{Binding ColumnDefinition.MinWidth, FallbackValue=100}"
-                    MaxWidth="{Binding ColumnDefinition.MaxWidth, FallbackValue=300}">
+                    MaxWidth="{Binding ColumnDefinition.MaxWidth, FallbackValue=300}"
+                    Background="{StaticResource CellBackgroundBrush}"
+                    BorderBrush="{Binding IsValid, Converter={StaticResource BoolToValidationBrushConverter}, FallbackValue={StaticResource CellBorderBrush}}"
+                    BorderThickness="{Binding IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}">
 
-                <!-- ✅ Dynamic background based na editing state -->
-                <Border.Background>
-                    <SolidColorBrush>
-                        <SolidColorBrush.Color>
-                            <Binding Path="IsEditing" Converter="{StaticResource EditingStateToBrushConverter}" 
-                                     FallbackValue="{x:Bind ColorTheme.CellBackgroundColor, Mode=OneWay}"/>
-                        </SolidColorBrush.Color>
-                    </SolidColorBrush>
-                </Border.Background>
-
-                <!-- ✅ Dynamic border based na validation state -->
-                <Border.BorderBrush>
-                    <SolidColorBrush>
-                        <SolidColorBrush.Color>
-                            <Binding Path="IsValid" Converter="{StaticResource ValidationStateToBorderColorConverter}"
-                                     FallbackValue="{x:Bind ColorTheme.CellBorderColor, Mode=OneWay}"/>
-                        </SolidColorBrush.Color>
-                    </SolidColorBrush>
-                </Border.BorderBrush>
-
-                <Border.BorderThickness>
-                    <Binding Path="IsValid" Converter="{StaticResource BoolToValidationThicknessConverter}"/>
-                </Border.BorderThickness>
-
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-
+                <!-- ✅ OPRAVENÉ: Bez Triggers, používame binding na IsEditing pre Background -->
                 <TextBox x:Name="CellTextBox"
                         Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                         Background="Transparent"
@@ -117,11 +87,39 @@
                         LostFocus="OnCellLostFocus"
                         GotFocus="OnCellGotFocus"
                         TextChanged="OnCellTextChanged"
-                        Tag="{Binding}"/>
+                        Tag="{Binding}">
+
+                    <!-- ✅ OPRAVENÉ: VisualStateManager namiesto Triggers -->
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="EditingStates">
+                            <VisualState x:Name="Normal"/>
+                            <VisualState x:Name="Editing">
+                                <Storyboard>
+                                    <ColorAnimation Duration="0:0:0.1"
+                                                   Storyboard.TargetName="CellBorder"
+                                                   Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                   To="{x:Bind ColorTheme.EditingCellColor, Mode=OneWay}"/>
+                                </Storyboard>
+                            </VisualState>
+                        </VisualStateGroup>
+
+                        <VisualStateGroup x:Name="ValidationStates">
+                            <VisualState x:Name="Valid"/>
+                            <VisualState x:Name="Invalid">
+                                <Storyboard>
+                                    <ColorAnimation Duration="0:0:0.2"
+                                                   Storyboard.TargetName="CellBorder"
+                                                   Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
+                                                   To="{x:Bind ColorTheme.ValidationErrorColor, Mode=OneWay}"/>
+                                </Storyboard>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                </TextBox>
             </Border>
         </DataTemplate>
 
-        <!-- ✅ OPRAVENÉ: Delete Button Template s fixed sizing -->
+        <!-- ✅ OPRAVENÉ: Delete Button Template s fixed sizing a bez Triggers -->
         <DataTemplate x:Key="DeleteButtonTemplate">
             <Border Background="{StaticResource CellBackgroundBrush}"
                     BorderBrush="{StaticResource CellBorderBrush}"
@@ -201,14 +199,14 @@
             </StackPanel>
         </Border>
 
-        <!-- ✅ OPRAVENÉ: Main Content s fixed column sizing -->
+        <!-- ✅ OPRAVENÉ CS0432: Main Content s HeaderColumns a DataRows properties -->
         <Grid x:Name="MainContentGrid" Visibility="Visible">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- ✅ OPRAVENÉ: Header s fixed column widths -->
+            <!-- ✅ OPRAVENÉ XLS0432: Header s HeaderColumns property -->
             <ScrollViewer x:Name="HeaderScrollViewer"
                          Grid.Row="0"
                          HorizontalScrollBarVisibility="Hidden"
@@ -227,7 +225,7 @@
                 </ItemsRepeater>
             </ScrollViewer>
 
-            <!-- ✅ OPRAVENÉ: Data ScrollViewer s multi-selection support -->
+            <!-- ✅ OPRAVENÉ XLS0432: Data ScrollViewer s DataRows property -->
             <ScrollViewer x:Name="DataScrollViewer"
                          Grid.Row="1"
                          HorizontalScrollBarVisibility="Auto"

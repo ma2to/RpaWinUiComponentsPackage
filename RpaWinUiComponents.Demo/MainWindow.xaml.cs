@@ -1,9 +1,13 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - AKTUALIZOVANÉ
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - všetky chyby vyriešené
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
+
+// ✅ OPRAVENÉ CS0234: Správne importy pre WinUI Colors
+using Windows.UI;
 
 // ✅ KĽÚČOVÁ OPRAVA CS0234: Import PUBLIC API typov z PROJECT REFERENCE
 using RpaWinUiComponents.AdvancedWinUiDataGrid;
@@ -144,7 +148,7 @@ namespace RpaWinUiComponents.Demo
                 if (InitStatusText != null)
                 {
                     InitStatusText.Text = " - Pripravené";
-                    InitStatusText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Green);
+                    InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 128, 0)); // ✅ OPRAVENÉ: Správny Green color
                 }
 
                 if (StatusTextBlock != null)
@@ -164,7 +168,7 @@ namespace RpaWinUiComponents.Demo
                 if (InitStatusText != null)
                 {
                     InitStatusText.Text = " - Chyba";
-                    InitStatusText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Red);
+                    InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 0, 0)); // ✅ OPRAVENÉ: Správny Red color
                 }
 
                 if (StatusTextBlock != null)
@@ -174,7 +178,7 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ NOVÉ: Color Theme Button Handlers
+        #region ✅ OPRAVENÉ CS0234: Color Theme Button Handlers s Windows.UI.Color
 
         private void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
         {
@@ -245,16 +249,16 @@ namespace RpaWinUiComponents.Demo
             {
                 System.Diagnostics.Debug.WriteLine("🎨 Vytváram Custom Theme...");
 
-                // Vytvorenie custom theme pomocou Builder pattern
+                // ✅ OPRAVENÉ CS0234: Používame Windows.UI.Color namiesto Microsoft.UI.Color
                 var customTheme = DataGridColorThemeBuilder.Create()
-                    .WithCellBackground(Microsoft.UI.Colors.LightYellow)
-                    .WithCellBorder(Microsoft.UI.Colors.Orange)
-                    .WithCellText(Microsoft.UI.Colors.DarkBlue)
-                    .WithHeaderBackground(Microsoft.UI.Colors.Orange)
-                    .WithHeaderText(Microsoft.UI.Colors.White)
-                    .WithValidationError(Microsoft.UI.Colors.DarkRed)
-                    .WithSelection(Microsoft.UI.Color.FromArgb(100, 255, 165, 0))
-                    .WithEditingCell(Microsoft.UI.Color.FromArgb(50, 255, 215, 0))
+                    .WithCellBackground(Color.FromArgb(255, 255, 255, 224)) // LightYellow
+                    .WithCellBorder(Color.FromArgb(255, 255, 165, 0))       // Orange
+                    .WithCellText(Color.FromArgb(255, 0, 0, 139))           // DarkBlue
+                    .WithHeaderBackground(Color.FromArgb(255, 255, 165, 0)) // Orange
+                    .WithHeaderText(Color.FromArgb(255, 255, 255, 255))     // White
+                    .WithValidationError(Color.FromArgb(255, 139, 0, 0))    // DarkRed
+                    .WithSelection(Color.FromArgb(100, 255, 165, 0))        // Orange with alpha
+                    .WithEditingCell(Color.FromArgb(50, 255, 215, 0))       // Gold with alpha
                     .Build();
 
                 DataGridControl.ApplyColorTheme(customTheme);

@@ -1,4 +1,4 @@
-﻿// Models/CellDataModel.cs - ✅ NOVÝ SÚBOR
+﻿// Models/CellDataModel.cs - ✅ KOMPLETNE OPRAVENÝ - všetky chyby vyriešené
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -7,6 +7,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
 {
     /// <summary>
     /// Model pre bunku v DataGrid - INTERNAL MODEL
+    /// ✅ OPRAVENÉ CS0121, CS0111: Jednotná implementácia OnPropertyChanged
+    /// ✅ OPRAVENÉ CS1061: Pridaný RowIndex property
     /// </summary>
     public class CellDataModel : INotifyPropertyChanged
     {
@@ -18,6 +20,16 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
         private bool _isSelected;
         private bool _isEditing;
         private object? _originalValue;
+        private int _rowIndex; // ✅ OPRAVENÉ CS1061: Pridané chýbajúce pole
+
+        /// <summary>
+        /// ✅ OPRAVENÉ CS1061: Index riadku ku ktorému bunka patrí
+        /// </summary>
+        public int RowIndex
+        {
+            get => _rowIndex;
+            set => SetProperty(ref _rowIndex, value);
+        }
 
         /// <summary>
         /// Názov stĺpca ku ktorému bunka patrí
@@ -127,23 +139,29 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
         /// </summary>
         public bool IsModified => !Equals(Value, OriginalValue);
 
-        #region INotifyPropertyChanged
+        #region ✅ OPRAVENÉ CS0121, CS0111: Jednotná INotifyPropertyChanged implementácia
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        /// <summary>
+        /// ✅ OPRAVENÉ CS0121: Jediná OnPropertyChanged metóda s CallerMemberName
+        /// </summary>
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         /// <summary>
-        /// ✅ NOVÁ: Public metóda pre external property change triggering
+        /// ✅ NOVÁ: Public metóda pre external property change triggering (ak je potrebná)
         /// </summary>
-        public void OnPropertyChanged(string propertyName)
+        public void TriggerPropertyChanged(string propertyName)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            OnPropertyChanged(propertyName);
         }
 
+        /// <summary>
+        /// ✅ OPRAVENÉ: SetProperty helper metóda
+        /// </summary>
         protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (Equals(field, value)) return false;
@@ -153,6 +171,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
         }
 
         #endregion
+
+        #region Public Methods
 
         /// <summary>
         /// Začne editáciu bunky
@@ -240,9 +260,109 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
             IsEditing = false;
         }
 
+        /// <summary>
+        /// Kopíruje vlastnosti z inej bunky
+        /// </summary>
+        public void CopyFrom(CellDataModel other)
+        {
+            if (other == null) return;
+
+            ColumnName = other.ColumnName;
+            Value = other.Value;
+            OriginalValue = other.OriginalValue;
+            DataType = other.DataType;
+            IsValid = other.IsValid;
+            ValidationErrors = other.ValidationErrors;
+            RowIndex = other.RowIndex;
+            // IsSelected a IsEditing sa nekopírujú - sú UI state
+        }
+
+        /// <summary>
+        /// Vytvorí kópiu bunky
+        /// </summary>
+        public CellDataModel Clone()
+        {
+            return new CellDataModel
+            {
+                ColumnName = ColumnName,
+                Value = Value,
+                OriginalValue = OriginalValue,
+                DataType = DataType,
+                IsValid = IsValid,
+                ValidationErrors = ValidationErrors,
+                RowIndex = RowIndex,
+                IsSelected = false, // Nová bunka nie je selected
+                IsEditing = false   // Nová bunka sa needituje
+            };
+        }
+
+        #endregion
+
+        #region Object Overrides
+
         public override string ToString()
         {
-            return $"{ColumnName}: {DisplayValue} (Valid: {IsValid})";
+            return $"Cell[{RowIndex},{ColumnName}]: {DisplayValue} (Valid: {IsValid})";
         }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is CellDataModel other)
+            {
+                return RowIndex == other.RowIndex &&
+                       ColumnName.Equals(other.ColumnName, StringComparison.OrdinalIgnoreCase) &&
+                       Equals(Value, other.Value);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(
+                RowIndex,
+                ColumnName.ToLowerInvariant(),
+                Value?.GetHashCode() ?? 0
+            );
+        }
+
+        #endregion
+
+        #region Validation Helper Methods
+
+        /// <summary>
+        /// Nastaví validačnú chybu
+        /// </summary>
+        public void SetValidationError(string errorMessage)
+        {
+            ValidationErrors = errorMessage;
+            IsValid = string.IsNullOrEmpty(errorMessage);
+        }
+
+        /// <summary>
+        /// Pridá validačnú chybu k existujúcim
+        /// </summary>
+        public void AddValidationError(string errorMessage)
+        {
+            if (string.IsNullOrEmpty(ValidationErrors))
+            {
+                ValidationErrors = errorMessage;
+            }
+            else
+            {
+                ValidationErrors += "; " + errorMessage;
+            }
+            IsValid = false;
+        }
+
+        /// <summary>
+        /// Vyčisti validačné chyby
+        /// </summary>
+        public void ClearValidationErrors()
+        {
+            ValidationErrors = string.Empty;
+            IsValid = true;
+        }
+
+        #endregion
     }
 }
