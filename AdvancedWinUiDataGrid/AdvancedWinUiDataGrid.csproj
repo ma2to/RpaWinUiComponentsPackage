@@ -35,6 +35,12 @@
     <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 aplikácie s realtime validáciami a Excel funkcionalitou</AssemblyDescription>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="Controls\DataGridCell.xaml" />
+    <None Remove="Controls\SpecialColumns\DeleteRowColumn.xaml" />
+    <None Remove="Controls\SpecialColumns\ValidationAlertsColumn.xaml" />
+  </ItemGroup>
+
   <!-- WinUI Dependencies -->
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231008000" />
@@ -65,7 +71,6 @@
 
   <!-- Project Structure Folders (pre VS organization) -->
   <ItemGroup>
-    <Folder Include="Controls\" />
     <Folder Include="Models\" />
     <Folder Include="Services\" />
     <Folder Include="Services\Interfaces\" />
@@ -76,6 +81,21 @@
   <!-- Public API Surface -->
   <ItemGroup>
     <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Controls\SpecialColumns\ValidationAlertsColumn.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Controls\SpecialColumns\DeleteRowColumn.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Controls\DataGridCell.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
   <!-- Ensure proper WinUI packaging -->

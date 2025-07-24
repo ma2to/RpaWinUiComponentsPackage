@@ -1,0 +1,32 @@
+<!-- Controls/DataGridCell.xaml -->
+<UserControl
+    x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.Controls.DataGridCell"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:RpaWinUiComponents.AdvancedWinUiDataGrid.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Border x:Name="CellBorder"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,0,1,1"
+            Padding="8,6"
+            MinHeight="36">
+
+        <!-- Text Editor -->
+        <TextBox x:Name="CellTextBox"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="0"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 VerticalAlignment="Stretch"
+                 KeyDown="OnCellKeyDown"
+                 LostFocus="OnCellLostFocus"
+                 GotFocus="OnCellGotFocus"
+                 TextChanged="OnCellTextChanged"/>
+
+    </Border>
+</UserControl>

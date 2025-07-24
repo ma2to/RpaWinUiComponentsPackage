@@ -1,0 +1,34 @@
+<!-- Controls/SpecialColumns/DeleteRowColumn.xaml -->
+<UserControl
+    x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.Controls.SpecialColumns.DeleteRowColumn"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:RpaWinUiComponents.AdvancedWinUiDataGrid.Controls.SpecialColumns"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Border x:Name="DeleteCellBorder"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,0,1,1"
+            Padding="4"
+            MinHeight="36">
+
+        <Button x:Name="DeleteButton"
+                Background="Transparent"
+                BorderThickness="0"
+                Width="24"
+                Height="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Click="OnDeleteButtonClick"
+                ToolTipService.ToolTip="Zmazať riadok">
+
+            <FontIcon Glyph="&#xE74D;" 
+                     FontSize="12"
+                     Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+        </Button>
+
+    </Border>
+</UserControl>

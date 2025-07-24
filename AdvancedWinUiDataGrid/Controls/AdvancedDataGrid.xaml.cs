@@ -12,9 +12,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 // ✅ OPRAVENÉ CS0104: Aliasy pre zamedzenie konfliktov s WinUI typmi
-using GridColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.ColumnDefinition;
+using GridColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDefinition;
 using GridValidationRule = RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationRule;
-using GridThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
+using GridThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.ThrottlingConfig;
 using GridConfiguration = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.GridConfiguration;
 using RowDataModel = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.RowDataModel;
 using CellDataModel = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.CellDataModel;

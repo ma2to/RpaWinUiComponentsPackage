@@ -68,7 +68,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
+        // <summary>
         /// Exportuje len validné riadky do DataTable
         /// </summary>
         public async Task<DataTable> ExportValidRowsOnlyAsync()

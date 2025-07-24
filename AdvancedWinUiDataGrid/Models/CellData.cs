@@ -2,7 +2,7 @@
 using System;
 using System.ComponentModel;
 
-namespace RpaWinUiComponents.AdvancedWinUiDataGrid
+namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
 {
     /// <summary>
     /// Reprezentuje dáta a stav jednej bunky v DataGrid.
