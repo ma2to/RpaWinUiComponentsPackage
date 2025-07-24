@@ -50,6 +50,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private DataGridColorTheme _colorTheme = DataGridColorTheme.Light;
         private readonly Dictionary<string, DispatcherTimer> _realtimeValidationTimers = new();
 
+        // ✅ NOVÉ: Color Theme Support
+        private DataGridColorTheme _colorTheme = DataGridColorTheme.Light;
+        private readonly Dictionary<string, DispatcherTimer> _realtimeValidationTimers = new();
+
+        // ✅ NOVÉ: Realtime validation support
+        private readonly Dictionary<string, object?> _lastValidatedValues = new();
+        private readonly Dictionary<string, bool> _cellEditingStates = new();
+
         private bool _isInitialized = false;
         private bool _isDisposed = false;
 

@@ -174,6 +174,198 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
+        #region ✅ NOVÉ: Color Theme Button Handlers
+
+        private void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Light Theme...");
+
+                DataGridControl.ApplyColorTheme(DataGridColorTheme.Light);
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Light theme aplikovaná";
+
+                System.Diagnostics.Debug.WriteLine("✅ Light theme úspešne aplikovaná");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Light theme: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Light theme: {ex.Message}";
+            }
+        }
+
+        private void OnApplyDarkThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Dark Theme...");
+
+                DataGridControl.ApplyColorTheme(DataGridColorTheme.Dark);
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Dark theme aplikovaná";
+
+                System.Diagnostics.Debug.WriteLine("✅ Dark theme úspešne aplikovaná");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Dark theme: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Dark theme: {ex.Message}";
+            }
+        }
+
+        private void OnApplyBlueThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Blue Theme...");
+
+                DataGridControl.ApplyColorTheme(DataGridColorTheme.Blue);
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Blue theme aplikovaná";
+
+                System.Diagnostics.Debug.WriteLine("✅ Blue theme úspešne aplikovaná");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Blue theme: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Blue theme: {ex.Message}";
+            }
+        }
+
+        private void OnApplyCustomThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Vytváram Custom Theme...");
+
+                // Vytvorenie custom theme pomocou Builder pattern
+                var customTheme = DataGridColorThemeBuilder.Create()
+                    .WithCellBackground(Microsoft.UI.Colors.LightYellow)
+                    .WithCellBorder(Microsoft.UI.Colors.Orange)
+                    .WithCellText(Microsoft.UI.Colors.DarkBlue)
+                    .WithHeaderBackground(Microsoft.UI.Colors.Orange)
+                    .WithHeaderText(Microsoft.UI.Colors.White)
+                    .WithValidationError(Microsoft.UI.Colors.DarkRed)
+                    .WithSelection(Microsoft.UI.Color.FromArgb(100, 255, 165, 0))
+                    .WithEditingCell(Microsoft.UI.Color.FromArgb(50, 255, 215, 0))
+                    .Build();
+
+                DataGridControl.ApplyColorTheme(customTheme);
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Custom Orange theme aplikovaná";
+
+                System.Diagnostics.Debug.WriteLine("✅ Custom theme úspešne vytvorená a aplikovaná");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Custom theme: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Custom theme: {ex.Message}";
+            }
+        }
+
+        private void OnResetThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na Default Theme...");
+
+                DataGridControl.ResetToDefaultTheme();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Theme resetovaná na default";
+
+                System.Diagnostics.Debug.WriteLine("✅ Theme úspešne resetovaná");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri reset theme: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri reset: {ex.Message}";
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Realtime Testing Button Handlers
+
+        private async void OnTestRealtimeValidationClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("⚡ TEST: Realtime validácie...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "💡 TIP: Začni písať do buniek - validácie sa spúšťajú realtime!";
+
+                // Načítaj test dáta s chybami pre realtime testing
+                var testData = new List<Dictionary<string, object?>>
+                {
+                    new() { ["Meno"] = "", ["Email"] = "invalid", ["Vek"] = 15, ["Plat"] = 100.00m }, // Nevalidné
+                    new() { ["Meno"] = "A", ["Email"] = "test@", ["Vek"] = 200, ["Plat"] = 70000.00m }, // Nevalidné  
+                    new() { ["Meno"] = "Valid User", ["Email"] = "valid@email.com", ["Vek"] = 25, ["Plat"] = 3000.00m } // Validné
+                };
+
+                await DataGridControl.LoadDataAsync(testData);
+
+                System.Diagnostics.Debug.WriteLine("✅ TEST dáta načítané - teraz skús písať do buniek!");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ TEST failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Test error: {ex.Message}";
+            }
+        }
+
+        private void OnTestNavigationClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🧭 TEST: Navigation...");
+
+                if (StatusTextBlock != null)
+                {
+                    StatusTextBlock.Text = "💡 TIP: Skús Tab (ďalšia bunka), Enter (riadok nižšie), Esc (zruš zmeny), Shift+Enter (nový riadok)";
+                }
+
+                System.Diagnostics.Debug.WriteLine("✅ Navigation test ready - skús klávesy v bunkách!");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Navigation test failed: {ex.Message}");
+            }
+        }
+
+        private void OnTestCopyPasteClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("📋 TEST: Copy/Paste...");
+
+                if (StatusTextBlock != null)
+                {
+                    StatusTextBlock.Text = "💡 TIP: Označuj bunky a skús Ctrl+C/Ctrl+V/Ctrl+X pre copy/paste s Excel kompatibilitou";
+                }
+
+                System.Diagnostics.Debug.WriteLine("✅ Copy/Paste test ready - skús Ctrl+C/V!");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Copy/Paste test failed: {ex.Message}");
+            }
+        }
+
+        #endregion
+
         #region Button Event Handlers - ✅ OPRAVENÉ A ROZŠÍRENÉ
 
         private async void OnLoadSampleDataClick(object sender, RoutedEventArgs e)

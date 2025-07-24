@@ -599,6 +599,91 @@ namespace AdvancedWinUiDataGrid
 - Cell implementation details
 ---
 
+## 🚀 Kľúčové funkcie
+
+### 1. ✅ NOVÉ: Color Theme API
+```csharp
+// Predpripravené themes
+DataGridControl.ApplyColorTheme(DataGridColorTheme.Light);    // Default svetlá
+DataGridControl.ApplyColorTheme(DataGridColorTheme.Dark);     // Tmavá theme  
+DataGridControl.ApplyColorTheme(DataGridColorTheme.Blue);     // Modrá theme
+DataGridControl.ApplyColorTheme(DataGridColorTheme.Green);    // Zelená theme
+
+// Custom theme pomocou Builder pattern
+var customTheme = DataGridColorThemeBuilder.Create()
+    .WithCellBackground(Colors.LightYellow)
+    .WithCellBorder(Colors.Orange)
+    .WithCellText(Colors.DarkBlue)
+    .WithHeaderBackground(Colors.Orange)
+    .WithHeaderText(Colors.White)
+    .WithValidationError(Colors.DarkRed)
+    .WithSelection(Color.FromArgb(100, 255, 165, 0))
+    .WithEditingCell(Color.FromArgb(50, 255, 215, 0))
+    .Build();
+
+DataGridControl.ApplyColorTheme(customTheme);
+
+// Reset na default
+DataGridControl.ResetToDefaultTheme();
+```
+
+### 2. Dynamické stĺpce
+```csharp
+var columns = new List<ColumnDefinition>
+{
+    new("ID", typeof(int)) { MinWidth = 60, Width = 80, Header = "🔢 ID" },
+    new("Name", typeof(string)) { MinWidth = 120, Width = 150, Header = "👤 Name" },
+    new("DeleteRows", typeof(string)) { Width = 40 } // Špeciálny delete stĺpec
+};
+```
+
+### 3. ✅ NOVÉ: Realtime Validačné pravidlá
+```csharp
+var validationRules = new List<ValidationRule>
+{
+    ValidationRule.Required("Name", "Name is required"),
+    ValidationRule.Email("Email", "Invalid email format"),
+    ValidationRule.Range("Age", 18, 100, "Age must be 18-100")
+};
+
+// ✅ KĽÚČOVÉ: Realtime throttling konfigurácia
+var throttlingConfig = new ThrottlingConfig
+{
+    ValidationDebounceMs = 200,              // Rýchlejšie pre realtime (default 300ms)
+    UIUpdateDebounceMs = 50,                 // Rýchle UI updates
+    EnableRealtimeValidation = true,         // ✅ NOVÉ: Zapnuté realtime validácie
+    EnableValidationThrottling = true
+};
+```
+
+### 4. Profesionálne API
+```csharp
+// Inicializácia s realtime validáciami
+await dataGrid.InitializeAsync(columns, validationRules, throttlingConfig, emptyRowsCount: 15);
+
+// Načítanie dát
+await dataGrid.LoadDataAsync(dataList);
+
+// Validácia všetkých riadkov
+bool isValid = await dataGrid.ValidateAllRowsAsync();
+
+// Export do DataTable
+DataTable exportedData = await dataGrid.ExportToDataTableAsync();
+
+// Vymazanie všetkých dát
+await dataGrid.ClearAllDataAsync();
+
+// ✅ NOVÁ METÓDA: Custom delete validation
+await dataGrid.DeleteRowsByCustomValidationAsync(customDeleteRules);
+```
+
+### 5. ✅ ROZŠÍRENÉ: Klávesové skratky s opravenými funkciami
+- **Tab**: Ďalšia bunka + potvrdenie zmien ✅
+- **Enter**: Bunka o riadok nižšie + potvrdenie ✅ **OPRAVENÉ**
+- **Esc**: Zahodenie zmien + výskok z bunky ✅ **OPRAVENÉ**  
+- **Shift+Enter**: Nový riadok v bunke ✅
+- **Ctrl+C/V/X**: Copy/Paste/Cut Excel kompatibilita ✅
+
 ## 📋 **CHECKLIST FUNKCIONALÍT**
 
 ### ✅ **Core Features** (100% dokončené)

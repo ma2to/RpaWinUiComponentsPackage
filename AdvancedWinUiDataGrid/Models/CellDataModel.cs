@@ -136,6 +136,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+        /// <summary>
+        /// ✅ NOVÁ: Public metóda pre external property change triggering
+        /// </summary>
+        public void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
         protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (Equals(field, value)) return false;
