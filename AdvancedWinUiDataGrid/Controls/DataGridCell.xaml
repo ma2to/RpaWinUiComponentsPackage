@@ -1,4 +1,4 @@
-<!-- Controls/DataGridCell.xaml -->
+<!-- Controls/DataGridCell.xaml - ✅ OPRAVENÝ -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridCell"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -14,7 +14,7 @@
             Padding="8,6"
             MinHeight="36">
 
-        <!-- Text Editor -->
+        <!-- ✅ OPRAVENÉ: Text Editor s potrebnými eventmi -->
         <TextBox x:Name="CellTextBox"
                  Background="Transparent"
                  BorderThickness="0"

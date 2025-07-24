@@ -42,6 +42,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private GridConfiguration? _configuration;
         private ObservableCollection<string> _headers = new();
         private ObservableCollection<RowDataModel> _rows = new();
+
+        // ✅ OPRAVENÉ CS0103: Pridané chybajúce fieldy
+        private readonly Dictionary<string, List<string>> _validationErrors = new();
+
         private bool _isInitialized = false;
         private bool _isDisposed = false;
 
@@ -108,6 +112,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 // Inicializácia služieb
                 await _validationService.InitializeAsync(_configuration);
                 await _dataManagementService.InitializeAsync(_configuration);
+                await _exportService.InitializeAsync(_configuration);
 
                 // Generovanie headers
                 GenerateHeaders();
@@ -193,27 +198,29 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 _logger.LogInformation("Spúšťa sa validácia všetkých riadkov");
 
-                // Pre túto implementáciu predpokladáme, že získame dáta cez DataManagementService
-                // V reálnej implementácii by sme mali reference na DataManagementService
-
                 // Vyčisti predchádzajúce chyby
                 _validationErrors.Clear();
 
                 var hasErrors = false;
 
-                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
-                await Task.Run(() =>
+                // Validuj všetky riadky
+                foreach (var row in _rows.ToList())
                 {
-                    // Simulácia validácie - v reálnej implementácii by sme iterovali cez všetky riadky
-                    // foreach (var rowData in await _dataManagementService.GetAllDataAsync())
-                    // {
-                    //     var errors = await ValidateRowAsync(rowData);
-                    //     if (errors.Any())
-                    //         hasErrors = true;
-                    // }
+                    if (IsRowEmpty(row)) continue;
 
-                    // Placeholder pre skutočnú logiku
-                });
+                    var rowDict = new Dictionary<string, object?>();
+                    foreach (var cell in row.Cells)
+                    {
+                        rowDict[cell.ColumnName] = cell.Value;
+                    }
+
+                    var errors = await _validationService.ValidateRowAsync(rowDict);
+                    if (errors.Any())
+                    {
+                        hasErrors = true;
+                        _validationErrors[$"Row_{row.RowIndex}"] = errors;
+                    }
+                }
 
                 _logger.LogInformation("Validácia všetkých riadkov dokončená: {HasErrors}", hasErrors ? "našli sa chyby" : "všetko v poriadku");
                 return !hasErrors;
@@ -666,7 +673,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
             try
             {
-                _serviceProvider?.Dispose();
+                if (_serviceProvider is IDisposable disposableProvider)
+                    disposableProvider.Dispose();
+
                 _headers.Clear();
                 _rows.Clear();
 

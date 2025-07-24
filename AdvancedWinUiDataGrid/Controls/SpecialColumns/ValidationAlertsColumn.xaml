@@ -1,4 +1,4 @@
-<!-- Controls/SpecialColumns/ValidationAlertsColumn.xaml -->
+<!-- Controls/SpecialColumns/ValidationAlertsColumn.xaml - ✅ OPRAVENÝ -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationAlertsColumn"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -18,6 +18,7 @@
                       HorizontalScrollBarVisibility="Disabled"
                       MaxHeight="100">
 
+            <!-- ✅ OPRAVENÉ: AlertsTextBlock s potrebnými vlastnosťami -->
             <TextBlock x:Name="AlertsTextBlock"
                        TextWrapping="Wrap"
                        VerticalAlignment="Center"

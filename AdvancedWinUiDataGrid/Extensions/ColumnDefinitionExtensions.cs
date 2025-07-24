@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 // ✅ OPRAVENÉ CS0246: Správny import pre naše typy
-using GridColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.Models.ColumnDefinition;
+using GridColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDefinition;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {

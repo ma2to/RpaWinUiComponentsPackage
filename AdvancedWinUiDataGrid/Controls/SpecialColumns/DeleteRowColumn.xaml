@@ -1,4 +1,4 @@
-<!-- Controls/SpecialColumns/DeleteRowColumn.xaml -->
+<!-- Controls/SpecialColumns/DeleteRowColumn.xaml - ✅ OPRAVENÝ -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.DeleteRowColumn"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -14,6 +14,7 @@
             Padding="4"
             MinHeight="36">
 
+        <!-- ✅ OPRAVENÉ: Delete Button s potrebnými vlastnosťami -->
         <Button x:Name="DeleteButton"
                 Background="Transparent"
                 BorderThickness="0"

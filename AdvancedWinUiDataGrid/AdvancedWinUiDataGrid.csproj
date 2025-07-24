@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -15,6 +15,9 @@
     <!-- ✅ OPRAVENÉ: Potlačenie CA1416 warnings pre Windows-only balík -->
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
+
+    <!-- ✅ KĽÚČOVÁ OPRAVA: Zakáž automatické pridávanie XAML súborov -->
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
 
     <!-- Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
@@ -35,12 +38,6 @@
     <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 aplikácie s realtime validáciami a Excel funkcionalitou</AssemblyDescription>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Controls\DataGridCell.xaml" />
-    <None Remove="Controls\SpecialColumns\DeleteRowColumn.xaml" />
-    <None Remove="Controls\SpecialColumns\ValidationAlertsColumn.xaml" />
-  </ItemGroup>
-
   <!-- WinUI Dependencies -->
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
@@ -59,19 +56,24 @@
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: Odstránené duplicitné Compile items - .NET SDK ich automaticky pridá -->
-  <!-- ✅ KĽÚČOVÁ OPRAVA: Necháme SDK automaticky zahrnúť všetky .cs súbory -->
-
-  <!-- ✅ OPRAVENÉ: Iba explicitne definované XAML súbory (ak sú potrebné) -->
+  <!-- ✅ OPRAVENÉ: Explicitné XAML súbory bez duplicít -->
   <ItemGroup>
     <Page Include="Controls\AdvancedDataGrid.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\DataGridCell.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\SpecialColumns\DeleteRowColumn.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\SpecialColumns\ValidationAlertsColumn.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
 
   <!-- Project Structure Folders (pre VS organization) -->
   <ItemGroup>
-    <Folder Include="Models\" />
     <Folder Include="Services\" />
     <Folder Include="Services\Interfaces\" />
     <Folder Include="Utilities\" />
@@ -81,21 +83,6 @@
   <!-- Public API Surface -->
   <ItemGroup>
     <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
-  </ItemGroup>
-  <ItemGroup>
-    <Page Update="Controls\SpecialColumns\ValidationAlertsColumn.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-  <ItemGroup>
-    <Page Update="Controls\SpecialColumns\DeleteRowColumn.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-  <ItemGroup>
-    <Page Update="Controls\DataGridCell.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
   </ItemGroup>
 
   <!-- Ensure proper WinUI packaging -->

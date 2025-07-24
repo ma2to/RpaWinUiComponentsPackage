@@ -1,4 +1,4 @@
-﻿// Models/ColumnDefinition.cs - ROZŠÍRENÉ
+﻿// Models/ColumnDefinition.cs - ✅ KOMPLETNE OPRAVENÝ
 using System;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
@@ -47,6 +47,16 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// Či je stĺpec editovateľný
         /// </summary>
         public bool IsEditable { get; set; } = true;
+
+        /// <summary>
+        /// ✅ OPRAVENÉ CS1061: Pridané IsReadOnly property
+        /// Či je stĺpec iba na čítanie (opak IsEditable)
+        /// </summary>
+        public bool IsReadOnly
+        {
+            get => !IsEditable;
+            set => IsEditable = !value;
+        }
 
         /// <summary>
         /// Či je stĺpec sortovateľný
@@ -155,7 +165,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// Vytvorí kópiu definície stĺpca
+        /// Vytvorí kópию definície stĺpca
         /// </summary>
         public ColumnDefinition Clone()
         {

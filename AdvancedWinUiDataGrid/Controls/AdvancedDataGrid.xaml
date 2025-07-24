@@ -1,4 +1,4 @@
-<!-- Controls/AdvancedDataGrid.xaml - ✅ OPRAVENÝ -->
+<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -91,7 +91,7 @@
         <!-- ✅ OPRAVENÉ: Loading Overlay s potrebnými elementmi -->
         <Border x:Name="LoadingOverlay"
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
-                Visibility="Visible">
+                Visibility="Collapsed">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
                 <ProgressRing IsActive="True" Width="32" Height="32"/>
                 <TextBlock x:Name="LoadingText" 
@@ -103,7 +103,7 @@
         </Border>
 
         <!-- ✅ OPRAVENÉ: Main Content s potrebnými elementmi -->
-        <Grid x:Name="MainContentGrid" Visibility="Collapsed">
+        <Grid x:Name="MainContentGrid" Visibility="Visible">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
