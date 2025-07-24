@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - OPRAVENÝ
+﻿// Controls/AdvancedDataGrid.xaml.cs - OPRAVENÉ warningy
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -29,6 +29,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private ICopyPasteService? _copyPasteService;
         private IExportService? _exportService;
         private ILoggingService? _logger;
+        private INavigationService? _navigationService;
 
         private GridConfiguration? _configuration;
         private bool _isInitialized = false;
@@ -38,8 +39,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private readonly ObservableCollection<ColumnDefinition> _headerColumns = new();
         private readonly ObservableCollection<ObservableCollection<CellData>> _dataRows = new();
 
-        // Navigation & Selection
-        private (int row, int col)? _currentCell = null;
+        // Navigation & Selection - OPRAVENÉ: Odstránený nepoužívaný _currentCell
         private readonly HashSet<(int row, int col)> _selectedCells = new();
 
         // Throttling & Performance
@@ -111,8 +111,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     throttlingConfig ?? ThrottlingConfig.Default,
                     emptyRowsCount);
 
-                // Inicializovať services
+                // Inicializovať services - OPRAVENÉ: Null check pre _serviceProvider
                 _serviceProvider = _services.BuildServiceProvider();
+                if (_serviceProvider == null)
+                    throw new InvalidOperationException("Nepodarilo sa vytvoriť ServiceProvider");
+
                 await InitializeServicesAsync();
 
                 // Nastaviť UI
@@ -219,7 +222,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 // Vyčistiť UI kolekcie
                 _dataRows.Clear();
                 _selectedCells.Clear();
-                _currentCell = null;
 
                 _logger?.LogInformation("Všetky dáta vymazané z DataGrid");
             }
@@ -241,7 +243,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <summary>
         /// Validuje všetky neprázdne riadky v DataGrid.
         /// </summary>
-        /// <returns>True ak jsou všetky dáta validné</returns>
+        /// <returns>True ak sú všetky dáta validné</returns>
         public async Task<bool> ValidateAllRowsAsync()
         {
             EnsureInitialized();
@@ -320,6 +322,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             _services.AddSingleton<IDataManagementService, DataManagementService>();
             _services.AddSingleton<ICopyPasteService, CopyPasteService>();
             _services.AddTransient<IExportService, ExportService>();
+            _services.AddSingleton<INavigationService, NavigationService>();
 
             // Logging abstrakcia - OPRAVENÉ: Null-safe
             _services.AddSingleton<ILoggingService>(provider =>
@@ -334,18 +337,23 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         private async Task InitializeServicesAsync()
         {
-            // OPRAVENÉ: Null-safe získanie services
-            _logger = _serviceProvider!.GetRequiredService<ILoggingService>();
+            // OPRAVENÉ: Null-safe získanie services s explicit null check
+            if (_serviceProvider == null)
+                throw new InvalidOperationException("ServiceProvider nie je inicializovaný");
+
+            _logger = _serviceProvider.GetRequiredService<ILoggingService>();
             _dataService = _serviceProvider.GetRequiredService<IDataManagementService>();
             _validationService = _serviceProvider.GetRequiredService<IValidationService>();
             _copyPasteService = _serviceProvider.GetRequiredService<ICopyPasteService>();
             _exportService = _serviceProvider.GetRequiredService<IExportService>();
+            _navigationService = _serviceProvider.GetRequiredService<INavigationService>();
 
             // Inicializovať každý service s konfiguráciou
             await _dataService.InitializeAsync(_configuration!);
             await _validationService.InitializeAsync(_configuration!);
             await _copyPasteService.InitializeAsync(_configuration!);
             await _exportService.InitializeAsync(_configuration!);
+            await _navigationService.InitializeAsync(_configuration!, this);
 
             // OPRAVENÉ: Set cross-dependencies
             if (_copyPasteService is CopyPasteService copyPasteImpl)
@@ -484,7 +492,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         private void OnKeyDown(object sender, KeyRoutedEventArgs e)
         {
-            // Tab, Enter, Esc, Shift+Enter navigácia bude implementovaná v NavigationService
+            // Delegovať na NavigationService
+            _navigationService?.HandleKeyDown(e);
         }
 
         private void OnDataScrollViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
@@ -541,6 +550,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _validationService?.Dispose();
                 _copyPasteService?.Dispose();
                 _exportService?.Dispose();
+                _navigationService?.Dispose();
                 _logger?.Dispose();
 
                 // Dispose DI container
