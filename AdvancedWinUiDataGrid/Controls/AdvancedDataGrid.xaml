@@ -1,4 +1,4 @@
-<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ - všetky chyby vyriešené -->
+<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ pre internal properties -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -187,14 +187,14 @@
             </StackPanel>
         </Border>
 
-        <!-- ✅ OPRAVENÉ CS0432: Main Content s HeaderColumns a DataRows properties -->
+        <!-- ✅ KĽÚČOVÁ OPRAVA: Main Content s INTERNAL properties -->
         <Grid x:Name="MainContentGrid" Visibility="Visible">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- ✅ OPRAVENÉ XLS0432: Header s HeaderColumns property -->
+            <!-- ✅ OPRAVENÉ: Header s INTERNAL HeaderColumns property -->
             <ScrollViewer x:Name="HeaderScrollViewer"
                          Grid.Row="0"
                          HorizontalScrollBarVisibility="Hidden"
@@ -213,7 +213,7 @@
                 </ItemsRepeater>
             </ScrollViewer>
 
-            <!-- ✅ OPRAVENÉ XLS0432: Data ScrollViewer s DataRows property -->
+            <!-- ✅ OPRAVENÉ: Data ScrollViewer s INTERNAL DataRows property -->
             <ScrollViewer x:Name="DataScrollViewer"
                          Grid.Row="1"
                          HorizontalScrollBarVisibility="Auto"

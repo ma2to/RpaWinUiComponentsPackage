@@ -1,4 +1,4 @@
-﻿// Services/DataManagementService.cs - ✅ OPRAVENÝ CS0051 - explicit interface implementation
+﻿// Services/DataManagementService.cs - ✅ OPRAVENÝ s Auto-Add riadkov funkciou
 using Microsoft.Extensions.Logging;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Implementácia služby pre správu dát v DataGrid - ✅ OPRAVENÝ accessibility
+    /// Implementácia služby pre správu dát v DataGrid - ✅ INTERNAL
     /// </summary>
     internal class DataManagementService : IDataManagementService
     {
@@ -30,11 +30,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             _cleanupHelper = new ResourceCleanupHelper();
         }
 
-        #region ✅ OPRAVENÉ CS0051: Explicit Interface Implementation
+        #region ✅ OPRAVENÉ: Explicit Interface Implementation
 
-        /// <summary>
-        /// ✅ OPRAVENÉ: Explicit interface implementation pre GridConfiguration accessibility
-        /// </summary>
         Task IDataManagementService.InitializeAsync(GridConfiguration configuration)
         {
             try
@@ -53,7 +50,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                         _columnTypes[column.Name] = column.DataType;
                     }
 
-                    // Vytvor prázdne riadky podľa konfigurácie
+                    // ✅ NOVÁ FUNKCIONALITA: Vytvor minimálny počet prázdnych riadkov
                     for (int i = 0; i < _configuration.EmptyRowsCount; i++)
                     {
                         _gridData.Add(CreateEmptyRow());
@@ -61,7 +58,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 }
 
                 _isInitialized = true;
-                _logger.LogInformation("DataManagementService inicializovaný s {ColumnCount} stĺpcami a {RowCount} riadkami",
+                _logger.LogInformation("DataManagementService inicializovaný s {ColumnCount} stĺpcami a {RowCount} minimálnymi riadkami",
                     _configuration.Columns.Count, _configuration.EmptyRowsCount);
 
                 return Task.CompletedTask;
@@ -74,88 +71,58 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// Načíta dáta do gridu
+        /// ✅ NOVÁ FUNKCIONALITA: Načíta dáta s auto-add riadkov logikou
         /// </summary>
         Task IDataManagementService.LoadDataAsync(List<Dictionary<string, object?>> data)
         {
             return LoadDataInternalAsync(data);
         }
 
-        /// <summary>
-        /// Získa všetky dáta z gridu
-        /// </summary>
         Task<List<Dictionary<string, object?>>> IDataManagementService.GetAllDataAsync()
         {
             return GetAllDataInternalAsync();
         }
 
-        /// <summary>
-        /// Získa dáta špecifického riadku
-        /// </summary>
         Task<Dictionary<string, object?>> IDataManagementService.GetRowDataAsync(int rowIndex)
         {
             return GetRowDataInternalAsync(rowIndex);
         }
 
-        /// <summary>
-        /// Nastaví hodnotu bunky
-        /// </summary>
         Task IDataManagementService.SetCellValueAsync(int rowIndex, string columnName, object? value)
         {
             return SetCellValueInternalAsync(rowIndex, columnName, value);
         }
 
-        /// <summary>
-        /// Získa hodnotu bunky
-        /// </summary>
         Task<object?> IDataManagementService.GetCellValueAsync(int rowIndex, string columnName)
         {
             return GetCellValueInternalAsync(rowIndex, columnName);
         }
 
-        /// <summary>
-        /// Pridá nový riadok
-        /// </summary>
         Task<int> IDataManagementService.AddRowAsync(Dictionary<string, object?>? initialData)
         {
             return AddRowInternalAsync(initialData);
         }
 
-        /// <summary>
-        /// Zmaže riadok (vyčisti jeho obsah)
-        /// </summary>
         Task IDataManagementService.DeleteRowAsync(int rowIndex)
         {
             return DeleteRowInternalAsync(rowIndex);
         }
 
-        /// <summary>
-        /// Vymaže všetky dáta
-        /// </summary>
         Task IDataManagementService.ClearAllDataAsync()
         {
             return ClearAllDataInternalAsync();
         }
 
-        /// <summary>
-        /// Kompaktuje riadky (odstráni prázdne medzery)
-        /// </summary>
         Task IDataManagementService.CompactRowsAsync()
         {
             return CompactRowsInternalAsync();
         }
 
-        /// <summary>
-        /// Získa počet neprázdnych riadkov
-        /// </summary>
         Task<int> IDataManagementService.GetNonEmptyRowCountAsync()
         {
             return GetNonEmptyRowCountInternalAsync();
         }
 
-        /// <summary>
-        /// Kontroluje či je riadok prázdny
-        /// </summary>
         Task<bool> IDataManagementService.IsRowEmptyAsync(int rowIndex)
         {
             return IsRowEmptyInternalAsync(rowIndex);
@@ -163,8 +130,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
         #endregion
 
-        #region Internal Implementation Methods
+        #region ✅ NOVÁ FUNKCIONALITA: Auto-Add Riadkov Implementation
 
+        /// <summary>
+        /// ✅ NOVÉ: Načíta dáta s automatickým pridávaním riadkov
+        /// </summary>
         private async Task LoadDataInternalAsync(List<Dictionary<string, object?>> data)
         {
             try
@@ -181,28 +151,37 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 {
                     lock (_dataLock)
                     {
-                        _logger.LogInformation("Načítavajú sa dáta: {RowCount} riadkov", data.Count);
+                        _logger.LogInformation("Načítavajú sa dáta: {RowCount} riadkov s auto-add logikou", data.Count);
+
+                        // ✅ NOVÁ LOGIKA: Zabezpečenie dostatočnej kapacity
+                        var minimumRows = _configuration!.EmptyRowsCount;
+                        var requiredCapacity = Math.Max(data.Count + 1, minimumRows); // +1 pre prázdny riadok na konci
 
                         // Vyčisti existujúce dáta
                         _gridData.Clear();
 
-                        // Načítaj nové dáta
-                        foreach (var rowData in data)
+                        // Načítaj dáta a vytvor riadky
+                        for (int i = 0; i < requiredCapacity; i++)
                         {
-                            var processedRow = ProcessAndValidateRowData(rowData);
+                            Dictionary<string, object?> processedRow;
+
+                            if (i < data.Count)
+                            {
+                                // Načítaj skutočné dáta
+                                processedRow = ProcessAndValidateRowData(data[i]);
+                                _logger.LogDebug("Načítaný dátový riadok {Index}", i);
+                            }
+                            else
+                            {
+                                // Vytvor prázdny riadok
+                                processedRow = CreateEmptyRow();
+                                _logger.LogDebug("Vytvorený prázdny riadok {Index}", i);
+                            }
+
                             _gridData.Add(processedRow);
                         }
 
-                        // Pridaj dodatočné prázdne riadky ak je potrebné
-                        var currentRowCount = _gridData.Count;
-                        var requiredRowCount = Math.Max(currentRowCount, _configuration!.EmptyRowsCount);
-
-                        for (int i = currentRowCount; i < requiredRowCount; i++)
-                        {
-                            _gridData.Add(CreateEmptyRow());
-                        }
-
-                        _logger.LogInformation("Dáta načítané: {TotalRows} riadkov ({DataRows} s dátami, {EmptyRows} prázdnych)",
+                        _logger.LogInformation("Auto-add dáta načítané: {TotalRows} riadkov ({DataRows} s dátami, {EmptyRows} prázdnych)",
                             _gridData.Count, data.Count, _gridData.Count - data.Count);
                     }
                 });
@@ -212,10 +191,161 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Chyba pri načítavaní dát");
+                _logger.LogError(ex, "Chyba pri načítavaní dát s auto-add");
                 throw;
             }
         }
+
+        /// <summary>
+        /// ✅ NOVÉ: Automaticky pridá nový prázdny riadok ak je potrebný
+        /// </summary>
+        public async Task EnsureEmptyRowAtEndAsync()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                await Task.Run(() =>
+                {
+                    lock (_dataLock)
+                    {
+                        // Skontroluj či posledný riadok nie je prázdny
+                        if (_gridData.Count > 0)
+                        {
+                            var lastRow = _gridData[^1]; // C# 8 syntax
+                            if (!IsRowEmpty(lastRow))
+                            {
+                                // Posledný riadok nie je prázdny - pridaj nový prázdny
+                                var newEmptyRow = CreateEmptyRow();
+                                _gridData.Add(newEmptyRow);
+                                _logger.LogInformation("Automaticky pridaný nový prázdny riadok na index {Index}", _gridData.Count - 1);
+                            }
+                        }
+                        else
+                        {
+                            // Žiadne riadky - pridaj aspoň jeden prázdny
+                            var emptyRow = CreateEmptyRow();
+                            _gridData.Add(emptyRow);
+                            _logger.LogInformation("Pridaný prvý prázdny riadok");
+                        }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri zabezpečovaní prázdneho riadku na konci");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Inteligentné pridanie riadku - kontroluje kapacitu
+        /// </summary>
+        private async Task<int> AddRowInternalAsync(Dictionary<string, object?>? initialData)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                int newRowIndex;
+
+                await Task.Run(() =>
+                {
+                    lock (_dataLock)
+                    {
+                        // Kontrola maxRows limitu
+                        if (_configuration!.MaxRows > 0 && _gridData.Count >= _configuration.MaxRows)
+                        {
+                            _logger.LogWarning("Dosiahnutý maximálny počet riadkov: {MaxRows}", _configuration.MaxRows);
+                            newRowIndex = -1;
+                            return;
+                        }
+
+                        Dictionary<string, object?> newRow;
+
+                        if (initialData != null)
+                        {
+                            newRow = ProcessAndValidateRowData(initialData);
+                        }
+                        else
+                        {
+                            newRow = CreateEmptyRow();
+                        }
+
+                        _gridData.Add(newRow);
+                        newRowIndex = _gridData.Count - 1;
+
+                        _logger.LogDebug("Pridaný nový riadok na index {RowIndex} (celkom: {TotalRows})", newRowIndex, _gridData.Count);
+
+                        // ✅ NOVÁ LOGIKA: Zabezpeč prázdny riadok na konci
+                        if (initialData != null) // Ak pridávame riadok s dátami
+                        {
+                            var emptyRow = CreateEmptyRow();
+                            _gridData.Add(emptyRow);
+                            _logger.LogDebug("Automaticky pridaný prázdny riadok na koniec");
+                        }
+                    }
+                });
+
+                return newRowIndex;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri pridávaní nového riadku");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÁ FUNKCIONALITA: Inteligentné mazanie s ochranou minimálneho počtu
+        /// </summary>
+        private async Task DeleteRowInternalAsync(int rowIndex)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                await Task.Run(() =>
+                {
+                    lock (_dataLock)
+                    {
+                        if (rowIndex < 0 || rowIndex >= _gridData.Count)
+                        {
+                            _logger.LogWarning("Neplatný index riadku pri mazaní: {RowIndex}", rowIndex);
+                            return;
+                        }
+
+                        var minimumRows = _configuration!.EmptyRowsCount;
+
+                        if (_gridData.Count > minimumRows)
+                        {
+                            // Máme viac ako minimum - fyzicky zmaž riadok
+                            _gridData.RemoveAt(rowIndex);
+                            _logger.LogDebug("Fyzicky zmazaný riadok {RowIndex} (zostalo: {RemainingRows})", rowIndex, _gridData.Count);
+                        }
+                        else
+                        {
+                            // Sme na minimume - len vyčisti obsah riadku
+                            var emptyRow = CreateEmptyRow();
+                            _gridData[rowIndex] = emptyRow;
+                            _logger.LogDebug("Vyčistený obsah riadku {RowIndex} (zachované minimum)", rowIndex);
+                        }
+                    }
+                });
+
+                // Kompaktuj riadky po mazaní
+                await CompactRowsInternalAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri mazaní riadku {RowIndex}", rowIndex);
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region Internal Implementation Methods (bez zmien)
 
         private Task<List<Dictionary<string, object?>>> GetAllDataInternalAsync()
         {
@@ -334,80 +464,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        private Task<int> AddRowInternalAsync(Dictionary<string, object?>? initialData)
-        {
-            try
-            {
-                EnsureInitialized();
-
-                int newRowIndex;
-
-                lock (_dataLock)
-                {
-                    // Kontrola maxRows limitu
-                    if (_configuration!.MaxRows > 0 && _gridData.Count >= _configuration.MaxRows)
-                    {
-                        _logger.LogWarning("Dosiahnutý maximálny počet riadkov: {MaxRows}", _configuration.MaxRows);
-                        return Task.FromResult(-1);
-                    }
-
-                    Dictionary<string, object?> newRow;
-
-                    if (initialData != null)
-                    {
-                        newRow = ProcessAndValidateRowData(initialData);
-                    }
-                    else
-                    {
-                        newRow = CreateEmptyRow();
-                    }
-
-                    _gridData.Add(newRow);
-                    newRowIndex = _gridData.Count - 1;
-
-                    _logger.LogDebug("Pridaný nový riadok na index {RowIndex}", newRowIndex);
-                }
-
-                return Task.FromResult(newRowIndex);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Chyba pri pridávaní nového riadku");
-                throw;
-            }
-        }
-
-        private async Task DeleteRowInternalAsync(int rowIndex)
-        {
-            try
-            {
-                EnsureInitialized();
-
-                lock (_dataLock)
-                {
-                    if (rowIndex < 0 || rowIndex >= _gridData.Count)
-                    {
-                        _logger.LogWarning("Neplatný index riadku pri mazaní: {RowIndex}", rowIndex);
-                        return;
-                    }
-
-                    // Vyčisti obsah riadku (ale nenechávaj ho prázdny - nahraď prázdnym riadkom)
-                    var emptyRow = CreateEmptyRow();
-                    _gridData[rowIndex] = emptyRow;
-
-                    _logger.LogDebug("Vymazaný riadok {RowIndex}", rowIndex);
-                }
-
-                // Kompaktuj riadky
-                await CompactRowsInternalAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Chyba pri mazaní riadku {RowIndex}", rowIndex);
-                throw;
-            }
-        }
-
+        /// <summary>
+        /// ✅ UPRAVENÉ: ClearAllDataAsync s rešpektovaním minimálneho počtu riadkov
+        /// </summary>
         private async Task ClearAllDataInternalAsync()
         {
             try
@@ -423,14 +482,15 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                         // Vyčisti všetky dáta
                         _gridData.Clear();
 
-                        // Vytvor nové prázdne riadky
-                        for (int i = 0; i < _configuration!.EmptyRowsCount; i++)
+                        // ✅ NOVÁ LOGIKA: Vytvor minimálny počet prázdnych riadkov z konfigurácie
+                        var minimumRows = _configuration!.EmptyRowsCount;
+                        for (int i = 0; i < minimumRows; i++)
                         {
                             _gridData.Add(CreateEmptyRow());
                         }
 
-                        _logger.LogInformation("Všetky dáta vymazané, vytvorených {EmptyRows} prázdnych riadkov",
-                            _configuration.EmptyRowsCount);
+                        _logger.LogInformation("Všetky dáta vymazané, obnovených {MinimumRows} minimálnych riadkov",
+                            minimumRows);
                     }
 
                     // Vyčisti pamäť
@@ -444,6 +504,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
+        /// <summary>
+        /// ✅ UPRAVENÉ: CompactRowsInternalAsync s auto-add logikou
+        /// </summary>
         private Task CompactRowsInternalAsync()
         {
             try
@@ -454,19 +517,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 {
                     lock (_dataLock)
                     {
-                        _logger.LogDebug("Spúšťa sa kompaktovanie riadkov");
+                        _logger.LogDebug("Spúšťa sa kompaktovanie riadkov s auto-add logikou");
 
                         var nonEmptyRows = new List<Dictionary<string, object?>>();
-                        var emptyRowCount = 0;
 
-                        // Rozdeľ na neprázdne a prázdne riadky
+                        // Rozdeľ na neprázdne riadky
                         foreach (var row in _gridData)
                         {
-                            if (IsRowEmpty(row))
-                            {
-                                emptyRowCount++;
-                            }
-                            else
+                            if (!IsRowEmpty(row))
                             {
                                 nonEmptyRows.Add(row);
                             }
@@ -476,15 +534,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                         _gridData.Clear();
                         _gridData.AddRange(nonEmptyRows);
 
-                        // Pridaj potrebný počet prázdnych riadkov
-                        var requiredEmptyRows = Math.Max(_configuration!.EmptyRowsCount, emptyRowCount);
+                        // ✅ NOVÁ LOGIKA: Pridaj potrebný počet prázdnych riadkov
+                        var minimumRows = _configuration!.EmptyRowsCount;
+                        var requiredEmptyRows = Math.Max(minimumRows - nonEmptyRows.Count, 1); // Aspoň 1 prázdny
+
                         for (int i = 0; i < requiredEmptyRows; i++)
                         {
                             _gridData.Add(CreateEmptyRow());
                         }
 
-                        _logger.LogDebug("Kompaktovanie dokončené: {NonEmptyRows} neprázdnych, {EmptyRows} prázdnych riadkov",
-                            nonEmptyRows.Count, requiredEmptyRows);
+                        _logger.LogDebug("Kompaktovanie dokončené: {NonEmptyRows} neprázdnych, {EmptyRows} prázdnych riadkov (celkom: {TotalRows})",
+                            nonEmptyRows.Count, requiredEmptyRows, _gridData.Count);
                     }
                 });
             }

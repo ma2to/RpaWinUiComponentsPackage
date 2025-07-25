@@ -1,52 +1,81 @@
-﻿📋 Obsah
-
-Účel balíka
-Kľúčové funkcie
-Inštalácia a použitie
-NOVÁ funkcionalita
-API referencia
-Architektúra balíka
-Príklady použitia
-Technické detaily
-
+﻿🚀 RpaWinUiComponents.AdvancedWinUiDataGrid
+Profesionálny WinUI3 DataGrid komponent s pokročilými funkciami pre dátové aplikácie
 
 🎯 Účel balíka
-RpaWinUiComponents.AdvancedWinUiDataGrid je vysoko optimalizovaný DataGrid komponent pre WinUI3 aplikácie, ktorý poskytuje pokročilé funkcie pre správu a vizualizáciu dát v moderných desktop aplikáciách.
-Prečo tento komponent?
+Tento balík poskytuje vysoko optimalizovaný DataGrid komponent pre WinUI3 aplikácie s podporou:
 
-🎨 Dynamické stĺpce - Generovanie stĺpcov za behu podľa dátovej štruktúry
-⚡ Realtime validácie - Okamžité validácie s throttling optimalizáciou
-📋 Excel kompatibilita - Plná podpora Copy/Paste s Excel aplikáciami
-🗑️ Inteligentné mazanie - Custom validačné pravidlá pre mazanie riadkov
-🎨 Color themes - Predpripravené a custom farby pre rôzne použitia
-⚙️ Performance - Optimalizované pre veľké datasety s virtualizáciou
+✅ Dynamického generovania stĺpcov
+✅ Realtime validácií s throttling
+✅ Copy/Paste Excel funkcionalite
+✅ Custom validačných pravidiel pre mazanie riadkov ⭐ NOVÉ
+✅ Color Theme API s predpripravenými témami ⭐ NOVÉ
+✅ Auto-Add riadkov funkcionalita ⭐ NAJNOVŠIE
+✅ Optimalizácie pre veľké datasety
+✅ Profesionálneho clean PUBLIC API
 
 
-⭐ Kľúčové funkcie
-🆕 NOVÁ FUNKCIONALITA: DeleteRowsByCustomValidationAsync
-Hlavnou novinkou je možnosť mazať riadky na základe vlastných validačných pravidiel:
-csharp// Definuj pravidlá pre mazanie riadkov
-var deleteRules = new List<ValidationRule>
+📦 Inštalácia
+Package Manager Console
+bashInstall-Package RpaWinUiComponents.AdvancedWinUiDataGrid
+.NET CLI
+bashdotnet add package RpaWinUiComponents.AdvancedWinUiDataGrid
+PackageReference
+xml<PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.2" />
+
+🚀 Quick Start
+1. Základné použitie v XAML
+xml<!-- MainWindow.xaml -->
+<Window x:Class="YourApp.MainWindow"
+        xmlns:grid="using:RpaWinUiComponents.AdvancedWinUiDataGrid">
+    
+    <Grid>
+        <grid:AdvancedDataGrid x:Name="DataGridControl"/>
+    </Grid>
+</Window>
+2. Inicializácia v C#
+csharp// MainWindow.xaml.cs
+using RpaWinUiComponents.AdvancedWinUiDataGrid;
+
+public sealed partial class MainWindow : Window
 {
-    // Zmaž riadky kde plat > 10000
-    ValidationRule.Custom("Plat", value =>
-        decimal.TryParse(value?.ToString(), out var plat) && plat > 10000m,
-        "Vysoký plat - riadok zmazaný"),
-        
-    // Zmaž riadky kde vek > 50  
-    ValidationRule.Custom("Vek", value =>
-        int.TryParse(value?.ToString(), out var vek) && vek > 50,
-        "Vysoký vek - riadok zmazaný"),
-        
-    // Zmaž riadky s prázdnym emailom
-    ValidationRule.Custom("Email", value =>
-        string.IsNullOrWhiteSpace(value?.ToString()),
-        "Prázdny email - riadok zmazaný")
-};
+    public MainWindow()
+    {
+        this.InitializeComponent();
+        InitializeDataGrid();
+    }
 
-// Aplikuj delete pravidlá
-await DataGridControl.DeleteRowsByCustomValidationAsync(deleteRules);
-🎨 Color Theme API
+    private async void InitializeDataGrid()
+    {
+        // 1. Definícia stĺpcov
+        var columns = new List<ColumnDefinition>
+        {
+            new("ID", typeof(int)) { MinWidth = 60, Width = 80, Header = "🔢 ID" },
+            new("Name", typeof(string)) { MinWidth = 120, Width = 150, Header = "👤 Name" },
+            new("Email", typeof(string)) { MinWidth = 200, Width = 200, Header = "📧 Email" },
+            new("DeleteRows", typeof(string)) { Width = 40 } // Špeciálny delete stĺpec
+        };
+
+        // 2. Validačné pravidlá
+        var validationRules = new List<ValidationRule>
+        {
+            ValidationRule.Required("Name", "Name is required"),
+            ValidationRule.Email("Email", "Invalid email format")
+        };
+
+        // 3. Inicializácia
+        await DataGridControl.InitializeAsync(columns, validationRules, ThrottlingConfig.Default, 15);
+
+        // 4. Načítanie dát
+        var data = new List<Dictionary<string, object?>>
+        {
+            new() { ["ID"] = 1, ["Name"] = "John Doe", ["Email"] = "john@example.com" }
+        };
+        await DataGridControl.LoadDataAsync(data);
+    }
+}
+
+⭐ NAJNOVŠIE FUNKCIE
+🎨 Color Theme API ⭐ NOVÉ
 Predpripravené témy a možnosť vytvorenia vlastných:
 csharp// Predpripravené témy
 DataGridControl.ApplyColorTheme(DataGridColorTheme.Light);    // Svetlá
@@ -63,154 +92,170 @@ var customTheme = DataGridColorThemeBuilder.Create()
     .Build();
 
 DataGridControl.ApplyColorTheme(customTheme);
-🔍 Realtime Validácie
-Validácie sa spúšťajú ihneď pri písaní s optimalizovaným throttling mechanizmom:
 
-Throttling: 300ms default (konfigurovateľné)
-Inteligentné: Validuje iba neprázdne riadky
-Vizuálne: Červené orámovanie nevalidných buniek
-Performance: Optimalizované pre veľké množstvo dát
+// Reset na default
+DataGridControl.ResetToDefaultTheme();
+⚡ Auto-Add Riadkov ⭐ NAJNOVŠIE
+Automatické pridávanie riadkov pri práci s dátami:
+csharp// Ak načítaš 12 riadkov dát, automaticky sa vytvorí 13. prázdny riadok
+var data = GenerateData(12); // 12 riadkov
+await DataGridControl.LoadDataAsync(data);
+// Výsledok: 13 riadkov (12 s dátami + 1 prázdny)
 
-🧭 Pokročilá Navigácia
-Kompletná podpora klávesových skratiek pre efektívnu prácu:
-KlávesaAkciaTabĎalšia bunka + potvrdenie zmienShift+TabPredchádzajúca bunka + potvrdenieEnterBunka o riadok nižšie + potvrdenieShift+EnterNový riadok v bunke (multiline)EscZrušenie zmien + výskok z bunkyCtrl+C/V/XCopy/Paste/Cut s Excel kompatibilitou
-📊 Špeciálne Stĺpce
-DeleteRows stĺpec
+// Keď vyplníš posledný riadok, automaticky sa pridá nový prázdny
+// Keď mažeš riadky:
+// - Ak je počet riadkov > minimum z inicializácie → fyzicky sa zmaže riadok
+// - Ak je počet riadkov = minimum → iba sa vyčistí obsah riadku
+Kľúčové vlastnosti:
 
-Automaticky sa vytvorí pri názve "DeleteRows" v definícii stĺpcov
-Zobrazuje ikonku krížika pre mazanie riadkov
-Inteligentné mazanie s kompaktovaním
+✅ Vždy zostane aspoň jeden prázdny riadok na konci
+✅ Rešpektuje minimálny počet riadkov z inicializácie
+✅ Automaticky sa pridávajú riadky pri vyplňovaní
+✅ Inteligentné mazanie s ochranou minimálneho počtu
 
-ValidAlerts stĺpec
-
-Vždy prítomný na konci tabuľky
-Zobrazuje zoznam validačných chýb pre daný riadok
-Formát: "StĺpecNázov: Chybová správa; InýStĺpec: Ďalšia chyba"
-
-
-🚀 Inštalácia a použitie
-1. Pridanie do projektu
-xml<!-- V .csproj súbore -->
-<ItemGroup>
-    <ProjectReference Include="path\to\AdvancedWinUiDataGrid\AdvancedWinUiDataGrid.csproj" />
-</ItemGroup>
-2. Použitie v XAML
-xml<Window xmlns:grid="using:RpaWinUiComponents.AdvancedWinUiDataGrid">
-    <Grid>
-        <grid:AdvancedDataGrid x:Name="DataGridControl"/>
-    </Grid>
-</Window>
-3. Inicializácia v kóde
-csharppublic async Task InitializeDataGrid()
+🎯 Custom Delete Validation ⭐ ROZŠÍRENÉ
+Mazanie riadkov na základe vlastných validačných pravidiel:
+csharp// Definuj custom validačné pravidlá pre mazanie
+var deleteRules = new List<ValidationRule>
 {
-    // Definícia stĺpcov
-    var columns = new List<ColumnDefinition>
+    // Zmaž riadky kde plat > 10000
+    ValidationRule.Custom("Salary", value =>
     {
-        new("ID", typeof(int)) { Header = "🔢 ID", MinWidth = 80 },
-        new("Name", typeof(string)) { Header = "👤 Meno", MinWidth = 150 },
-        new("Email", typeof(string)) { Header = "📧 Email", MinWidth = 200 },
-        new("Age", typeof(int)) { Header = "🎂 Vek", MinWidth = 80 },
-        new("Salary", typeof(decimal)) { Header = "💰 Plat", MinWidth = 120 },
-        new("DeleteRows", typeof(string)) { Width = 40, Header = "🗑️" }
-    };
+        if (decimal.TryParse(value?.ToString(), out var salary))
+            return salary > 10000; // TRUE = zmaž riadok
+        return false;
+    }, "High salary - row deleted"),
 
-    // Validačné pravidlá
-    var validationRules = new List<ValidationRule>
+    // Zmaž riadky kde vek > 65
+    ValidationRule.Custom("Age", value =>
     {
-        ValidationRule.Required("Name", "Meno je povinné"),
-        ValidationRule.Email("Email", "Neplatný email formát"),
-        ValidationRule.Range("Age", 18, 100, "Vek musí byť 18-100"),
-        ValidationRule.Range("Salary", 500, 50000, "Plat musí byť 500-50000")
-    };
+        if (int.TryParse(value?.ToString(), out var age))
+            return age > 65; // TRUE = zmaž riadok
+        return false;
+    }, "Retirement age - row deleted"),
 
-    // Inicializácia s realtime validáciami
-    await DataGridControl.InitializeAsync(
-        columns, 
-        validationRules, 
-        ThrottlingConfig.Default, 
-        emptyRowsCount: 15
-    );
-
-    // Načítanie dát
-    var data = new List<Dictionary<string, object?>>
+    // Zmaž riadky kde email je prázdny
+    ValidationRule.Custom("Email", value =>
     {
-        new() { ["ID"] = 1, ["Name"] = "Ján Novák", ["Email"] = "jan@example.com", 
-                 ["Age"] = 30, ["Salary"] = 2500.00m }
-    };
-    
-    await DataGridControl.LoadDataAsync(data);
-}
+        var email = value?.ToString() ?? "";
+        return string.IsNullOrWhiteSpace(email); // TRUE = zmaž riadok
+    }, "Empty email - row deleted")
+};
 
-🔧 API Referencia
-Základné Operácie
-csharp// Inicializácia
-Task InitializeAsync(List<ColumnDefinition> columns, 
-                    List<ValidationRule> validationRules, 
-                    ThrottlingConfig throttling, 
-                    int emptyRowsCount = 15);
+// Aplikuj delete pravidlá
+await DataGridControl.DeleteRowsByCustomValidationAsync(deleteRules);
 
-
-//Len tieto triedy majú byť PUBLIC:
-
-AdvancedDataGrid (hlavný komponent)
-ColumnDefinition
-ValidationRule
-ThrottlingConfig
-DataGridColorTheme + DataGridColorThemeBuilder
-
-Všetko ostatné má byť INTERNAL
-
-
-// Načítanie dát
+🔧 Kompletné PUBLIC API
+Inicializácia
+csharpTask InitializeAsync(
+    List<ColumnDefinition> columns,
+    List<ValidationRule> validationRules,
+    ThrottlingConfig throttling,
+    int emptyRowsCount = 15
+);
+Dátové operácie
+csharp// Načítanie dát (s auto-add riadkov)
 Task LoadDataAsync(List<Dictionary<string, object?>> data);
 Task LoadDataAsync(DataTable dataTable);
 
-// Validácia
-Task<bool> ValidateAllRowsAsync();
-
-// Export
+// Export dát  
 Task<DataTable> ExportToDataTableAsync();
 
-// Vymazanie
-Task ClearAllDataAsync();
-
-// 🆕 NOVÁ METÓDA: Custom delete
+// Mazanie dát
+Task ClearAllDataAsync(); // Zachováva minimum riadkov
 Task DeleteRowsByCustomValidationAsync(List<ValidationRule> deleteRules);
-Konfigurácia Stĺpcov
-csharppublic class ColumnDefinition
-{
-    public string Name { get; set; }
-    public Type DataType { get; set; }
-    public string? Header { get; set; }
-    public double Width { get; set; } = 150;
-    public double MinWidth { get; set; } = 50;
-    public double MaxWidth { get; set; } = 0;  // 0 = neobmedzené
-    public bool IsVisible { get; set; } = true;
-    public bool IsEditable { get; set; } = true;
-    public object? DefaultValue { get; set; }
-    public string? DisplayFormat { get; set; }
-}
-Validačné Pravidlá
-csharp// Predpripravené validácie
-ValidationRule.Required(columnName, errorMessage);
-ValidationRule.Email(columnName, errorMessage);
-ValidationRule.Range(columnName, min, max, errorMessage);
-ValidationRule.MinLength(columnName, minLength, errorMessage);
-ValidationRule.MaxLength(columnName, maxLength, errorMessage);
-ValidationRule.Pattern(columnName, regexPattern, errorMessage);
+Color Theme API
+csharp// Aplikovanie tém
+void ApplyColorTheme(DataGridColorTheme theme);
+void ResetToDefaultTheme();
 
-// Custom validácie
-ValidationRule.Custom(columnName, validationFunction, errorMessage);
-Throttling Konfigurácia
+// Property pre binding
+DataGridColorTheme ColorTheme { get; set; }
+Validácie
+csharp// Validácia všetkých riadkov
+Task<bool> ValidateAllRowsAsync();
+
+📊 Konfigurácia Stĺpcov
+csharpvar columns = new List<ColumnDefinition>
+{
+    new("ID", typeof(int)) 
+    { 
+        MinWidth = 60, 
+        Width = 80, 
+        Header = "🔢 ID",
+        IsEditable = false  // Read-only stĺpec
+    },
+    
+    new("Name", typeof(string)) 
+    { 
+        MinWidth = 120, 
+        Width = 150, 
+        Header = "👤 Name",
+        DefaultValue = "New User"
+    },
+    
+    new("Email", typeof(string)) 
+    { 
+        MinWidth = 200, 
+        Width = 200, 
+        Header = "📧 Email"
+    },
+    
+    new("Salary", typeof(decimal)) 
+    { 
+        Width = 120, 
+        Header = "💰 Salary",
+        DisplayFormat = "C2" // Currency formát
+    },
+    
+    // Špeciálne stĺpce
+    new("DeleteRows", typeof(string)) { Width = 40 }, // Delete button
+    // ValidAlerts sa pridáva automaticky
+};
+
+✅ Validačné Pravidlá
+Predpripravené validácie
+csharpvar validationRules = new List<ValidationRule>
+{
+    // Základné validácie
+    ValidationRule.Required("Name", "Name is required"),
+    ValidationRule.Email("Email", "Invalid email format"),
+    ValidationRule.Range("Age", 18, 100, "Age must be 18-100"),
+    ValidationRule.MinLength("Name", 3, "Name too short"),
+    ValidationRule.MaxLength("Name", 50, "Name too long"),
+    ValidationRule.Pattern("Phone", @"^\d{10}$", "Invalid phone format")
+};
+Custom validácie
+csharpvar customRules = new List<ValidationRule>
+{
+    // Jednoduchá custom validácia
+    ValidationRule.Custom("Username", value =>
+    {
+        var username = value?.ToString() ?? "";
+        return username.Length >= 3 && !username.Contains(" ");
+    }, "Username must be 3+ chars without spaces"),
+    
+    // Zložitejšia custom validácia
+    ValidationRule.Custom("Password", value =>
+    {
+        var password = value?.ToString() ?? "";
+        return password.Length >= 8 && 
+               password.Any(char.IsUpper) && 
+               password.Any(char.IsLower) && 
+               password.Any(char.IsDigit);
+    }, "Password must be 8+ chars with upper, lower, and digit")
+};
+
+⚙️ Throttling Konfigurácia
 csharp// Predpripravené konfigurácie
-ThrottlingConfig.Default;        // 300ms validácie
-ThrottlingConfig.Fast;           // 150ms validácie  
-ThrottlingConfig.Slow;           // 500ms validácie
-ThrottlingConfig.PerformanceCritical; // 100ms validácie
-ThrottlingConfig.NoThrottling;   // Okamžité
+var config = ThrottlingConfig.Default;        // 300ms validácie
+var config = ThrottlingConfig.Fast;           // 150ms validácie  
+var config = ThrottlingConfig.Slow;           // 500ms validácie
+var config = ThrottlingConfig.PerformanceCritical; // 100ms validácie
+var config = ThrottlingConfig.NoThrottling;   // Immediate
 
 // Custom konfigurácia
-var config = new ThrottlingConfig
+var customConfig = new ThrottlingConfig
 {
     ValidationDebounceMs = 200,
     UIUpdateDebounceMs = 50,
@@ -219,252 +264,150 @@ var config = new ThrottlingConfig
     EnableRealtimeValidation = true
 };
 
-🏗️ Architektúra balíka
-Štruktúra Projektu
-AdvancedWinUiDataGrid/
-├── Controls/                    # UI komponenty
-│   ├── AdvancedDataGrid.xaml    # Hlavný UserControl
-│   ├── DataGridCell.xaml        # Bunka tabuľky
-│   └── SpecialColumns/          # Špeciálne stĺpce
-├── Models/                      # Dátové modely (PUBLIC API)
-│   ├── ColumnDefinition.cs      # Definícia stĺpca
-│   ├── ValidationRule.cs        # Validačné pravidlá
-│   ├── ThrottlingConfig.cs      # Throttling nastavenia
-│   └── DataGridColorTheme.cs    # Color themes
-├── Services/                    # Business logika (INTERNAL)
-│   ├── Interfaces/              # Service rozhrania
-│   ├── ValidationService.cs     # Validačné služby
-│   ├── DataManagementService.cs # Správa dát
-│   ├── CopyPasteService.cs      # Excel copy/paste
-│   ├── ExportService.cs         # Export funkcionalita
-│   └── NavigationService.cs     # Klávesová navigácia
-├── Utilities/                   # Helper triedy (INTERNAL)
-└── Extensions/                  # Extension metódy (INTERNAL)
+🖱️ Navigácia a Ovládanie
+Klávesové skratky
+KlávesaAkciaTabĎalšia bunka + potvrdenie zmienShift+TabPredchádzajúca bunka + potvrdenieEnterBunka o riadok nižšie + potvrdenieEscZrušenie zmien + výskok z bunkyShift+EnterNový riadok v bunke (multiline)Ctrl+CKopírovanie označených buniekCtrl+VVloženie z clipboarduCtrl+XVystrihávacie označených buniek
+Excel funkcionalita
+
+✅ Copy/Paste medzi Excel a DataGrid
+✅ Zachovanie formátovania
+✅ Multiline text support
+✅ Automatické parsovanie typov
+
+
+🎨 Špeciálne Stĺpce
+DeleteRows stĺpec
+csharp// Automaticky sa vytvorí ak pridáš stĺpec s názvom "DeleteRows"
+new("DeleteRows", typeof(string)) { Width = 40, Header = "🗑️" }
+
+Zobrazuje ikonku krížika
+NOVÉ: Inteligentné mazanie - fyzicky zmaže riadok ak je nad minimum, inak len vyčistí obsah
+Automaticky kompaktuje riadky
+
+ValidAlerts stĺpec
+
+Automaticky sa pridáva na koniec tabuľky
+Zobrazuje validačné chyby pre daný riadok
+Formát: "ColumnName: Error message; OtherColumn: Other error"
+
+
+🔍 Validačný Systém
+Realtime validácie
+
+Validácia sa spúšťa pri každej zmene (throttling 300ms default)
+Validuje sa iba na riadkoch ktoré NIE SÚ úplne prázdne
+Červené orámovanie nevalidných buniek
+Žiadne tooltips - len vizuálna indikácia
+
+Riadok je považovaný za prázdny ak:
+csharp// Všetky bunky (okrem DeleteRows a ValidAlerts) sú null alebo prázdne
+bool isEmpty = row.Cells
+    .Where(c => c.ColumnName != "DeleteRows" && c.ColumnName != "ValidAlerts")
+    .All(c => c.Value == null || string.IsNullOrWhiteSpace(c.Value?.ToString()));
+
+📊 Export Funkcionalita
+csharp// Export všetkých dát (bez DeleteRows, s ValidAlerts)
+DataTable allData = await DataGridControl.ExportToDataTableAsync();
+
+// Memory management
+await DataGridControl.ClearAllDataAsync(); // Fyzicky vymaže dáta z pamäte
+DataGridControl.Dispose(); // IDisposable implementácia
+
+🛠️ Performance Optimalizácie
+Automatické optimalizácie
+
+Virtualizácia UI - iba viditeľné bunky v DOM
+Lazy loading - dáta sa načítavajú postupne
+Throttling validácií - debounce 300ms default
+Batch operations - 50 items per batch default
+Memory pooling - reuse objektov
+Background validation - non-critical validácie
+
 Dependency Injection
-Balík používa Microsoft.Extensions.DependencyInjection pre čistú architektúru:
-csharpservices.AddSingleton<IValidationService, ValidationService>();
+csharp// Balík používa Microsoft.Extensions.DependencyInjection
+services.AddSingleton<IValidationService, ValidationService>();
 services.AddSingleton<IDataManagementService, DataManagementService>();
 services.AddSingleton<ICopyPasteService, CopyPasteService>();
 services.AddTransient<IExportService, ExportService>();
-services.AddSingleton<INavigationService, NavigationService>();
-Design Principles
 
-Clean API: Iba potrebné triedy sú public
-SOLID principles: Separation of concerns
-Interface-based: Všetky služby majú rozhrania
-Resource cleanup: IDisposable, memory management
-Performance first: Optimalizácie na všetkých úrovniach
+🔒 Accessibility & Security
+PUBLIC vs INTERNAL API
+Iba tieto triedy sú PUBLIC:
 
+✅ AdvancedDataGrid (hlavný komponent)
+✅ ColumnDefinition
+✅ ValidationRule
+✅ ThrottlingConfig
+✅ DataGridColorTheme + DataGridColorThemeBuilder
 
-💼 Príklady použitia
-1. Employee Management System
-csharppublic class EmployeeManagementExample
-{
-    private AdvancedDataGrid employeeGrid;
+Všetko ostatné je INTERNAL - čisté API bez zbytočných tried.
 
-    public async Task SetupEmployeeGrid()
-    {
-        var columns = new List<ColumnDefinition>
-        {
-            new("ID", typeof(int)) { Header = "👤 Employee ID", MinWidth = 80 },
-            new("FirstName", typeof(string)) { Header = "📝 First Name", MinWidth = 120 },
-            new("LastName", typeof(string)) { Header = "📝 Last Name", MinWidth = 120 },
-            new("Email", typeof(string)) { Header = "📧 Email", MinWidth = 200 },
-            new("Department", typeof(string)) { Header = "🏢 Department", MinWidth = 150 },
-            new("Salary", typeof(decimal)) { Header = "💰 Salary", MinWidth = 120 },
-            new("HireDate", typeof(DateTime)) { Header = "📅 Hire Date", MinWidth = 120 },
-            new("IsActive", typeof(bool)) { Header = "✅ Active", MinWidth = 80 },
-            new("DeleteRows", typeof(string)) { Width = 40, Header = "🗑️" }
-        };
-
-        var validationRules = new List<ValidationRule>
-        {
-            ValidationRule.Required("FirstName", "First name is required"),
-            ValidationRule.Required("LastName", "Last name is required"),
-            ValidationRule.Email("Email", "Invalid email format"),
-            ValidationRule.Required("Department", "Department is required"),
-            ValidationRule.Range("Salary", 25000m, 300000m, "Salary must be 25k-300k"),
-            
-            // Custom validácia pre hire date
-            ValidationRule.Custom("HireDate", value =>
-            {
-                if (DateTime.TryParse(value?.ToString(), out var date))
-                    return date <= DateTime.Now && date >= DateTime.Now.AddYears(-40);
-                return false;
-            }, "Hire date must be within last 40 years")
-        };
-
-        await employeeGrid.InitializeAsync(columns, validationRules, 
-                                         ThrottlingConfig.PerformanceCritical, 20);
-
-        // 🆕 HR cleanup pomocou custom delete
-        var cleanupRules = new List<ValidationRule>
-        {
-            // Odstráň neaktívnych zamestnancov
-            ValidationRule.Custom("IsActive", value =>
-                bool.TryParse(value?.ToString(), out var isActive) && !isActive,
-                "Inactive employee removed"),
-
-            // Odstráň zamestnancov s neplatným emailom
-            ValidationRule.Custom("Email", value =>
-            {
-                var email = value?.ToString() ?? "";
-                return !string.IsNullOrWhiteSpace(email) && !email.Contains("@");
-            }, "Invalid email removed")
-        };
-
-        await employeeGrid.DeleteRowsByCustomValidationAsync(cleanupRules);
-    }
-}
-2. Financial Data Analysis
-csharppublic class FinancialDataExample  
-{
-    public async Task SetupFinancialAnalysis()
-    {
-        var columns = new List<ColumnDefinition>
-        {
-            new("TransactionID", typeof(string)) { Header = "🏷️ Transaction ID", MinWidth = 120 },
-            new("Date", typeof(DateTime)) { Header = "📅 Date", MinWidth = 100 },
-            new("Amount", typeof(decimal)) { Header = "💰 Amount", MinWidth = 100, DisplayFormat = "C2" },
-            new("Category", typeof(string)) { Header = "📂 Category", MinWidth = 120 },
-            new("Description", typeof(string)) { Header = "📝 Description", MinWidth = 200 },
-            new("DeleteRows", typeof(string)) { Width = 40 }
-        };
-
-        var validationRules = new List<ValidationRule>
-        {
-            ValidationRule.Required("TransactionID", "Transaction ID required"),
-            ValidationRule.Range("Amount", -1000000m, 1000000m, "Amount out of range"),
-            ValidationRule.Required("Category", "Category required")
-        };
-
-        var dataGrid = new AdvancedDataGrid();
-        await dataGrid.InitializeAsync(columns, validationRules, ThrottlingConfig.Default, 25);
-
-        // 🆕 Financial cleanup rules
-        var financialCleanupRules = new List<ValidationRule>
-        {
-            // Odstráň mikrotransakcie (< 1€)
-            ValidationRule.Custom("Amount", value =>
-            {
-                if (decimal.TryParse(value?.ToString(), out var amount))
-                    return Math.Abs(amount) < 1.0m;
-                return false;
-            }, "Micro-transaction removed"),
-
-            // Odstráň test transakcie
-            ValidationRule.Custom("Description", value =>
-            {
-                var desc = value?.ToString() ?? "";
-                return desc.Contains("test", StringComparison.OrdinalIgnoreCase);
-            }, "Test transaction removed")
-        };
-
-        await dataGrid.DeleteRowsByCustomValidationAsync(financialCleanupRules);
-    }
-}
-
-⚙️ Technické detaily
-Performance Optimalizácie
-
-Virtualizácia UI: Iba viditeľné bunky v DOM
-Lazy loading: Postupné načítavanie dát
-Throttling validácií: Debounce 300ms default
-Batch operations: 50 items per batch default
-Memory pooling: Reuse objektov pre lepšiu performance
-Background validation: Non-critical validácie v pozadí
-
-Memory Management
-csharp// Automatické cleanup
-await DataGridControl.ClearAllDataAsync(); // Fyzicky vymaže dáta z pamäte
-
-// Manual cleanup
-DataGridControl.Dispose(); // IDisposable implementácia
-
-// Resource optimization
-- Weak references pre event handlery
-- Automatic GC pri veľkých operáciách
-- Memory leak prevention
-- Efficient object disposal
-Podporované Dátové Typy
-
-Základné: string, int, long, decimal, double, float
-Dátum/čas: DateTime, DateOnly, TimeOnly
-Logické: bool
-Nullable: Všetky základné typy s ?
-Enum: Všetky enum typy
-Custom: Objekty cez ToString() a convertery
-
-Validačný Systém
-Princípy validácie:
-
-Validácia sa spúšťa iba na neprázdnych riadkoch
-Riadok je prázdny ak všetky bunky (okrem špeciálnych stĺpcov) sú null/prázdne
-Špeciálne stĺpce (DeleteRows, ValidAlerts) sa nezapočítavajú do prázdnosti
-Realtime validácia s throttling optimalizáciou
-Červené orámovanie nevalidných buniek (bez tooltipov)
-
-Formát chybových správ:
-"NázovStĺpca: Chybová správa; InýStĺpec: Ďalšia chyba"
-Excel Kompatibilita
-csharp// Copy/Paste mechanizmus
-- Copy (Ctrl+C): Multi-select buniek → Excel TSV formát
-- Paste (Ctrl+V): Excel clipboard → automatické parsovanie
-- Cut (Ctrl+X): Copy + vymazanie zdrojových buniek
-
-// Overflow handling
-- Dáta presahujúce posledný stĺpec sa ignorujú
-- Automatické vytvorenie nových riadkov pri nedostatku
-- Zachovanie formátovania a multiline textu
-
-🔍 Troubleshooting
-Časté Problémy
+🐛 Troubleshooting
+Časté problémy
 Q: DataGrid sa nezobrazuje
-csharp// A: Skontroluj inicializáciu
+csharp// A: Skontroluj či je zavolaná InitializeAsync
 await DataGridControl.InitializeAsync(columns, rules, throttling, 15);
 Q: Validácie nefungujú
-csharp// A: Skontroluj názvy stĺpcov v pravidlách
-ValidationRule.Required("Name", "Name is required") // "Name" musí existovať v columns
-Q: Performance problémy
+csharp// A: Skontroluj či sú definované validačné pravidlá pre správne názvy stĺpcov
+var rules = new List<ValidationRule>
+{
+    ValidationRule.Required("Name", "Name is required") // "Name" musí existovať v columns
+};
+Q: Package Reference nefunguje
+bash# A: Skús force restore
+dotnet restore --force
+# alebo vymaž bin/obj adresáre a rebuild
+Q: Performance problémy s veľkými datasetmi
 csharp// A: Použij PerformanceCritical throttling
 var throttling = ThrottlingConfig.PerformanceCritical;
-Q: Copy/Paste nefunguje
-xml<!-- A: Pridaj do Package.appxmanifest -->
-<Capability Name="clipboardRead" />
-Debug Tipy
+await DataGridControl.InitializeAsync(columns, rules, throttling, 15);
 
-Zapni logovanie pre detailné informácie
-Skontroluj Browser Developer Tools pre XAML chyby
-Použij Performance Profiler pre memory leaks
-Testuj s malými datasetmi najprv
+📈 Changelog
+v1.0.2 (2025-01-xx) ⭐ NAJNOVŠIE
 
+✅ NOVÉ: Auto-Add riadkov funkcionalita
+✅ NOVÉ: Color Theme API s predpripravenými témami
+✅ NOVÉ: Inteligentné mazanie riadkov s ochranou minimálneho počtu
+✅ OPRAVENÉ: CS0053 accessibility chyby
+✅ OPRAVENÉ: MSBuild targets pre správny Package Reference
+✅ VYLEPŠENÉ: Custom delete validation s pokročilejšou logikou
+✅ VYLEPŠENÉ: Memory management a performance
 
-📈 Roadmap
-Plánované Funkcie (v2.0)
+v1.0.0 (2025-01-xx)
 
-🔍 Search/Filter - Pokročilé vyhľadávanie a filtrovanie
-📊 Sorting - Klikateľné stĺpce pre sorting
-📱 Responsive - Adaptívny design pre rôzne veľkosti
-
-
-
-
-Development Guidelines
-
-Dodržujte C# coding standards
-Pridajte unit testy pre nové funkcie
-Aktualizujte dokumentáciu
-Používajte meaningful commit messages
+✅ Initial release
+✅ Dynamic column generation
+✅ Realtime validations
+✅ Copy/Paste Excel functionality
+✅ Custom delete validation
+✅ Professional clean API
 
 
+💼 Príklady Použitia
+Employee Management
+csharpvar columns = new List<ColumnDefinition>
+{
+    new("ID", typeof(int)) { Header = "👤 ID", MinWidth = 60 },
+    new("FirstName", typeof(string)) { Header = "📝 First Name", MinWidth = 120 },
+    new("LastName", typeof(string)) { Header = "📝 Last Name", MinWidth = 120 },
+    new("Email", typeof(string)) { Header = "📧 Email", MinWidth = 200 },
+    new("Department", typeof(string)) { Header = "🏢 Department", MinWidth = 150 },
+    new("Salary", typeof(decimal)) { Header = "💰 Salary", MinWidth = 120 },
+    new("DeleteRows", typeof(string)) { Width = 40 }
+};
 
+// Color theme pre HR systém
+DataGridControl.ApplyColorTheme(DataGridColorTheme.Blue);
 
+// Custom delete pre ukončených zamestnancov
+var deleteRules = new List<ValidationRule>
+{
+    ValidationRule.Custom("Salary", value =>
+    {
+        if (decimal.TryParse(value?.ToString(), out var salary))
+            return salary < 15000m; // Zmaž nízko platených (možno neaktívni)
+        return false;
+    }, "Below minimum wage - removed")
+};
 
-🎉 Záver
-RpaWinUiComponents.AdvancedWinUiDataGrid predstavuje moderné riešenie pre dátové aplikácie vo WinUI3. S pokročilými funkciami ako custom delete validácie, color themes, realtime validácie a Excel kompatibilita poskytuje všetko potrebné pre profesionálne desktopové aplikácie.
-Hlavné prínosy:
-
-⚡ Výkonnosť - Optimalizované pre veľké datasety
-🎨 Flexibilita - Prispôsobiteľné pre rôzne použitia
-🔧 Jednoduchos℘ - Clean API a jasná dokumentácia
-🚀 Inovácie - Najnovšie funkcie a best practices
+await DataGridControl.DeleteRowsByCustomValidationAsync(deleteRules);
