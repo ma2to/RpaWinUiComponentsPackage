@@ -1,4 +1,4 @@
-﻿// Services/ExportService.cs - ✅ OPRAVENÝ accessibility issues
+﻿// Services/ExportService.cs - ✅ OPRAVENÝ accessibility
 using Microsoft.Extensions.Logging;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Služba pre export dát z DataGrid
+    /// Služba pre export dát z DataGrid - INTERNAL
     /// </summary>
     internal class ExportService : IExportService
     {
@@ -388,9 +388,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
     }
 
     /// <summary>
-    /// ✅ OPRAVENÉ CS0050: Štatistiky exportu - PUBLIC
+    /// ✅ OPRAVENÉ: Štatistiky exportu - INTERNAL (nie PUBLIC)
     /// </summary>
-    public class ExportStatistics
+    internal class ExportStatistics
     {
         public int TotalRows { get; set; }
         public int TotalColumns { get; set; }
@@ -406,9 +406,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
     }
 
     /// <summary>
-    /// ✅ OPRAVENÉ CS0050: Štatistiky stĺpca - PUBLIC
+    /// ✅ OPRAVENÉ: Štatistiky stĺpca - INTERNAL (nie PUBLIC)
     /// </summary>
-    public class ColumnStatistics
+    internal class ColumnStatistics
     {
         public string ColumnName { get; set; } = string.Empty;
         public string DataType { get; set; } = string.Empty;

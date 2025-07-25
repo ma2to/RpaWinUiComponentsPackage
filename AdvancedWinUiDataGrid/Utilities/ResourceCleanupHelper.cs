@@ -1,4 +1,4 @@
-﻿// Utilities/ResourceCleanupHelper.cs
+﻿// Utilities/ResourceCleanupHelper.cs - ✅ OPRAVENÝ accessibility
 using System;
 using System.Runtime;
 using System.Threading.Tasks;
@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
 {
     /// <summary>
-    /// Helper trieda pre cleanup zdrojov a pamäte
+    /// Helper trieda pre cleanup zdrojov a pamäte - ✅ INTERNAL
     /// </summary>
-    public class ResourceCleanupHelper
+    internal class ResourceCleanupHelper  // ✅ CHANGED: public -> internal
     {
         private readonly object _cleanupLock = new object();
         private DateTime _lastCleanup = DateTime.MinValue;
@@ -114,9 +114,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
     }
 
     /// <summary>
-    /// Informácie o pamäti
+    /// Informácie o pamäti - ✅ INTERNAL
     /// </summary>
-    public class MemoryInfo
+    internal class MemoryInfo  // ✅ CHANGED: public -> internal
     {
         public long TotalMemory { get; set; }
         public int Gen0Collections { get; set; }

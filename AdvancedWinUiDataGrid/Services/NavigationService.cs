@@ -1,4 +1,4 @@
-﻿// Services/NavigationService.cs
+﻿// Services/NavigationService.cs - ✅ OPRAVENÝ accessibility
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Implementácia navigačnej služby pre DataGrid
+    /// Implementácia navigačnej služby pre DataGrid - ✅ INTERNAL
     /// </summary>
-    public class NavigationService : INavigationService
+    internal class NavigationService : INavigationService  // ✅ CHANGED: public -> internal
     {
         private readonly ILogger<NavigationService> _logger;
         private bool _isInitialized = false;

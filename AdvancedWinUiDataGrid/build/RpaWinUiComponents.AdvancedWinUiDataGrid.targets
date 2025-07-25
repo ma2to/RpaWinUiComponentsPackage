@@ -1,42 +1,20 @@
 ﻿<!-- AdvancedWinUiDataGrid/build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets -->
-<!-- ✅ AKTUALIZOVANÉ MSBuild targets súbor pre správne zabalenie WinUI3 XAML komponentov -->
+<!-- ✅ KOMPLETNE OPRAVENÝ MSBuild targets súbor pre WinUI3 package -->
 <Project>
 
   <!-- ✅ Debug informácie (iba v Debug mode) -->
   <Target Name="DebugAdvancedDataGridPackage" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
-    <Message Text="🔍 AdvancedWinUiDataGrid: Package loaded via NuGet" Importance="normal" />
+    <Message Text="🔍 AdvancedWinUiDataGrid: Package v1.0.2 loaded via NuGet" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: MSBuildThisFileDirectory = $(MSBuildThisFileDirectory)" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: TargetFramework = $(TargetFramework)" Importance="normal" />
-    <Message Text="🔍 AdvancedWinUiDataGrid: UseWinUI = $(UseWinUI)" Importance="normal" />
   </Target>
 
-  <!-- ✅ Kontrola existencie balíka -->
+  <!-- ✅ Package paths -->
   <PropertyGroup>
     <AdvancedDataGridLibPath>$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/</AdvancedDataGridLibPath>
-    <AdvancedDataGridXamlPath>$(AdvancedDataGridLibPath)Controls/</AdvancedDataGridXamlPath>
-    <AdvancedDataGridThemesPath>$(AdvancedDataGridLibPath)Themes/</AdvancedDataGridThemesPath>
   </PropertyGroup>
 
-  <!-- ✅ Automatické pridanie XAML súborov z balíka IBA ak existujú -->
-  <ItemGroup Condition="'$(UseWinUI)' == 'true' AND Exists('$(AdvancedDataGridXamlPath)')">
-    <!-- Zahrnúť Control XAML súbory -->
-    <Page Include="$(AdvancedDataGridXamlPath)**/*.xaml" />
-
-    <!-- Zahrnúť Theme XAML súbory -->
-    <Page Include="$(AdvancedDataGridThemesPath)*.xaml"
-          Condition="Exists('$(AdvancedDataGridThemesPath)')" />
-  </ItemGroup>
-
-  <!-- ✅ Zabezpečí správne načítanie Generic.xaml -->
-  <ItemGroup Condition="'$(UseWinUI)' == 'true' AND Exists('$(AdvancedDataGridThemesPath)Generic.xaml')">
-    <!-- Odstráň Generic.xaml z ApplicationDefinition (ak tam je) -->
-    <ApplicationDefinition Remove="$(AdvancedDataGridThemesPath)Generic.xaml" />
-
-    <!-- Pridaj ako Page -->
-    <Page Include="$(AdvancedDataGridThemesPath)Generic.xaml" />
-  </ItemGroup>
-
-  <!-- ✅ Pridanie referencie na assembly -->
+  <!-- ✅ OPRAVENÉ: Pridanie referencie na DLL (bez raw XAML súborov) -->
   <ItemGroup Condition="'$(UseWinUI)' == 'true' AND Exists('$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll')">
     <Reference Include="RpaWinUiComponents.AdvancedWinUiDataGrid">
       <HintPath>$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll</HintPath>
@@ -44,33 +22,39 @@
     </Reference>
   </ItemGroup>
 
+  <!-- ✅ ODSTRÁNENÉ: Raw XAML import - XAML je už skompilované v DLL -->
+  <!-- Pre WinUI3 komponenty, XAML súbory sú skompilované do DLL a nie sú potrebné ako raw súbory -->
+
   <!-- ✅ Nastavenie pre WinUI3 XAML kompajlovanie -->
   <PropertyGroup Condition="'$(UseWinUI)' == 'true'">
     <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
   </PropertyGroup>
 
-  <!-- ✅ Custom target pre debug XAML súborov -->
-  <Target Name="ListAdvancedDataGridXamlFiles" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
-    <ItemGroup>
-      <FoundXamlFiles Include="$(AdvancedDataGridXamlPath)**/*.xaml"
-                      Condition="Exists('$(AdvancedDataGridXamlPath)')" />
-      <FoundThemeFiles Include="$(AdvancedDataGridThemesPath)*.xaml"
-                       Condition="Exists('$(AdvancedDataGridThemesPath)')" />
-    </ItemGroup>
+  <!-- ✅ Debug target pre verifikáciu package obsahu -->
+  <Target Name="VerifyAdvancedDataGridPackage" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
 
-    <Message Text="🔍 Found @(FoundXamlFiles->Count()) Control XAML files in package" Importance="normal"
-             Condition="@(FoundXamlFiles->Count()) > 0" />
-    <Message Text="🔍 Found @(FoundThemeFiles->Count()) Theme XAML files in package" Importance="normal"
-             Condition="@(FoundThemeFiles->Count()) > 0" />
-    <Message Text="⚠️ No XAML files found in package at $(AdvancedDataGridLibPath)" Importance="high"
-             Condition="@(FoundXamlFiles->Count()) == 0 AND @(FoundThemeFiles->Count()) == 0" />
+    <PropertyGroup>
+      <PackageDllExists Condition="Exists('$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll')">true</PackageDllExists>
+      <PackagePdbExists Condition="Exists('$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.pdb')">true</PackagePdbExists>
+    </PropertyGroup>
+
+    <Message Text="✅ Package DLL found: $(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll" Importance="normal"
+             Condition="'$(PackageDllExists)' == 'true'" />
+    <Message Text="✅ Package PDB found: $(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.pdb" Importance="normal"
+             Condition="'$(PackagePdbExists)' == 'true'" />
+
+    <Warning Text="⚠️ AdvancedWinUiDataGrid: DLL not found at $(AdvancedDataGridLibPath). Package may not be properly installed."
+             Condition="'$(PackageDllExists)' != 'true'" />
+
+    <Message Text="💡 TIP: If package is missing, try: dotnet restore --force" Importance="high"
+             Condition="'$(PackageDllExists)' != 'true'" />
   </Target>
 
-  <!-- ✅ Fallback ak XAML súbory nie sú nájdené -->
-  <Target Name="WarnMissingXamlFiles" AfterTargets="ResolveReferences" Condition="'$(UseWinUI)' == 'true' AND !Exists('$(AdvancedDataGridLibPath)')">
-    <Warning Text="⚠️ AdvancedWinUiDataGrid: XAML files not found at $(AdvancedDataGridLibPath). Package may not be properly installed." />
-    <Message Text="💡 TIP: Try restoring packages: dotnet restore --force" Importance="high" />
-  </Target>
+  <!-- ✅ WinUI3 specific settings -->
+  <PropertyGroup Condition="'$(UseWinUI)' == 'true'">
+    <!-- Zabezpečiť že WinUI3 ResourceDictionary sú správne načítané -->
+    <XamlResourcesEnabled>true</XamlResourcesEnabled>
+  </PropertyGroup>
 
 </Project>

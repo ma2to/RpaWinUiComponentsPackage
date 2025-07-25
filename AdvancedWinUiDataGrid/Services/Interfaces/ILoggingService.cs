@@ -1,14 +1,14 @@
-﻿// Services/Interfaces/ILoggingService.cs - ✅ KOMPLETNÝ
+﻿// Services/Interfaces/ILoggingService.cs - ✅ OPRAVENÝ accessibility
 using Microsoft.Extensions.Logging;
 using System;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
 {
     /// <summary>
-    /// Interface pre logovanie (abstrakcia nad Microsoft.Extensions.Logging)
+    /// Interface pre logovanie (abstrakcia nad Microsoft.Extensions.Logging) - ✅ INTERNAL
     /// Poskytuje jednotné API pre logovanie s možnosťou pripojenia rôznych loggerov
     /// </summary>
-    public interface ILoggingService : IDisposable
+    internal interface ILoggingService : IDisposable  // ✅ CHANGED: public -> internal
     {
         #region Základné logovanie
 
@@ -121,12 +121,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
         #endregion
     }
 
-    #region Helper classes pre DataGrid logovanie
+    #region Helper classes pre DataGrid logovanie - ✅ INTERNAL
 
     /// <summary>
-    /// Performance metriky pre logovanie
+    /// Performance metriky pre logovanie - ✅ INTERNAL
     /// </summary>
-    public class PerformanceMetrics
+    internal class PerformanceMetrics  // ✅ CHANGED: public -> internal
     {
         public TimeSpan Duration { get; set; }
         public int ItemsProcessed { get; set; }
@@ -141,9 +141,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
     }
 
     /// <summary>
-    /// Memory usage informácie pre logovanie
+    /// Memory usage informácie pre logovanie - ✅ INTERNAL
     /// </summary>
-    public class MemoryUsageInfo
+    internal class MemoryUsageInfo  // ✅ CHANGED: public -> internal
     {
         public long EstimatedMemoryUsageBytes { get; set; }
         public int ObjectCount { get; set; }
@@ -159,9 +159,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
     }
 
     /// <summary>
-    /// Event IDs pre DataGrid logovanie
+    /// Event IDs pre DataGrid logovanie - ✅ INTERNAL
     /// </summary>
-    public static class DataGridEventIds
+    internal static class DataGridEventIds  // ✅ CHANGED: public -> internal
     {
         public static readonly EventId Initialization = new(1000, "DataGrid.Initialization");
         public static readonly EventId DataLoad = new(1001, "DataGrid.DataLoad");

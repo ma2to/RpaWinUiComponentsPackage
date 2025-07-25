@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ pre package-only -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ XAML compilation -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -16,7 +16,18 @@
     <!-- ✅ OPRAVENÉ: Potlačenie Windows-only warnings -->
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
+
+    <!-- ✅ KRITICKÁ OPRAVA: XAML compilation settings -->
+    <EnableDefaultPageItems>true</EnableDefaultPageItems>
+    <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
   </PropertyGroup>
+
+  <!-- ✅ EXPLICITNÉ XAML súbory pre istotu -->
+  <ItemGroup>
+    <Page Include="MainWindow.xaml" />
+    <ApplicationDefinition Include="App.xaml" />
+  </ItemGroup>
 
   <!-- ✅ OPRAVENÉ: Assets files -->
   <ItemGroup>
@@ -46,15 +57,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
-    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.1" />
-    <!-- ✅ KĽÚČOVÉ: IBA Package Reference, žiadne Project Reference -->
+    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.2" />
+    <!-- ✅ AKTUALIZOVANÁ VERZIA package reference -->
   </ItemGroup>
 
-  <!-- ✅ ODSTRÁNENÉ: Project reference - zostáva iba Package Reference -->
-  <!-- 
-  POZNÁMKA: Projekt nemá project reference, iba package reference!
-  Toto zabezpečuje testovanie balíka tak ako ho budú používať end-useri.
-  -->
+  <!-- ✅ KĽÚČOVÉ: Iba Package Reference, žiadne Project Reference -->
 
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
@@ -73,10 +80,23 @@
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
   </PropertyGroup>
 
-  <!-- ✅ NOVÉ: Debug informácie pre package loading -->
+  <!-- ✅ Debug informácie pre package loading -->
   <Target Name="DebugPackageInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🔍 Demo: Loading RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.1 via Package Reference" Importance="normal" />
+    <Message Text="🔍 Demo: Loading RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.2 via Package Reference" Importance="normal" />
     <Message Text="🔍 Demo: UseWinUI = $(UseWinUI)" Importance="normal" />
+    <Message Text="🔍 Demo: XamlCompilationEnabled = $(XamlCompilationEnabled)" Importance="normal" />
+  </Target>
+
+  <!-- ✅ NOVÉ: Target pre debugging XAML issues -->
+  <Target Name="DebugXamlCompilation" AfterTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="🔍 XAML: EnableDefaultPageItems = $(EnableDefaultPageItems)" Importance="normal" />
+    <Message Text="🔍 XAML: EnableDefaultXamlItems = $(EnableDefaultXamlItems)" Importance="normal" />
+
+    <ItemGroup>
+      <XamlFiles Include="**/*.xaml" />
+    </ItemGroup>
+
+    <Message Text="🔍 XAML: Found @(XamlFiles-&gt;Count()) XAML files" Importance="normal" />
   </Target>
 
 </Project>
