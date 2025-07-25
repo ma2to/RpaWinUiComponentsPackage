@@ -1,4 +1,5 @@
-﻿// Services/Interfaces/IExportService.cs
+﻿// Services/Interfaces/IExportService.cs - ✅ OPRAVENÝ - len IExportService
+
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services;
 using System.Data;
@@ -7,9 +8,9 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
 {
     /// <summary>
-    /// Interface pre export služby DataGrid
+    /// Interface pre export služby DataGrid - INTERNAL
     /// </summary>
-    public interface IExportService
+    internal interface IExportService
     {
         /// <summary>
         /// Inicializuje export službu s konfiguráciou

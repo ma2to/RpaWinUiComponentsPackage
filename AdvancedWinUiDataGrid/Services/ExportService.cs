@@ -1,4 +1,4 @@
-﻿// Services/ExportService.cs - ✅ OPRAVENÝ CS1998 warnings
+﻿// Services/ExportService.cs - ✅ OPRAVENÝ accessibility issues
 using Microsoft.Extensions.Logging;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -13,7 +13,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
     /// <summary>
     /// Služba pre export dát z DataGrid
     /// </summary>
-    public class ExportService : IExportService
+    internal class ExportService : IExportService
     {
         private readonly ILogger<ExportService> _logger;
         private readonly IDataManagementService _dataManagementService;
@@ -69,7 +69,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ OPRAVENÉ CS1998: Exportuje len validné riadky do DataTable - pridané await
+        /// Exportuje len validné riadky do DataTable
         /// </summary>
         public async Task<DataTable> ExportValidRowsOnlyAsync()
         {
@@ -78,14 +78,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 _logger.LogInformation("Začína export len validných riadkov");
 
                 var fullDataTable = await ExportToDataTableAsync();
-                var validDataTable = fullDataTable.Clone(); // Skopíruj štruktúru
+                var validDataTable = fullDataTable.Clone();
 
-                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
                 await Task.Run(() =>
                 {
                     foreach (DataRow row in fullDataTable.Rows)
                     {
-                        // Skontroluj ValidAlerts stĺpec
                         var validAlerts = row["ValidAlerts"]?.ToString();
                         if (string.IsNullOrWhiteSpace(validAlerts))
                         {
@@ -105,7 +103,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ OPRAVENÉ CS1998: Exportuje len nevalidné riadky do DataTable - pridané await
+        /// Exportuje len nevalidné riadky do DataTable
         /// </summary>
         public async Task<DataTable> ExportInvalidRowsOnlyAsync()
         {
@@ -116,7 +114,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 var fullDataTable = await ExportToDataTableAsync();
                 var invalidDataTable = fullDataTable.Clone();
 
-                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
                 await Task.Run(() =>
                 {
                     foreach (DataRow row in fullDataTable.Rows)
@@ -140,7 +137,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ OPRAVENÉ CS1998: Exportuje len špecifické stĺpce - pridané await
+        /// Exportuje len špecifické stĺpce
         /// </summary>
         public async Task<DataTable> ExportSpecificColumnsAsync(string[] columnNames)
         {
@@ -151,7 +148,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 var fullDataTable = await ExportToDataTableAsync();
                 var specificDataTable = new DataTable("SpecificColumnsExport");
 
-                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
                 await Task.Run(() =>
                 {
                     // Vytvor stĺpce len pre požadované
@@ -190,7 +186,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ OPRAVENÉ CS1998: Exportuje dáta do CSV formátu - pridané await
+        /// Exportuje dáta do CSV formátu
         /// </summary>
         public async Task<string> ExportToCsvAsync(bool includeHeaders = true)
         {
@@ -199,8 +195,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 _logger.LogInformation("Začína export do CSV");
 
                 var dataTable = await ExportToDataTableAsync();
-
-                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
                 var csvContent = await Task.Run(() => ConvertDataTableToCsv(dataTable, includeHeaders));
 
                 _logger.LogInformation($"Export do CSV dokončený: {csvContent.Split('\n').Length} riadkov");
@@ -214,17 +208,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ OPRAVENÉ CS1998: Získa štatistiky exportovaných dát - pridané await
+        /// Získa štatistiky exportovaných dát
         /// </summary>
         public async Task<ExportStatistics> GetExportStatisticsAsync()
         {
             try
             {
                 var dataTable = await ExportToDataTableAsync();
-
-                // ✅ OPRAVENÉ CS1998: Pridané await pre async operáciu
                 var statistics = await Task.Run(() => CalculateStatistics(dataTable));
-
                 return statistics;
             }
             catch (Exception ex)
@@ -397,9 +388,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
     }
 
     /// <summary>
-    /// Štatistiky exportu
+    /// ✅ OPRAVENÉ CS0050: Štatistiky exportu - PUBLIC
     /// </summary>
-    internal class ExportStatistics
+    public class ExportStatistics
     {
         public int TotalRows { get; set; }
         public int TotalColumns { get; set; }
@@ -407,17 +398,27 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         public int InvalidRows { get; set; }
         public int EmptyRows { get; set; }
         public Dictionary<string, ColumnStatistics> ColumnStatistics { get; set; } = new();
+
+        public override string ToString()
+        {
+            return $"Export: {TotalRows} rows, {TotalColumns} columns, {ValidRows} valid, {InvalidRows} invalid";
+        }
     }
 
     /// <summary>
-    /// Štatistiky stĺpca
+    /// ✅ OPRAVENÉ CS0050: Štatistiky stĺpca - PUBLIC
     /// </summary>
-    internal class ColumnStatistics
+    public class ColumnStatistics
     {
         public string ColumnName { get; set; } = string.Empty;
         public string DataType { get; set; } = string.Empty;
         public int NonNullCount { get; set; }
         public int NullCount { get; set; }
         public int UniqueValueCount { get; set; }
+
+        public override string ToString()
+        {
+            return $"{ColumnName}: {NonNullCount} non-null, {NullCount} null, {UniqueValueCount} unique";
+        }
     }
 }

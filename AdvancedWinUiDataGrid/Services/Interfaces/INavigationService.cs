@@ -1,13 +1,14 @@
-﻿// Services/Interfaces/INavigationService.cs
+﻿// Services/Interfaces/INavigationService.cs - ✅ OPRAVENÝ - len INavigationService
+
 using Microsoft.UI.Xaml.Input;
 using System.Threading.Tasks;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
 {
     /// <summary>
-    /// Interface pre navigáciu v DataGrid (Tab, Enter, Esc, atď.)
+    /// Interface pre navigáciu v DataGrid (Tab, Enter, Esc, atď.) - INTERNAL
     /// </summary>
-    public interface INavigationService
+    internal interface INavigationService
     {
         /// <summary>
         /// Inicializuje navigačnú službu

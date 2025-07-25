@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - všetky chyby vyriešené
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ accessibility issues
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -27,11 +27,11 @@ using RpaWinUiComponents.AdvancedWinUiDataGrid.Services;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Hlavný AdvancedDataGrid komponent pre WinUI3 - ✅ VŠETKY CHYBY OPRAVENÉ
+    /// Hlavný AdvancedDataGrid komponent pre WinUI3 - ✅ PUBLIC API
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
-        #region Private Fields - ✅ OPRAVENÉ CS0102: Odstránené duplicity
+        #region Private Fields
 
         private readonly IServiceProvider _serviceProvider;
         private readonly IValidationService _validationService;
@@ -43,15 +43,15 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         private GridConfiguration? _configuration;
 
-        // ✅ OPRAVENÉ CS0432: Pridané chýbajúce properties pre XAML binding
+        // ✅ OPRAVENÉ CS0053: INTERNAL properties pre XAML binding
         private readonly ObservableCollection<GridColumnDefinition> _headerColumns = new();
         private readonly ObservableCollection<RowDataModel> _dataRows = new();
 
-        // ✅ OPRAVENÉ CS0103: Pridané chybajúce fields
+        // Color theme support
         private DataGridColorTheme _colorTheme = DataGridColorTheme.Light;
         private readonly Dictionary<string, DispatcherTimer> _realtimeValidationTimers = new();
 
-        // ✅ NOVÉ: Realtime validation support
+        // Realtime validation support  
         private readonly Dictionary<string, object?> _lastValidatedValues = new();
         private readonly Dictionary<string, bool> _cellEditingStates = new();
 
@@ -77,35 +77,27 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             _navigationService = _serviceProvider.GetRequiredService<INavigationService>();
             _logger = _serviceProvider.GetRequiredService<ILogger<AdvancedDataGrid>>();
 
-            // ✅ OPRAVENÉ: InitializeComponent je teraz dostupný
             this.InitializeComponent();
-
             _logger.LogInformation("AdvancedDataGrid inicializovaný");
         }
 
         #endregion
 
-        #region ✅ OPRAVENÉ CS0432: Pridané chýbajúce Properties pre XAML binding
+        #region ✅ OPRAVENÉ CS0053: INTERNAL Properties pre XAML binding
 
         /// <summary>
-        /// Header stĺpce pre XAML binding
+        /// Header stĺpce pre XAML binding - INTERNAL
         /// </summary>
-        public ObservableCollection<GridColumnDefinition> HeaderColumns
-        {
-            get => _headerColumns;
-        }
+        internal ObservableCollection<GridColumnDefinition> HeaderColumns => _headerColumns;
 
         /// <summary>
-        /// Dátové riadky pre XAML binding
+        /// Dátové riadky pre XAML binding - INTERNAL 
         /// </summary>
-        public ObservableCollection<RowDataModel> DataRows
-        {
-            get => _dataRows;
-        }
+        internal ObservableCollection<RowDataModel> DataRows => _dataRows;
 
         #endregion
 
-        #region ✅ OPRAVENÉ CS0229: Color Theme Properties
+        #region ✅ PUBLIC Color Theme API
 
         /// <summary>
         /// Aktuálna color theme. Setter automaticky aplikuje tému.
@@ -162,7 +154,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region Public API Methods
+        #region ✅ PUBLIC API Methods - s INTERNAL type conversion
 
         /// <summary>
         /// Inicializuje DataGrid s konfiguráciou
@@ -176,7 +168,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             try
             {
                 _logger.LogInformation("Začína inicializácia DataGrid...");
-
                 ShowLoadingState("Inicializuje sa DataGrid...");
 
                 // Vytvorenie konfigurácie
@@ -421,7 +412,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region Private Helper Methods
+        #region ✅ INTERNAL Helper Methods
 
         private void ConfigureServices(IServiceCollection services)
         {
@@ -456,8 +447,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 _headerColumns.Add(column);
             }
-
-            // ValidAlerts sa pridáva automaticky v UI templat
         }
 
         private async Task CreateEmptyRowsAsync(int count)
@@ -488,7 +477,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                         DataType = column.DataType,
                         IsValid = true,
                         ValidationErrors = string.Empty,
-                        RowIndex = index // ✅ OPRAVENÉ CS1061: Pridaný RowIndex
+                        RowIndex = index
                     };
                     row.Cells.Add(cell);
                 }
@@ -501,7 +490,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     DataType = typeof(string),
                     IsValid = true,
                     ValidationErrors = string.Empty,
-                    RowIndex = index // ✅ OPRAVENÉ CS1061: Pridaný RowIndex
+                    RowIndex = index
                 });
             }
 
@@ -675,7 +664,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #region Event Handlers
 
-        private async void OnCellKeyDown(object sender, KeyRoutedEventArgs e)
+        internal async void OnCellKeyDown(object sender, KeyRoutedEventArgs e)
         {
             try
             {
@@ -687,7 +676,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             }
         }
 
-        private async void OnCellLostFocus(object sender, RoutedEventArgs e)
+        internal async void OnCellLostFocus(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -702,12 +691,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             }
         }
 
-        private void OnCellGotFocus(object sender, RoutedEventArgs e)
+        internal void OnCellGotFocus(object sender, RoutedEventArgs e)
         {
             // Môže sa použiť pre copy/paste selection logic
         }
 
-        private void OnCellTextChanged(object sender, TextChangedEventArgs e)
+        internal void OnCellTextChanged(object sender, TextChangedEventArgs e)
         {
             // Realtime validácia pri zmene textu
             if (sender is TextBox textBox && textBox.DataContext is CellDataModel cell)
@@ -735,7 +724,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             }
         }
 
-        private async void OnDeleteRowClick(object sender, RoutedEventArgs e)
+        internal async void OnDeleteRowClick(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -751,30 +740,29 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             }
         }
 
-        private void OnDataScrollViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+        internal void OnDataScrollViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
         {
             // Synchronizácia header scroll s data scroll - implementované v XAML
         }
 
-        // ✅ NOVÉ: Selection Canvas Events
-        private void OnSelectionCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
+        internal void OnSelectionCanvasPointerPressed(object sender, PointerRoutedEventArgs e)
         {
             // Multi-selection logic
         }
 
-        private void OnSelectionCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
+        internal void OnSelectionCanvasPointerMoved(object sender, PointerRoutedEventArgs e)
         {
             // Multi-selection logic
         }
 
-        private void OnSelectionCanvasPointerReleased(object sender, PointerRoutedEventArgs e)
+        internal void OnSelectionCanvasPointerReleased(object sender, PointerRoutedEventArgs e)
         {
             // Multi-selection logic
         }
 
         #endregion
 
-        #region ✅ OPRAVENÉ CS0103: INotifyPropertyChanged implementation
+        #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler? PropertyChanged;
 

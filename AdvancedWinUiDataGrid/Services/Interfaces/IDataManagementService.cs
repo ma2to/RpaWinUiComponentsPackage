@@ -1,4 +1,5 @@
-﻿// Services/Interfaces/IDataManagementService.cs
+﻿// Services/Interfaces/IDataManagementService.cs - ✅ OPRAVENÝ - len IDataManagementService
+
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -6,9 +7,9 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
 {
     /// <summary>
-    /// Interface pre správu dát v DataGrid
+    /// Interface pre správu dát v DataGrid - INTERNAL
     /// </summary>
-    public interface IDataManagementService
+    internal interface IDataManagementService
     {
         /// <summary>
         /// Inicializuje dátovú službu s konfiguráciou

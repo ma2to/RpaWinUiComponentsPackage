@@ -1,85 +1,78 @@
-﻿// Services/Interfaces/IValidationService.cs - ✅ INTERNAL
-using Microsoft.UI.Xaml.Input;
+﻿// Services/Interfaces/IValidationService.cs - ✅ OPRAVENÝ - len IValidationService
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
-using System.Data;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
 {
     /// <summary>
     /// Interface pre validačné služby DataGrid - ✅ INTERNAL
     /// </summary>
-    internal interface IValidationService  // ✅ CHANGED: public -> internal
+    internal interface IValidationService
     {
+        /// <summary>
+        /// Inicializuje validačnú službu s konfiguráciou
+        /// </summary>
         Task InitializeAsync(GridConfiguration configuration);
+
+        /// <summary>
+        /// Validuje hodnotu bunky pre konkrétny stĺpec
+        /// </summary>
         Task<List<string>> ValidateCellAsync(string columnName, object? value);
+
+        /// <summary>
+        /// Validuje celý riadok dát
+        /// </summary>
         Task<List<string>> ValidateRowAsync(Dictionary<string, object?> rowData);
+
+        /// <summary>
+        /// Validuje všetky riadky v gridu
+        /// </summary>
         Task<bool> ValidateAllRowsAsync();
+
+        /// <summary>
+        /// Pridá nové validačné pravidlo
+        /// </summary>
         Task AddValidationRuleAsync(ValidationRule rule);
+
+        /// <summary>
+        /// Odstráni validačné pravidlo pre stĺpec
+        /// </summary>
         Task RemoveValidationRuleAsync(string columnName, ValidationType type);
+
+        /// <summary>
+        /// Získa validačné pravidlá pre stĺpec
+        /// </summary>
         List<ValidationRule> GetValidationRules(string columnName);
+
+        /// <summary>
+        /// Vyčisti všetky validačné chyby
+        /// </summary>
         Task ClearAllValidationErrorsAsync();
-    }
 
-    /// <summary>
-    /// Interface pre správu dát v DataGrid - ✅ INTERNAL
-    /// </summary>
-    internal interface IDataManagementService  // ✅ CHANGED: public -> internal
-    {
-        Task InitializeAsync(GridConfiguration configuration);
-        Task LoadDataAsync(List<Dictionary<string, object?>> data);
-        Task<List<Dictionary<string, object?>>> GetAllDataAsync();
-        Task<Dictionary<string, object?>> GetRowDataAsync(int rowIndex);
-        Task SetCellValueAsync(int rowIndex, string columnName, object? value);
-        Task<object?> GetCellValueAsync(int rowIndex, string columnName);
-        Task<int> AddRowAsync(Dictionary<string, object?>? initialData = null);
-        Task DeleteRowAsync(int rowIndex);
-        Task ClearAllDataAsync();
-        Task CompactRowsAsync();
-        Task<int> GetNonEmptyRowCountAsync();
-        Task<bool> IsRowEmptyAsync(int rowIndex);
-    }
+        /// <summary>
+        /// Vlastnosť - všetky validačné chyby
+        /// </summary>
+        IReadOnlyDictionary<string, List<string>> ValidationErrors { get; }
 
-    /// <summary>
-    /// Interface pre Copy/Paste funkcionalitu - ✅ INTERNAL
-    /// </summary>
-    internal interface ICopyPasteService  // ✅ CHANGED: public -> internal
-    {
-        Task InitializeAsync();
-        Task CopySelectedCellsAsync(List<CellSelection> selectedCells);
-        Task PasteFromClipboardAsync(int startRowIndex, int startColumnIndex);
-        Task CutSelectedCellsAsync(List<CellSelection> selectedCells);
-        Task HandleKeyboardShortcutAsync(KeyRoutedEventArgs e);
-        Task<bool> CanPasteAsync();
-        Task<string> GetClipboardPreviewAsync();
-    }
+        /// <summary>
+        /// Kontroluje či má stĺpec validačné chyby
+        /// </summary>
+        bool HasValidationErrors(string columnName);
 
-    /// <summary>
-    /// Interface pre export služby DataGrid - ✅ INTERNAL
-    /// </summary>
-    internal interface IExportService  // ✅ CHANGED: public -> internal
-    {
-        Task InitializeAsync(GridConfiguration configuration);
-        Task<DataTable> ExportToDataTableAsync();
-        Task<DataTable> ExportValidRowsOnlyAsync();
-        Task<DataTable> ExportInvalidRowsOnlyAsync();
-        Task<DataTable> ExportSpecificColumnsAsync(string[] columnNames);
-        Task<string> ExportToCsvAsync(bool includeHeaders = true);
-        Task<ExportStatistics> GetExportStatisticsAsync();
-    }
+        /// <summary>
+        /// Získa validačné chyby pre stĺpec
+        /// </summary>
+        List<string> GetValidationErrors(string columnName);
 
-    /// <summary>
-    /// Interface pre navigáciu v DataGrid - ✅ INTERNAL
-    /// </summary>
-    internal interface INavigationService  // ✅ CHANGED: public -> internal
-    {
-        Task InitializeAsync();
-        Task HandleKeyDownAsync(object sender, KeyRoutedEventArgs e);
-        Task MoveToNextCellAsync(int currentRow, int currentColumn);
-        Task MoveToPreviousCellAsync(int currentRow, int currentColumn);
-        Task MoveToCellBelowAsync(int currentRow, int currentColumn);
-        Task MoveToCellAboveAsync(int currentRow, int currentColumn);
-        Task CancelCellEditAsync(object sender);
-        Task FinishCellEditAsync(object sender);
-        Task InsertNewLineInCellAsync(object sender);
+        /// <summary>
+        /// Kontroluje či sú nejaké validačné chyby
+        /// </summary>
+        bool HasAnyValidationErrors { get; }
+
+        /// <summary>
+        /// Celkový počet validačných chýb
+        /// </summary>
+        int TotalValidationErrorCount { get; }
     }
 }

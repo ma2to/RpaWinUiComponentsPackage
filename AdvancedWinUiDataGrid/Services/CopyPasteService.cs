@@ -1,4 +1,4 @@
-﻿// Services/CopyPasteService.cs
+﻿// Services/CopyPasteService.cs - ✅ OPRAVENÝ accessibility
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Input;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Implementácia Copy/Paste služby pre DataGrid
+    /// ✅ OPRAVENÉ CS0051: INTERNAL CopyPasteService
     /// </summary>
-    public class CopyPasteService : ICopyPasteService
+    internal class CopyPasteService : ICopyPasteService
     {
         private readonly ILogger<CopyPasteService> _logger;
         private bool _isInitialized = false;
@@ -309,5 +309,21 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// ✅ OPRAVENÉ CS0051: INTERNAL CellSelection class
+    /// </summary>
+    internal class CellSelection
+    {
+        public int RowIndex { get; set; }
+        public int ColumnIndex { get; set; }
+        public string ColumnName { get; set; } = string.Empty;
+        public object? Value { get; set; }
+
+        public override string ToString()
+        {
+            return $"Cell[{RowIndex},{ColumnIndex}] {ColumnName} = {Value}";
+        }
     }
 }

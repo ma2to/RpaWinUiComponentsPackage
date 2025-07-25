@@ -1,4 +1,4 @@
-﻿// Services/DataManagementService.cs
+﻿// Services/DataManagementService.cs - ✅ OPRAVENÝ CS0051 - explicit interface implementation
 using Microsoft.Extensions.Logging;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Implementácia služby pre správu dát v DataGrid
+    /// Implementácia služby pre správu dát v DataGrid - ✅ OPRAVENÝ accessibility
     /// </summary>
-    public class DataManagementService : IDataManagementService
+    internal class DataManagementService : IDataManagementService
     {
         private readonly ILogger<DataManagementService> _logger;
         private readonly List<Dictionary<string, object?>> _gridData = new();
@@ -30,10 +30,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             _cleanupHelper = new ResourceCleanupHelper();
         }
 
+        #region ✅ OPRAVENÉ CS0051: Explicit Interface Implementation
+
         /// <summary>
-        /// Inicializuje dátovú službu s konfiguráciou
+        /// ✅ OPRAVENÉ: Explicit interface implementation pre GridConfiguration accessibility
         /// </summary>
-        public Task InitializeAsync(GridConfiguration configuration)
+        Task IDataManagementService.InitializeAsync(GridConfiguration configuration)
         {
             try
             {
@@ -74,7 +76,96 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Načíta dáta do gridu
         /// </summary>
-        public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
+        Task IDataManagementService.LoadDataAsync(List<Dictionary<string, object?>> data)
+        {
+            return LoadDataInternalAsync(data);
+        }
+
+        /// <summary>
+        /// Získa všetky dáta z gridu
+        /// </summary>
+        Task<List<Dictionary<string, object?>>> IDataManagementService.GetAllDataAsync()
+        {
+            return GetAllDataInternalAsync();
+        }
+
+        /// <summary>
+        /// Získa dáta špecifického riadku
+        /// </summary>
+        Task<Dictionary<string, object?>> IDataManagementService.GetRowDataAsync(int rowIndex)
+        {
+            return GetRowDataInternalAsync(rowIndex);
+        }
+
+        /// <summary>
+        /// Nastaví hodnotu bunky
+        /// </summary>
+        Task IDataManagementService.SetCellValueAsync(int rowIndex, string columnName, object? value)
+        {
+            return SetCellValueInternalAsync(rowIndex, columnName, value);
+        }
+
+        /// <summary>
+        /// Získa hodnotu bunky
+        /// </summary>
+        Task<object?> IDataManagementService.GetCellValueAsync(int rowIndex, string columnName)
+        {
+            return GetCellValueInternalAsync(rowIndex, columnName);
+        }
+
+        /// <summary>
+        /// Pridá nový riadok
+        /// </summary>
+        Task<int> IDataManagementService.AddRowAsync(Dictionary<string, object?>? initialData)
+        {
+            return AddRowInternalAsync(initialData);
+        }
+
+        /// <summary>
+        /// Zmaže riadok (vyčisti jeho obsah)
+        /// </summary>
+        Task IDataManagementService.DeleteRowAsync(int rowIndex)
+        {
+            return DeleteRowInternalAsync(rowIndex);
+        }
+
+        /// <summary>
+        /// Vymaže všetky dáta
+        /// </summary>
+        Task IDataManagementService.ClearAllDataAsync()
+        {
+            return ClearAllDataInternalAsync();
+        }
+
+        /// <summary>
+        /// Kompaktuje riadky (odstráni prázdne medzery)
+        /// </summary>
+        Task IDataManagementService.CompactRowsAsync()
+        {
+            return CompactRowsInternalAsync();
+        }
+
+        /// <summary>
+        /// Získa počet neprázdnych riadkov
+        /// </summary>
+        Task<int> IDataManagementService.GetNonEmptyRowCountAsync()
+        {
+            return GetNonEmptyRowCountInternalAsync();
+        }
+
+        /// <summary>
+        /// Kontroluje či je riadok prázdny
+        /// </summary>
+        Task<bool> IDataManagementService.IsRowEmptyAsync(int rowIndex)
+        {
+            return IsRowEmptyInternalAsync(rowIndex);
+        }
+
+        #endregion
+
+        #region Internal Implementation Methods
+
+        private async Task LoadDataInternalAsync(List<Dictionary<string, object?>> data)
         {
             try
             {
@@ -126,10 +217,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Získa všetky dáta z gridu
-        /// </summary>
-        public Task<List<Dictionary<string, object?>>> GetAllDataAsync()
+        private Task<List<Dictionary<string, object?>>> GetAllDataInternalAsync()
         {
             try
             {
@@ -153,10 +241,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Získa dáta špecifického riadku
-        /// </summary>
-        public Task<Dictionary<string, object?>> GetRowDataAsync(int rowIndex)
+        private Task<Dictionary<string, object?>> GetRowDataInternalAsync(int rowIndex)
         {
             try
             {
@@ -182,10 +267,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Nastaví hodnotu bunky
-        /// </summary>
-        public Task SetCellValueAsync(int rowIndex, string columnName, object? value)
+        private Task SetCellValueInternalAsync(int rowIndex, string columnName, object? value)
         {
             try
             {
@@ -219,10 +301,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Získa hodnotu bunky
-        /// </summary>
-        public Task<object?> GetCellValueAsync(int rowIndex, string columnName)
+        private Task<object?> GetCellValueInternalAsync(int rowIndex, string columnName)
         {
             try
             {
@@ -255,10 +334,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Pridá nový riadok
-        /// </summary>
-        public Task<int> AddRowAsync(Dictionary<string, object?>? initialData = null)
+        private Task<int> AddRowInternalAsync(Dictionary<string, object?>? initialData)
         {
             try
             {
@@ -301,10 +377,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Zmaže riadok (vyčisti jeho obsah)
-        /// </summary>
-        public async Task DeleteRowAsync(int rowIndex)
+        private async Task DeleteRowInternalAsync(int rowIndex)
         {
             try
             {
@@ -326,7 +399,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 }
 
                 // Kompaktuj riadky
-                await CompactRowsAsync();
+                await CompactRowsInternalAsync();
             }
             catch (Exception ex)
             {
@@ -335,10 +408,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Vymaže všetky dáta
-        /// </summary>
-        public async Task ClearAllDataAsync()
+        private async Task ClearAllDataInternalAsync()
         {
             try
             {
@@ -374,10 +444,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Kompaktuje riadky (odstráni prázdne medzery)
-        /// </summary>
-        public Task CompactRowsAsync()
+        private Task CompactRowsInternalAsync()
         {
             try
             {
@@ -428,10 +495,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Získa počet neprázdnych riadkov
-        /// </summary>
-        public Task<int> GetNonEmptyRowCountAsync()
+        private Task<int> GetNonEmptyRowCountInternalAsync()
         {
             try
             {
@@ -454,10 +518,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
         }
 
-        /// <summary>
-        /// Kontroluje či je riadok prázdny
-        /// </summary>
-        public Task<bool> IsRowEmptyAsync(int rowIndex)
+        private Task<bool> IsRowEmptyInternalAsync(int rowIndex)
         {
             try
             {
@@ -482,6 +543,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 throw;
             }
         }
+
+        #endregion
 
         #region Private Helper Methods
 

@@ -1,4 +1,4 @@
-﻿// Services/Interfaces/ICopyPasteService.cs
+﻿// Services/Interfaces/ICopyPasteService.cs - ✅ OPRAVENÝ - len ICopyPasteService
 using Microsoft.UI.Xaml.Input;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
 {
     /// <summary>
-    /// Interface pre Copy/Paste funkcionalitu (Excel kompatibilita)
+    /// Interface pre Copy/Paste funkcionalitu (Excel kompatibilita) - INTERNAL
     /// </summary>
-    public interface ICopyPasteService
+    internal interface ICopyPasteService
     {
         /// <summary>
         /// Inicializuje copy/paste službu
@@ -44,16 +44,5 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
         /// Získa náhľad dát z clipboardu
         /// </summary>
         Task<string> GetClipboardPreviewAsync();
-    }
-
-    /// <summary>
-    /// Reprezentuje výber bunky pre copy/paste operácie
-    /// </summary>
-    internal class CellSelection
-    {
-        public int RowIndex { get; set; }
-        public int ColumnIndex { get; set; }
-        public string ColumnName { get; set; } = string.Empty;
-        public object? Value { get; set; }
     }
 }
