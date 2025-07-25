@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - všetky chyby vyriešené
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - PUBLIC API only
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -6,16 +6,18 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 
-// ✅ OPRAVENÉ CS0234: Správne importy pre WinUI Colors
-using Windows.UI;
-
-// ✅ KĽÚČOVÁ OPRAVA CS0234: Import PUBLIC API typov z PROJECT REFERENCE
+// ✅ KĽÚČOVÉ: Import iba PUBLIC API tried z balíka
 using RpaWinUiComponents.AdvancedWinUiDataGrid;
 
-// ✅ EXPLICITNÉ IMPORTY pre zamedzenie konfliktov
+// ✅ EXPLICITNÉ importy PUBLIC tried pre zamedzenie konfliktov
 using PublicColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDefinition;
 using PublicValidationRule = RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationRule;
 using PublicThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.ThrottlingConfig;
+using PublicDataGridColorTheme = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorTheme;
+using PublicDataGridColorThemeBuilder = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorThemeBuilder;
+
+// ✅ Windows.UI.Color pre farby
+using Windows.UI;
 
 namespace RpaWinUiComponents.Demo
 {
@@ -27,10 +29,10 @@ namespace RpaWinUiComponents.Demo
         {
             this.InitializeComponent();
 
-            // OPRAVA: Inicializácia cez DispatcherQueue na bezpečné načasovanie
+            // ✅ Bezpečná inicializácia cez DispatcherQueue
             this.DispatcherQueue.TryEnqueue(async () =>
             {
-                await Task.Delay(500); // Počkáme aby sa UI úplne načítalo
+                await Task.Delay(500); // Počkaj na UI load
                 await InitializeComponentAsync();
             });
         }
@@ -42,22 +44,22 @@ namespace RpaWinUiComponents.Demo
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie MainWindow s PROJECT REFERENCE...");
+                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s PUBLIC API balíka...");
 
-                UpdateLoadingState("Inicializuje sa komponent...", "Pripravuje sa DataGrid...");
-                await Task.Delay(200);
+                UpdateLoadingState("Inicializuje sa balík...", "Načítava sa z Package Reference...");
+                await Task.Delay(300);
 
-                // KROK 1: NAJPRV inicializácia komponentu s konfiguráciou
-                System.Diagnostics.Debug.WriteLine("🔧 Spúšťam inicializáciu komponentu...");
-
+                // ✅ OVERENIE dostupnosti komponentu
                 if (DataGridControl == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("❌ CHYBA: DataGridControl je NULL!");
-                    ShowError("DataGridControl nie je dostupný");
+                    System.Diagnostics.Debug.WriteLine("❌ KRITICKÁ CHYBA: DataGridControl je NULL!");
+                    ShowError("DataGridControl komponent nie je dostupný");
                     return;
                 }
 
-                // KROK 2: ✅ OPRAVENÉ CS0234 - Používame PUBLIC typy z PROJECT REFERENCE
+                System.Diagnostics.Debug.WriteLine("✅ DataGridControl komponent je dostupný");
+
+                // ✅ KROK 1: Definícia stĺpcov pomocou PUBLIC API
                 var columns = new List<PublicColumnDefinition>
                 {
                     new("ID", typeof(int)) { MinWidth = 60, Width = 80, Header = "🔢 ID" },
@@ -65,9 +67,10 @@ namespace RpaWinUiComponents.Demo
                     new("Email", typeof(string)) { MinWidth = 200, Width = 200, Header = "📧 Email" },
                     new("Vek", typeof(int)) { MinWidth = 80, Width = 100, Header = "🎂 Vek" },
                     new("Plat", typeof(decimal)) { MinWidth = 100, Width = 120, Header = "💰 Plat" },
-                    new("DeleteRows", typeof(string)) { Width = 40, Header = "🗑️" } // Delete button stĺpec
+                    new("DeleteRows", typeof(string)) { Width = 40, Header = "🗑️" } // Špeciálny delete stĺpec
                 };
 
+                // ✅ KROK 2: Validačné pravidlá pomocou PUBLIC API
                 var validationRules = new List<PublicValidationRule>
                 {
                     PublicValidationRule.Required("Meno", "Meno je povinné"),
@@ -76,18 +79,18 @@ namespace RpaWinUiComponents.Demo
                     PublicValidationRule.Range("Plat", 500, 50000, "Plat musí byť 500-50000")
                 };
 
-                // KROK 3: ✅ OPRAVENÉ CS0234 - Používame PUBLIC typ pre throttling
+                // ✅ KROK 3: Throttling konfigurácia pomocou PUBLIC API
                 var throttlingConfig = PublicThrottlingConfig.Default;
 
-                // KROK 4: KĽÚČOVÁ OPRAVA - InitializeAsync s PUBLIC typmi
-                UpdateLoadingState("Inicializuje sa DataGrid komponent...", "Pripájajú sa služby...");
-                await Task.Delay(300);
+                // ✅ KROK 4: Inicializácia komponentu
+                UpdateLoadingState("Inicializuje sa DataGrid...", "Volám InitializeAsync...");
+                await Task.Delay(200);
 
-                System.Diagnostics.Debug.WriteLine("🔧 Volám InitializeAsync s PUBLIC typmi z PROJECT REFERENCE...");
+                System.Diagnostics.Debug.WriteLine("🔧 Volám InitializeAsync s PUBLIC API...");
                 await DataGridControl.InitializeAsync(columns, validationRules, throttlingConfig, 15);
-                System.Diagnostics.Debug.WriteLine("✅ InitializeAsync dokončené");
+                System.Diagnostics.Debug.WriteLine("✅ InitializeAsync dokončené úspešne");
 
-                // KROK 5: Teraz môžeme načítať dáta
+                // ✅ KROK 5: Načítanie testových dát
                 UpdateLoadingState("Načítavajú sa testové dáta...", "Pripravujú sa ukážkové záznamy...");
                 await Task.Delay(200);
 
@@ -96,20 +99,20 @@ namespace RpaWinUiComponents.Demo
                     new() { ["ID"] = 1, ["Meno"] = "Ján Novák", ["Email"] = "jan@example.com", ["Vek"] = 30, ["Plat"] = 2500.00m },
                     new() { ["ID"] = 2, ["Meno"] = "Mária Svoboda", ["Email"] = "maria@company.sk", ["Vek"] = 28, ["Plat"] = 3200.00m },
                     new() { ["ID"] = 3, ["Meno"] = "Peter Kováč", ["Email"] = "peter@firma.sk", ["Vek"] = 35, ["Plat"] = 4500.00m },
-                    new() { ["ID"] = 4, ["Meno"] = "", ["Email"] = "invalid-email", ["Vek"] = 15, ["Plat"] = 200.00m }, // Nevalidný
-                    new() { ["ID"] = 5, ["Meno"] = "Test User", ["Email"] = "test@example.com", ["Vek"] = 150, ["Plat"] = 50000.00m }, // Nevalidný
+                    new() { ["ID"] = 4, ["Meno"] = "", ["Email"] = "invalid-email", ["Vek"] = 15, ["Plat"] = 200.00m }, // Nevalidný pre test
+                    new() { ["ID"] = 5, ["Meno"] = "Test User", ["Email"] = "test@example.com", ["Vek"] = 150, ["Plat"] = 50000.00m }, // Nevalidný pre test
                     new() { ["ID"] = 6, ["Meno"] = "High Salary", ["Email"] = "high@salary.com", ["Vek"] = 45, ["Plat"] = 15000.00m }, // Pre delete test
                     new() { ["ID"] = 7, ["Meno"] = "Senior Dev", ["Email"] = "senior@dev.com", ["Vek"] = 55, ["Plat"] = 12000.00m } // Pre delete test
                 };
 
-                System.Diagnostics.Debug.WriteLine("📊 Načítavam testové dáta...");
+                System.Diagnostics.Debug.WriteLine("📊 Načítavam testové dáta cez PUBLIC API...");
                 await DataGridControl.LoadDataAsync(testData);
-                System.Diagnostics.Debug.WriteLine("✅ Dáta načítané");
+                System.Diagnostics.Debug.WriteLine("✅ Testové dáta načítané úspešne");
 
-                // KROK 6: Dokončenie inicializácie
+                // ✅ KROK 6: Dokončenie inicializácie
                 CompleteInitialization();
 
-                System.Diagnostics.Debug.WriteLine("🎉 Inicializácia ÚSPEŠNE dokončená s PROJECT REFERENCE!");
+                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s Package Reference!");
 
             }
             catch (Exception ex)
@@ -147,13 +150,13 @@ namespace RpaWinUiComponents.Demo
 
                 if (InitStatusText != null)
                 {
-                    InitStatusText.Text = " - Pripravené";
-                    InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 128, 0)); // ✅ OPRAVENÉ: Správny Green color
+                    InitStatusText.Text = "✅ Pripravené";
+                    InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 128, 0)); // Green
                 }
 
                 if (StatusTextBlock != null)
                 {
-                    StatusTextBlock.Text = "DataGrid pripravený a inicializovaný úspešne s PROJECT REFERENCE";
+                    StatusTextBlock.Text = "DataGrid úspešne načítaný z Package Reference v1.0.2";
                 }
             });
         }
@@ -163,12 +166,12 @@ namespace RpaWinUiComponents.Demo
             this.DispatcherQueue.TryEnqueue(() =>
             {
                 if (LoadingDetailText != null)
-                    LoadingDetailText.Text = errorMessage;
+                    LoadingDetailText.Text = $"❌ {errorMessage}";
 
                 if (InitStatusText != null)
                 {
-                    InitStatusText.Text = " - Chyba";
-                    InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 0, 0)); // ✅ OPRAVENÉ: Správny Red color
+                    InitStatusText.Text = "❌ Chyba";
+                    InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 0, 0)); // Red
                 }
 
                 if (StatusTextBlock != null)
@@ -178,18 +181,18 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ OPRAVENÉ CS0234: Color Theme Button Handlers s Windows.UI.Color
+        #region Color Theme Button Handlers - PUBLIC API
 
         private void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Light Theme...");
+                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Light Theme cez PUBLIC API...");
 
-                DataGridControl.ApplyColorTheme(DataGridColorTheme.Light);
+                DataGridControl.ApplyColorTheme(PublicDataGridColorTheme.Light);
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Light theme aplikovaná";
+                    StatusTextBlock.Text = "Light theme aplikovaná cez PUBLIC API";
 
                 System.Diagnostics.Debug.WriteLine("✅ Light theme úspešne aplikovaná");
             }
@@ -205,12 +208,12 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Dark Theme...");
+                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Dark Theme cez PUBLIC API...");
 
-                DataGridControl.ApplyColorTheme(DataGridColorTheme.Dark);
+                DataGridControl.ApplyColorTheme(PublicDataGridColorTheme.Dark);
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Dark theme aplikovaná";
+                    StatusTextBlock.Text = "Dark theme aplikovaná cez PUBLIC API";
 
                 System.Diagnostics.Debug.WriteLine("✅ Dark theme úspešne aplikovaná");
             }
@@ -226,12 +229,12 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Blue Theme...");
+                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Blue Theme cez PUBLIC API...");
 
-                DataGridControl.ApplyColorTheme(DataGridColorTheme.Blue);
+                DataGridControl.ApplyColorTheme(PublicDataGridColorTheme.Blue);
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Blue theme aplikovaná";
+                    StatusTextBlock.Text = "Blue theme aplikovaná cez PUBLIC API";
 
                 System.Diagnostics.Debug.WriteLine("✅ Blue theme úspešne aplikovaná");
             }
@@ -247,24 +250,24 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Vytváram Custom Theme...");
+                System.Diagnostics.Debug.WriteLine("🎨 Vytváram Custom Theme cez PUBLIC API...");
 
-                // ✅ OPRAVENÉ CS0234: Používame Windows.UI.Color namiesto Microsoft.UI.Color
-                var customTheme = DataGridColorThemeBuilder.Create()
+                // ✅ Custom theme pomocou PUBLIC DataGridColorThemeBuilder
+                var customTheme = PublicDataGridColorThemeBuilder.Create()
                     .WithCellBackground(Color.FromArgb(255, 255, 255, 224)) // LightYellow
                     .WithCellBorder(Color.FromArgb(255, 255, 165, 0))       // Orange
                     .WithCellText(Color.FromArgb(255, 0, 0, 139))           // DarkBlue
                     .WithHeaderBackground(Color.FromArgb(255, 255, 165, 0)) // Orange
                     .WithHeaderText(Color.FromArgb(255, 255, 255, 255))     // White
                     .WithValidationError(Color.FromArgb(255, 139, 0, 0))    // DarkRed
-                    .WithSelection(Color.FromArgb(100, 255, 165, 0))        // Orange with alpha
-                    .WithEditingCell(Color.FromArgb(50, 255, 215, 0))       // Gold with alpha
+                    .WithSelection(Color.FromArgb(100, 255, 165, 0))        // Orange alpha
+                    .WithEditingCell(Color.FromArgb(50, 255, 215, 0))       // Gold alpha
                     .Build();
 
                 DataGridControl.ApplyColorTheme(customTheme);
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Custom Orange theme aplikovaná";
+                    StatusTextBlock.Text = "Custom Orange theme vytvorená a aplikovaná cez PUBLIC API";
 
                 System.Diagnostics.Debug.WriteLine("✅ Custom theme úspešne vytvorená a aplikovaná");
             }
@@ -276,30 +279,213 @@ namespace RpaWinUiComponents.Demo
             }
         }
 
-        private void OnResetThemeClick(object sender, RoutedEventArgs e)
+        #endregion
+
+        #region Button Event Handlers - PUBLIC API
+
+        private async void OnLoadSampleDataClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na Default Theme...");
-
-                DataGridControl.ResetToDefaultTheme();
+                System.Diagnostics.Debug.WriteLine("📊 Načítavam ukážkové dáta cez PUBLIC API...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Theme resetovaná na default";
+                    StatusTextBlock.Text = "Načítavajú sa ukážkové dáta...";
 
-                System.Diagnostics.Debug.WriteLine("✅ Theme úspešne resetovaná");
+                var sampleData = new List<Dictionary<string, object?>>
+                {
+                    new() { ["ID"] = 101, ["Meno"] = "Anna Nováková", ["Email"] = "anna@test.sk", ["Vek"] = 25, ["Plat"] = 3000m },
+                    new() { ["ID"] = 102, ["Meno"] = "Milan Svoboda", ["Email"] = "milan@company.sk", ["Vek"] = 32, ["Plat"] = 4500m },
+                    new() { ["ID"] = 103, ["Meno"] = "Eva Krásna", ["Email"] = "eva@firma.sk", ["Vek"] = 28, ["Plat"] = 3800m }
+                };
+
+                await DataGridControl.LoadDataAsync(sampleData);
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Ukážkové dáta načítané cez PUBLIC API";
+
+                System.Diagnostics.Debug.WriteLine("✅ Ukážkové dáta úspešne načítané");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri reset theme: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri načítavaní: {ex.Message}");
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri reset: {ex.Message}";
+                    StatusTextBlock.Text = $"Chyba: {ex.Message}";
+            }
+        }
+
+        private async void OnValidateAllClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("✅ Validujem všetky dáta cez PUBLIC API...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Validujú sa dáta...";
+
+                var isValid = await DataGridControl.ValidateAllRowsAsync();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = isValid ? "Všetky dáta sú validné" : "Nájdené validačné chyby";
+
+                System.Diagnostics.Debug.WriteLine($"✅ Validácia dokončená: Všetky validné = {isValid}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri validácii: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri validácii: {ex.Message}";
+            }
+        }
+
+        private async void OnClearDataClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🗑️ Vymazávam všetky dáta cez PUBLIC API...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Vymazávajú sa dáta...";
+
+                await DataGridControl.ClearAllDataAsync();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Všetky dáta vymazané cez PUBLIC API";
+
+                System.Diagnostics.Debug.WriteLine("✅ Dáta úspešne vymazané");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri vymazávaní: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba: {ex.Message}";
+            }
+        }
+
+        private async void OnExportDataClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("📤 Exportujem dáta cez PUBLIC API...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Exportujú sa dáta...";
+
+                var exportedData = await DataGridControl.ExportToDataTableAsync();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Export dokončený: {exportedData.Rows.Count} riadkov cez PUBLIC API";
+
+                System.Diagnostics.Debug.WriteLine($"✅ Export úspešný: {exportedData.Rows.Count} riadkov");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri exporte: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri exporte: {ex.Message}";
+            }
+        }
+
+        // ✅ NOVÁ FUNKCIONALITA: Custom Delete Validation cez PUBLIC API
+        private async void OnDeleteByCustomValidationClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎯 NOVÁ FUNKCIA: Custom delete validation cez PUBLIC API...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Aplikujú sa custom delete pravidlá...";
+
+                // ✅ Definuj custom validačné pravidlá pre mazanie pomocou PUBLIC API
+                var deleteValidationRules = new List<PublicValidationRule>
+                {
+                    // Zmaž riadky kde plat > 10000
+                    PublicValidationRule.Custom("Plat", value =>
+                    {
+                        if (value == null) return false;
+                        if (decimal.TryParse(value.ToString(), out var plat))
+                        {
+                            return plat > 10000m; // TRUE = zmaž riadok
+                        }
+                        return false;
+                    }, "Vysoký plat - riadok zmazaný"),
+
+                    // Zmaž riadky kde vek > 50
+                    PublicValidationRule.Custom("Vek", value =>
+                    {
+                        if (value == null) return false;
+                        if (int.TryParse(value.ToString(), out var vek))
+                        {
+                            return vek > 50; // TRUE = zmaž riadok
+                        }
+                        return false;
+                    }, "Vysoký vek - riadok zmazaný")
+                };
+
+                // ✅ Zavolaj NOVÚ metódu cez PUBLIC API
+                await DataGridControl.DeleteRowsByCustomValidationAsync(deleteValidationRules);
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Custom delete pravidlá aplikované cez PUBLIC API";
+
+                System.Diagnostics.Debug.WriteLine("✅ NOVÁ FUNKCIA úspešne dokončená");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri custom delete: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri custom delete: {ex.Message}";
+            }
+        }
+
+        private async void OnAdvancedDeleteExamplesClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("⚡ DEMO: Pokročilé delete príklady cez PUBLIC API...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Spúšťajú sa pokročilé delete pravidlá...";
+
+                var advancedDeleteRules = new List<PublicValidationRule>
+                {
+                    // Zmaž riadky s prázdnym emailom
+                    PublicValidationRule.Custom("Email", value =>
+                    {
+                        var email = value?.ToString() ?? "";
+                        return string.IsNullOrWhiteSpace(email);
+                    }, "Prázdny email - riadok zmazaný"),
+
+                    // Zmaž riadky kde ID je párne
+                    PublicValidationRule.Custom("ID", value =>
+                    {
+                        if (value == null) return false;
+                        if (int.TryParse(value.ToString(), out var id))
+                        {
+                            return id % 2 == 0; // Párne ID
+                        }
+                        return false;
+                    }, "Párne ID - riadok zmazaný")
+                };
+
+                await DataGridControl.DeleteRowsByCustomValidationAsync(advancedDeleteRules);
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Pokročilé delete pravidlá aplikované cez PUBLIC API";
+
+                System.Diagnostics.Debug.WriteLine("✅ DEMO úspešne dokončené");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri advanced delete: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri advanced delete: {ex.Message}";
             }
         }
 
         #endregion
 
-        #region ✅ NOVÉ: Realtime Testing Button Handlers
+        #region Testing Button Handlers
 
         private async void OnTestRealtimeValidationClick(object sender, RoutedEventArgs e)
         {
@@ -310,23 +496,19 @@ namespace RpaWinUiComponents.Demo
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "💡 TIP: Začni písať do buniek - validácie sa spúšťajú realtime!";
 
-                // Načítaj test dáta s chybami pre realtime testing
                 var testData = new List<Dictionary<string, object?>>
                 {
                     new() { ["Meno"] = "", ["Email"] = "invalid", ["Vek"] = 15, ["Plat"] = 100.00m }, // Nevalidné
-                    new() { ["Meno"] = "A", ["Email"] = "test@", ["Vek"] = 200, ["Plat"] = 70000.00m }, // Nevalidné  
-                    new() { ["Meno"] = "Valid User", ["Email"] = "valid@email.com", ["Vek"] = 25, ["Plat"] = 3000.00m } // Validné
+                    new() { ["Meno"] = "Test", ["Email"] = "valid@email.com", ["Vek"] = 25, ["Plat"] = 3000.00m } // Validné
                 };
 
                 await DataGridControl.LoadDataAsync(testData);
 
-                System.Diagnostics.Debug.WriteLine("✅ TEST dáta načítané - teraz skús písať do buniek!");
+                System.Diagnostics.Debug.WriteLine("✅ Realtime validation test dáta načítané");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ TEST failed: {ex.Message}");
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Test error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"❌ Test failed: {ex.Message}");
             }
         }
 
@@ -338,10 +520,10 @@ namespace RpaWinUiComponents.Demo
 
                 if (StatusTextBlock != null)
                 {
-                    StatusTextBlock.Text = "💡 TIP: Skús Tab (ďalšia bunka), Enter (riadok nižšie), Esc (zruš zmeny), Shift+Enter (nový riadok)";
+                    StatusTextBlock.Text = "💡 TIP: Skús Tab, Enter, Esc, Shift+Enter v bunkách";
                 }
 
-                System.Diagnostics.Debug.WriteLine("✅ Navigation test ready - skús klávesy v bunkách!");
+                System.Diagnostics.Debug.WriteLine("✅ Navigation test ready");
             }
             catch (Exception ex)
             {
@@ -357,244 +539,14 @@ namespace RpaWinUiComponents.Demo
 
                 if (StatusTextBlock != null)
                 {
-                    StatusTextBlock.Text = "💡 TIP: Označuj bunky a skús Ctrl+C/Ctrl+V/Ctrl+X pre copy/paste s Excel kompatibilitou";
+                    StatusTextBlock.Text = "💡 TIP: Skús Ctrl+C/Ctrl+V/Ctrl+X pre copy/paste";
                 }
 
-                System.Diagnostics.Debug.WriteLine("✅ Copy/Paste test ready - skús Ctrl+C/V!");
+                System.Diagnostics.Debug.WriteLine("✅ Copy/Paste test ready");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Copy/Paste test failed: {ex.Message}");
-            }
-        }
-
-        #endregion
-
-        #region Button Event Handlers - ✅ OPRAVENÉ A ROZŠÍRENÉ
-
-        private async void OnLoadSampleDataClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🔄 TEST: Načítavanie ukážkových dát...");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Načítavajú sa ukážkové dáta...";
-
-                // Jednoduché testové dáta
-                var sampleData = new List<Dictionary<string, object?>>
-                {
-                    new() { ["Meno"] = "Test Osoba", ["Email"] = "test@test.com", ["Vek"] = 25, ["Plat"] = 3000m },
-                    new() { ["Meno"] = "Druhá Osoba", ["Email"] = "druha@test.com", ["Vek"] = 30, ["Plat"] = 4000m }
-                };
-
-                await DataGridControl.LoadDataAsync(sampleData);
-
-                if (StatusTextBlock != null)
-                {
-                    StatusTextBlock.Text = "Ukážkové dáta načítané";
-                }
-
-                System.Diagnostics.Debug.WriteLine("✅ TEST úspešný: Ukážkové dáta načítané");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ TEST neúspešný: {ex.Message}");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba: {ex.Message}";
-            }
-        }
-
-        private async void OnValidateAllClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🔄 TEST: Validácia všetkých riadkov...");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Validujú sa dáta...";
-
-                var isValid = await DataGridControl.ValidateAllRowsAsync();
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = isValid ? "Všetky dáta sú validné" : "Nájdené validačné chyby";
-
-                System.Diagnostics.Debug.WriteLine($"✅ TEST dokončený: Všetky validné = {isValid}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ TEST neúspešný: {ex.Message}");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri validácii: {ex.Message}";
-            }
-        }
-
-        private async void OnClearDataClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🔄 TEST: Vymazávanie dát...");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Vymazávajú sa dáta...";
-
-                await DataGridControl.ClearAllDataAsync();
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Dáta vymazané";
-
-                System.Diagnostics.Debug.WriteLine("✅ TEST úspešný: Dáta vymazané");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ TEST neúspešný: {ex.Message}");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba: {ex.Message}";
-            }
-        }
-
-        private async void OnExportDataClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🔄 TEST: Export dát...");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Exportujú sa dáta...";
-
-                var exportedData = await DataGridControl.ExportToDataTableAsync();
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Export dokončený: {exportedData.Rows.Count} riadkov";
-
-                System.Diagnostics.Debug.WriteLine($"✅ TEST úspešný: Exportovaných {exportedData.Rows.Count} riadkov");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ TEST neúspešný: {ex.Message}");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri exporte: {ex.Message}";
-            }
-        }
-
-        // ✅ NOVÁ METÓDA: Delete rows by custom validation
-        private async void OnDeleteByCustomValidationClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🔄 NOVÁ FUNKCIA: Mazanie riadkov podľa custom validácie...");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Aplikujú sa custom validačné pravidlá pre mazanie...";
-
-                // Definuj custom validačné pravidlá pre mazanie
-                // Ak pravidlo vráti TRUE, riadok sa ZMAŽE
-                var deleteValidationRules = new List<PublicValidationRule>
-                {
-                    // Zmaž riadky kde plat je vyšší ako 10000
-                    PublicValidationRule.Custom("Plat", value =>
-                    {
-                        if (value == null) return false;
-                        if (decimal.TryParse(value.ToString(), out var plat))
-                        {
-                            return plat > 10000m; // TRUE = zmaž riadok
-                        }
-                        return false;
-                    }, "Vysoký plat - riadok zmazaný"),
-
-                    // Zmaž riadky kde vek je vyšší ako 50
-                    PublicValidationRule.Custom("Vek", value =>
-                    {
-                        if (value == null) return false;
-                        if (int.TryParse(value.ToString(), out var vek))
-                        {
-                            return vek > 50; // TRUE = zmaž riadok
-                        }
-                        return false;
-                    }, "Vysoký vek - riadok zmazaný"),
-
-                    // Zmaž riadky kde meno obsahuje "Test"
-                    PublicValidationRule.Custom("Meno", value =>
-                    {
-                        if (value == null) return false;
-                        var meno = value.ToString() ?? "";
-                        return meno.Contains("Test", StringComparison.OrdinalIgnoreCase); // TRUE = zmaž riadok
-                    }, "Test meno - riadok zmazaný")
-                };
-
-                // Zavolaj novú metódu na mazanie riadkov
-                await DataGridControl.DeleteRowsByCustomValidationAsync(deleteValidationRules);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Custom validačné pravidlá aplikované - ovplyvnené riadky zmazané";
-
-                System.Diagnostics.Debug.WriteLine("✅ NOVÁ FUNKCIA úspešná: Riadky zmazané podľa custom validácie");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ NOVÁ FUNKCIA neúspešná: {ex.Message}");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri custom validácii: {ex.Message}";
-            }
-        }
-
-        // ✅ DEMO METÓDA: Ukážka rôznych custom validácií pre mazanie
-        private async void OnAdvancedDeleteExamplesClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🔄 DEMO: Pokročilé príklady custom validácie pre mazanie...");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Spúšťajú sa pokročilé delete pravidlá...";
-
-                // Príklad zložitejších custom validácií
-                var advancedDeleteRules = new List<PublicValidationRule>
-                {
-                    // Zmaž riadky s prázdnym emailom ALE len ak majú vyplnené meno
-                    PublicValidationRule.Custom("Email", value =>
-                    {
-                        var email = value?.ToString() ?? "";
-                        return string.IsNullOrWhiteSpace(email); // TRUE ak je email prázdny
-                    }, "Prázdny email - riadok zmazaný"),
-
-                    // Zmaž riadky kde email nie je validný (neobsahuje @)
-                    PublicValidationRule.Custom("Email", value =>
-                    {
-                        var email = value?.ToString() ?? "";
-                        return !string.IsNullOrWhiteSpace(email) && !email.Contains("@"); // TRUE ak email neobsahuje @
-                    }, "Nevalidný email - riadok zmazaný"),
-
-                    // Zmaž riadky kde ID je párne
-                    PublicValidationRule.Custom("ID", value =>
-                    {
-                        if (value == null) return false;
-                        if (int.TryParse(value.ToString(), out var id))
-                        {
-                            return id % 2 == 0; // TRUE ak je ID párne
-                        }
-                        return false;
-                    }, "Párne ID - riadok zmazaný")
-                };
-
-                await DataGridControl.DeleteRowsByCustomValidationAsync(advancedDeleteRules);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Pokročilé delete pravidlá aplikované";
-
-                System.Diagnostics.Debug.WriteLine("✅ DEMO úspešné: Pokročilé delete pravidlá aplikované");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ DEMO neúspešné: {ex.Message}");
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri pokročilých pravidlách: {ex.Message}";
             }
         }
 
