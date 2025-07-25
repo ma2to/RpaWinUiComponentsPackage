@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ XAML compilation -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ XAML duplicates -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -17,17 +17,18 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
 
-    <!-- ✅ KRITICKÁ OPRAVA: XAML compilation settings -->
+    <!-- ✅ KĽÚČOVÁ OPRAVA: Nechaj SDK automaticky zahrnúť XAML súbory -->
     <EnableDefaultPageItems>true</EnableDefaultPageItems>
     <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
   </PropertyGroup>
 
-  <!-- ✅ EXPLICITNÉ XAML súbory pre istotu -->
-  <ItemGroup>
+  <!-- ✅ ODSTRÁNENÉ: Explicitné XAML súbory - SDK ich pridá automaticky -->
+  <!-- Toto spôsobovalo NETSDK1022 duplicate items error -->
+  <!-- <ItemGroup>
     <Page Include="MainWindow.xaml" />
     <ApplicationDefinition Include="App.xaml" />
-  </ItemGroup>
+  </ItemGroup> -->
 
   <!-- ✅ OPRAVENÉ: Assets files -->
   <ItemGroup>
@@ -44,11 +45,6 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
-  <!--
-    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
-    Tools extension to be activated for this project even if the Windows App SDK Nuget
-    package has not yet been restored.
-  -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
   </ItemGroup>
@@ -58,45 +54,17 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.2" />
-    <!-- ✅ AKTUALIZOVANÁ VERZIA package reference -->
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÉ: Iba Package Reference, žiadne Project Reference -->
-
-  <!--
-    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
-    Explorer "Package and Publish" context menu entry to be enabled for this project even if
-    the Windows App SDK Nuget package has not yet been restored.
-  -->
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
   </PropertyGroup>
 
-  <!-- Publish Properties -->
-  <PropertyGroup>
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
-    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
-  </PropertyGroup>
-
-  <!-- ✅ Debug informácie pre package loading -->
+  <!-- Debug informácie pre package loading -->
   <Target Name="DebugPackageInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="🔍 Demo: Loading RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.2 via Package Reference" Importance="normal" />
     <Message Text="🔍 Demo: UseWinUI = $(UseWinUI)" Importance="normal" />
-    <Message Text="🔍 Demo: XamlCompilationEnabled = $(XamlCompilationEnabled)" Importance="normal" />
-  </Target>
-
-  <!-- ✅ NOVÉ: Target pre debugging XAML issues -->
-  <Target Name="DebugXamlCompilation" AfterTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🔍 XAML: EnableDefaultPageItems = $(EnableDefaultPageItems)" Importance="normal" />
-    <Message Text="🔍 XAML: EnableDefaultXamlItems = $(EnableDefaultXamlItems)" Importance="normal" />
-
-    <ItemGroup>
-      <XamlFiles Include="**/*.xaml" />
-    </ItemGroup>
-
-    <Message Text="🔍 XAML: Found @(XamlFiles-&gt;Count()) XAML files" Importance="normal" />
+    <Message Text="🔍 Demo: EnableDefaultPageItems = $(EnableDefaultPageItems)" Importance="normal" />
   </Target>
 
 </Project>

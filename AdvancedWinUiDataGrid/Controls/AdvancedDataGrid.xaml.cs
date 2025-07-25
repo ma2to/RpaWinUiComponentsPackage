@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ accessibility issues
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ x:Bind accessibility
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -43,7 +43,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         private GridConfiguration? _configuration;
 
-        // ✅ OPRAVENÉ CS0053: INTERNAL properties pre XAML binding
+        // ✅ OPRAVENÉ: PUBLIC properties pre x:Bind (ale len get accessor)
         private readonly ObservableCollection<GridColumnDefinition> _headerColumns = new();
         private readonly ObservableCollection<RowDataModel> _dataRows = new();
 
@@ -83,17 +83,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ OPRAVENÉ CS0053: INTERNAL Properties pre XAML binding
+        #region ✅ OPRAVENÉ: PUBLIC Properties pre x:Bind (read-only access)
 
         /// <summary>
-        /// Header stĺpce pre XAML binding - INTERNAL
+        /// Header stĺpce pre XAML binding - PUBLIC read-only pre x:Bind
         /// </summary>
-        internal ObservableCollection<GridColumnDefinition> HeaderColumns => _headerColumns;
+        public ObservableCollection<GridColumnDefinition> HeaderColumns => _headerColumns;
 
         /// <summary>
-        /// Dátové riadky pre XAML binding - INTERNAL 
+        /// Dátové riadky pre XAML binding - PUBLIC read-only pre x:Bind
         /// </summary>
-        internal ObservableCollection<RowDataModel> DataRows => _dataRows;
+        public ObservableCollection<RowDataModel> DataRows => _dataRows;
 
         #endregion
 

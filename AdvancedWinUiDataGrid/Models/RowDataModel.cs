@@ -1,4 +1,4 @@
-﻿// Models/RowDataModel.cs - ✅ NOVÝ SÚBOR
+﻿// Models/RowDataModel.cs - ✅ OPRAVENÝ pre x:Bind prístup
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -8,7 +8,7 @@ using System.Linq;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
 {
     /// <summary>
-    /// Model pre riadok v DataGrid - INTERNAL MODEL
+    /// Model pre riadok v DataGrid - INTERNAL MODEL ale s PUBLIC properties pre x:Bind
     /// </summary>
     internal class RowDataModel : INotifyPropertyChanged
     {
@@ -17,7 +17,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
         private string _validationErrors = string.Empty;
 
         /// <summary>
-        /// Index riadku v gridu
+        /// Index riadku v gridu - PUBLIC pre x:Bind
         /// </summary>
         public int RowIndex
         {
@@ -26,12 +26,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
         }
 
         /// <summary>
-        /// Kolekcia buniek v riadku
+        /// Kolekcia buniek v riadku - PUBLIC pre x:Bind
         /// </summary>
         public ObservableCollection<CellDataModel> Cells { get; set; } = new();
 
         /// <summary>
-        /// Či je riadok označený/selected
+        /// Či je riadok označený/selected - PUBLIC pre x:Bind
         /// </summary>
         public bool IsSelected
         {
@@ -40,7 +40,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
         }
 
         /// <summary>
-        /// Validačné chyby pre celý riadok
+        /// Validačné chyby pre celý riadok - PUBLIC pre x:Bind
         /// </summary>
         public string ValidationErrors
         {
@@ -49,12 +49,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
         }
 
         /// <summary>
-        /// Či má riadok validačné chyby
+        /// Či má riadok validačné chyby - PUBLIC pre x:Bind
         /// </summary>
         public bool HasValidationErrors => !string.IsNullOrEmpty(ValidationErrors);
 
         /// <summary>
-        /// Či je celý riadok validný
+        /// Či je celý riadok validný - PUBLIC pre x:Bind
         /// </summary>
         public bool IsValid => !HasValidationErrors;
 

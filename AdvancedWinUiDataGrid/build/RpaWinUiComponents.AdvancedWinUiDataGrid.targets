@@ -1,5 +1,5 @@
 ﻿<!-- AdvancedWinUiDataGrid/build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets -->
-<!-- ✅ KOMPLETNE OPRAVENÝ MSBuild targets súbor pre WinUI3 package -->
+<!-- ✅ KOMPLETNE OPRAVENÝ MSBuild targets pre Package Reference -->
 <Project>
 
   <!-- ✅ Debug informácie (iba v Debug mode) -->
@@ -9,21 +9,21 @@
     <Message Text="🔍 AdvancedWinUiDataGrid: TargetFramework = $(TargetFramework)" Importance="normal" />
   </Target>
 
-  <!-- ✅ Package paths -->
+  <!-- ✅ OPRAVENÉ: Package paths s correct TargetFramework handling -->
   <PropertyGroup>
-    <AdvancedDataGridLibPath>$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/</AdvancedDataGridLibPath>
+    <!-- Skús najprv konkrétny TFM, potom fallback na generický -->
+    <AdvancedDataGridLibPath Condition="Exists('$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/')">$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/</AdvancedDataGridLibPath>
+    <AdvancedDataGridLibPath Condition="'$(AdvancedDataGridLibPath)' == '' AND Exists('$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041.0/')">$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041.0/</AdvancedDataGridLibPath>
+    <AdvancedDataGridLibPath Condition="'$(AdvancedDataGridLibPath)' == ''">$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041.0/</AdvancedDataGridLibPath>
   </PropertyGroup>
 
-  <!-- ✅ OPRAVENÉ: Pridanie referencie na DLL (bez raw XAML súborov) -->
-  <ItemGroup Condition="'$(UseWinUI)' == 'true' AND Exists('$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll')">
-    <Reference Include="RpaWinUiComponents.AdvancedWinUiDataGrid">
+  <!-- ✅ OPRAVENÉ: Reference na DLL s lepšou error handling -->
+  <ItemGroup Condition="'$(UseWinUI)' == 'true'">
+    <Reference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Condition="Exists('$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll')">
       <HintPath>$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
-
-  <!-- ✅ ODSTRÁNENÉ: Raw XAML import - XAML je už skompilované v DLL -->
-  <!-- Pre WinUI3 komponenty, XAML súbory sú skompilované do DLL a nie sú potrebné ako raw súbory -->
 
   <!-- ✅ Nastavenie pre WinUI3 XAML kompajlovanie -->
   <PropertyGroup Condition="'$(UseWinUI)' == 'true'">
@@ -31,7 +31,7 @@
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
   </PropertyGroup>
 
-  <!-- ✅ Debug target pre verifikáciu package obsahu -->
+  <!-- ✅ OPRAVENÉ: Debug target pre verifikáciu package obsahu -->
   <Target Name="VerifyAdvancedDataGridPackage" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
 
     <PropertyGroup>
@@ -39,6 +39,7 @@
       <PackagePdbExists Condition="Exists('$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.pdb')">true</PackagePdbExists>
     </PropertyGroup>
 
+    <Message Text="✅ Using lib path: $(AdvancedDataGridLibPath)" Importance="normal" />
     <Message Text="✅ Package DLL found: $(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll" Importance="normal"
              Condition="'$(PackageDllExists)' == 'true'" />
     <Message Text="✅ Package PDB found: $(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.pdb" Importance="normal"
@@ -47,7 +48,7 @@
     <Warning Text="⚠️ AdvancedWinUiDataGrid: DLL not found at $(AdvancedDataGridLibPath). Package may not be properly installed."
              Condition="'$(PackageDllExists)' != 'true'" />
 
-    <Message Text="💡 TIP: If package is missing, try: dotnet restore --force" Importance="high"
+    <Message Text="📦 TIP: Skús: dotnet restore --force, alebo dotnet clean + dotnet build" Importance="high"
              Condition="'$(PackageDllExists)' != 'true'" />
   </Target>
 
@@ -56,5 +57,15 @@
     <!-- Zabezpečiť že WinUI3 ResourceDictionary sú správne načítané -->
     <XamlResourcesEnabled>true</XamlResourcesEnabled>
   </PropertyGroup>
+
+  <!-- ✅ NOVÉ: Fallback ak package nie je nájdený - pokúsi sa auto-restore -->
+  <Target Name="AutoRestoreAdvancedDataGridPackage" BeforeTargets="Build" Condition="'$(PackageDllExists)' != 'true' AND '$(UseWinUI)' == 'true'">
+    <Message Text="🔄 Attempting auto-restore of AdvancedWinUiDataGrid package..." Importance="high" />
+
+    <Exec Command="dotnet restore --packages $(NuGetPackageRoot)"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+  </Target>
 
 </Project>
