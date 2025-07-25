@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ pre package-only -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -46,10 +46,15 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
-    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.0" />
+    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.1" />
+    <!-- ✅ KĽÚČOVÉ: IBA Package Reference, žiadne Project Reference -->
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÁ OPRAVA: Project reference na náš balík -->
+  <!-- ✅ ODSTRÁNENÉ: Project reference - zostáva iba Package Reference -->
+  <!-- 
+  POZNÁMKA: Projekt nemá project reference, iba package reference!
+  Toto zabezpečuje testovanie balíka tak ako ho budú používať end-useri.
+  -->
 
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
@@ -67,4 +72,11 @@
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
   </PropertyGroup>
+
+  <!-- ✅ NOVÉ: Debug informácie pre package loading -->
+  <Target Name="DebugPackageInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="🔍 Demo: Loading RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.1 via Package Reference" Importance="normal" />
+    <Message Text="🔍 Demo: UseWinUI = $(UseWinUI)" Importance="normal" />
+  </Target>
+
 </Project>

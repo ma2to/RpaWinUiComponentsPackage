@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ bez duplikátov XAML -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -16,12 +16,13 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: Zakáž automatické pridávanie XAML súborov -->
-    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <!-- ✅ KĽÚČOVÁ OPRAVA: POVOLIŤ automatické XAML ale BEZ explicitného pridávania -->
+    <EnableDefaultPageItems>true</EnableDefaultPageItems>
+    <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
 
     <!-- Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
@@ -56,27 +57,24 @@
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: Explicitné XAML súbory bez duplicít -->
+  <!-- ✅ ODSTRÁNENÉ: Explicitné XAML súbory (aby sa zabránilo duplikátom) -->
+  <!-- EnableDefaultPageItems>true automaticky zahŕňa všetky *.xaml súbory -->
+
+  <!-- ✅ MSBuild targets pre správne zabalenie do NuGet -->
   <ItemGroup>
-    <Page Include="Controls\AdvancedDataGrid.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\DataGridCell.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\SpecialColumns\DeleteRowColumn.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\SpecialColumns\ValidationAlertsColumn.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
+    <None Include="build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="build/" />
+    <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- Project Structure Folders (pre VS organization) -->
+  <!-- ✅ NOVÉ: Explicitné zabalenie XAML súborov do NuGet balíka -->
   <ItemGroup>
-    <Folder Include="Services\" />
-    <Folder Include="Services\Interfaces\" />
-    <Folder Include="Extensions\" />
+    <!-- Zahrnúť všetky XAML súbory do balíka (ale nie duplikovane do build procesu) -->
+    <None Include="Controls/**/*.xaml" Pack="true" PackagePath="lib/$(TargetFramework)/Controls/" />
+    <None Include="Themes/*.xaml" Pack="true" PackagePath="lib/$(TargetFramework)/Themes/" />
+
+    <!-- Zahrnúť aj compiled assemblies -->
+    <None Include="$(OutputPath)/$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="'$(Configuration)' == 'Release'" />
+    <None Include="$(OutputPath)/$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="'$(Configuration)' == 'Release'" />
   </ItemGroup>
 
   <!-- Public API Surface -->
@@ -97,5 +95,17 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningLevel>5</WarningLevel>
   </PropertyGroup>
+
+  <!-- ✅ NOVÉ: Custom target pre packaging XAML súborov -->
+  <Target Name="PackageXamlFiles" BeforeTargets="GenerateNuspec" Condition="'$(Configuration)' == 'Release'">
+    <Message Text="🔧 Packaging XAML files for NuGet..." Importance="high" />
+
+    <!-- Ensure XAML files are properly included in the package -->
+    <ItemGroup>
+      <PackageXamlFiles Include="**/*.xaml" Exclude="bin/**;obj/**" />
+    </ItemGroup>
+
+    <Message Text="🔧 Found @(PackageXamlFiles->Count()) XAML files to package" Importance="normal" />
+  </Target>
 
 </Project>

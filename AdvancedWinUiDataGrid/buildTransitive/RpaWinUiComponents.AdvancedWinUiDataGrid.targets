@@ -1,0 +1,8 @@
+﻿<!-- AdvancedWinUiDataGrid/buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets -->
+<!-- ✅ TRANSITIVE MSBuild targets súbor (importuje build/ verziu) -->
+<Project>
+
+  <!-- ✅ Import hlavný targets súbor -->
+  <Import Project="$(MSBuildThisFileDirectory)../build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" />
+
+</Project>
