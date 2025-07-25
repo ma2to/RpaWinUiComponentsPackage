@@ -10,7 +10,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
     /// <summary>
     /// Model pre riadok v DataGrid - INTERNAL MODEL
     /// </summary>
-    public class RowDataModel : INotifyPropertyChanged
+    internal class RowDataModel : INotifyPropertyChanged
     {
         private int _rowIndex;
         private bool _isSelected;

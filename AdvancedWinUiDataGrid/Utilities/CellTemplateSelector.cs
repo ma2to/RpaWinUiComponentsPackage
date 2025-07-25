@@ -8,7 +8,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// <summary>
     /// Template selector pre rôzne typy buniek v DataGrid
     /// </summary>
-    public class CellTemplateSelector : DataTemplateSelector
+    internal class CellTemplateSelector : DataTemplateSelector
     {
         /// <summary>
         /// Template pre bežné dátové bunky
@@ -49,7 +49,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// <summary>
     /// Helper trieda pre multi-selection v DataGrid
     /// </summary>
-    public class CellSelectionManager
+    internal class CellSelectionManager
     {
         private readonly List<CellDataModel> _selectedCells = new();
         private CellDataModel? _lastSelectedCell;
@@ -248,7 +248,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// <summary>
     /// Event args pre zmenu označenia
     /// </summary>
-    public class SelectionChangedEventArgs : EventArgs
+    internal class SelectionChangedEventArgs : EventArgs
     {
         public int SelectedCount { get; }
 

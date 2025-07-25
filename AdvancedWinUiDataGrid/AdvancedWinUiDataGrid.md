@@ -149,6 +149,18 @@ Task InitializeAsync(List<ColumnDefinition> columns,
                     ThrottlingConfig throttling, 
                     int emptyRowsCount = 15);
 
+
+//Len tieto triedy majú byť PUBLIC:
+
+AdvancedDataGrid (hlavný komponent)
+ColumnDefinition
+ValidationRule
+ThrottlingConfig
+DataGridColorTheme + DataGridColorThemeBuilder
+
+Všetko ostatné má byť INTERNAL
+
+
 // Načítanie dát
 Task LoadDataAsync(List<Dictionary<string, object?>> data);
 Task LoadDataAsync(DataTable dataTable);

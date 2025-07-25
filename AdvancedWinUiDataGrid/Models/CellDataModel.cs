@@ -10,7 +10,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
     /// ✅ OPRAVENÉ CS0121, CS0111: Jednotná implementácia OnPropertyChanged
     /// ✅ OPRAVENÉ CS1061: Pridaný RowIndex property
     /// </summary>
-    public class CellDataModel : INotifyPropertyChanged
+    internal class CellDataModel : INotifyPropertyChanged
     {
         private string _columnName = string.Empty;
         private object? _value;

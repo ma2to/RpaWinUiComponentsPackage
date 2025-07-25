@@ -9,7 +9,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
     /// <summary>
     /// Helper trieda pre throttling operácií
     /// </summary>
-    public class ThrottleHelper
+    internal class ThrottleHelper
     {
         private readonly ConcurrentDictionary<string, CancellationTokenSource> _pendingOperations = new();
         private int _debounceTimeMs = 300;
@@ -29,27 +29,22 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
         {
             if (_debounceTimeMs <= 0)
             {
-                // Immediate execution
                 return operation();
             }
 
-            // Cancel previous operation with the same key
             if (_pendingOperations.TryRemove(key, out var previousCts))
             {
                 previousCts.Cancel();
                 previousCts.Dispose();
             }
 
-            // Create new cancellation token
             var cts = new CancellationTokenSource();
             _pendingOperations[key] = cts;
 
             try
             {
-                // Wait for debounce time
                 await Task.Delay(_debounceTimeMs, cts.Token);
 
-                // If not cancelled, execute operation
                 if (!cts.Token.IsCancellationRequested)
                 {
                     return operation();
@@ -61,7 +56,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
             }
             finally
             {
-                // Cleanup
                 _pendingOperations.TryRemove(key, out _);
                 cts.Dispose();
             }

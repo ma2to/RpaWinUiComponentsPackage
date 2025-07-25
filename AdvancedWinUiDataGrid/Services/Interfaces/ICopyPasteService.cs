@@ -49,7 +49,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces
     /// <summary>
     /// Reprezentuje výber bunky pre copy/paste operácie
     /// </summary>
-    public class CellSelection
+    internal class CellSelection
     {
         public int RowIndex { get; set; }
         public int ColumnIndex { get; set; }

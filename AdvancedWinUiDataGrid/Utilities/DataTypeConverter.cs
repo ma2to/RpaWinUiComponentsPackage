@@ -1,13 +1,13 @@
-﻿// Utilities/DataTypeConverter.cs
+﻿// Utilities/DataTypeConverter.cs - ✅ INTERNAL
 using System;
 using System.Globalization;
 
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
 {
     /// <summary>
-    /// Helper trieda pre konverziu dátových typov
+    /// Helper trieda pre konverziu dátových typov - ✅ INTERNAL
     /// </summary>
-    public static class DataTypeConverter
+    internal static class DataTypeConverter  // ✅ CHANGED: public -> internal
     {
         /// <summary>
         /// Konvertuje hodnotu na zadaný typ
@@ -49,7 +49,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Utilities
                 if (targetType.IsEnum)
                     return ConvertToEnum(value, targetType);
 
-                // Use Convert.ChangeType for numeric types and others
                 return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
             }
             catch

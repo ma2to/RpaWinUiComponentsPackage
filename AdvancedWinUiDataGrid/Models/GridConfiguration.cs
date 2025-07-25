@@ -8,7 +8,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Models
     /// <summary>
     /// Konfigurácia pre DataGrid komponent
     /// </summary>
-    public class GridConfiguration
+    internal class GridConfiguration
     {
         /// <summary>
         /// Definície stĺpcov

@@ -399,7 +399,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
     /// <summary>
     /// Štatistiky exportu
     /// </summary>
-    public class ExportStatistics
+    internal class ExportStatistics
     {
         public int TotalRows { get; set; }
         public int TotalColumns { get; set; }
@@ -412,7 +412,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
     /// <summary>
     /// Štatistiky stĺpca
     /// </summary>
-    public class ColumnStatistics
+    internal class ColumnStatistics
     {
         public string ColumnName { get; set; } = string.Empty;
         public string DataType { get; set; } = string.Empty;
