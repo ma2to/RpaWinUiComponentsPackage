@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ KOMPLETNE OPRAVENÝ -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ pre správne WinUI3 NuGet balenie -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -16,13 +16,15 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: XAML súbory sa automaticky zahrnú a skompajlujú -->
+    <!-- ✅ KĽÚČOVÁ OPRAVA: WinUI3 XAML compilation a balenie -->
     <EnableDefaultPageItems>true</EnableDefaultPageItems>
     <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
+    <UseWPF>false</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
 
     <!-- Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
@@ -57,14 +59,28 @@
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: MSBuild targets pre správne NuGet zabalenie -->
+  <!-- ✅ KĽÚČOVÁ OPRAVA: MSBuild targets pre správne NuGet zabalenie -->
   <ItemGroup>
     <None Include="build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="build/" />
     <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- ✅ ODSTRÁNENÉ: Raw XAML súbory sa nebalí - iba skompilované DLL/PDB -->
-  <!-- WinUI3 komponenty majú XAML skompilované do DLL, nie ako raw súbory -->
+  <!-- ✅ NOVÉ: Explicitné zabalenie XAML súborov pre WinUI3 -->
+  <ItemGroup>
+    <!-- Zabaľ skompilované XAML súbory -->
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
+    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+
+    <!-- Zabaľ aj XBF súbory (skompilované XAML) ak existujú -->
+    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)')" />
+  </ItemGroup>
+
+  <!-- ✅ NOVÉ: WinUI3 špeciálne nastavenia pre balenie -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Pre Release build zabezpeč optimalizované XAML -->
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
+    <UseCompiledXaml>true</UseCompiledXaml>
+  </PropertyGroup>
 
   <!-- Public API Surface -->
   <ItemGroup>
@@ -84,5 +100,19 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningLevel>5</WarningLevel>
   </PropertyGroup>
+
+  <!-- ✅ NOVÉ: Vývojárske nastavenia pre debugging NuGet balíka -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <!-- ✅ NOVÉ: Custom targets pre post-build -->
+  <Target Name="LogPackageInfo" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
+    <Message Text="📦 Package output: $(PackageOutputPath)" Importance="high" />
+    <Message Text="📦 Target framework: $(TargetFramework)" Importance="high" />
+  </Target>
 
 </Project>

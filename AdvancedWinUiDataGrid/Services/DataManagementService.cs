@@ -1,4 +1,4 @@
-﻿// Services/DataManagementService.cs - ✅ OPRAVENÝ s Auto-Add riadkov funkciou
+﻿// Services/DataManagementService.cs - ✅ OPRAVENÝ s Auto-Add riadkov funkciou a CS0165 fix
 using Microsoft.Extensions.Logging;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -134,6 +134,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
         /// <summary>
         /// ✅ NOVÉ: Načíta dáta s automatickým pridávaním riadkov
+        /// Ak má viac dát ako riadkov, vytvorí dodatočné riadky + vždy jeden prázdny na konci
         /// </summary>
         private async Task LoadDataInternalAsync(List<Dictionary<string, object?>> data)
         {
@@ -156,6 +157,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                         // ✅ NOVÁ LOGIKA: Zabezpečenie dostatočnej kapacity
                         var minimumRows = _configuration!.EmptyRowsCount;
                         var requiredCapacity = Math.Max(data.Count + 1, minimumRows); // +1 pre prázdny riadok na konci
+
+                        _logger.LogDebug("Potrebná kapacita: {RequiredCapacity} riadkov (dáta: {DataCount}, minimum: {MinimumRows})",
+                            requiredCapacity, data.Count, minimumRows);
 
                         // Vyčisti existujúce dáta
                         _gridData.Clear();
@@ -197,7 +201,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Automaticky pridá nový prázdny riadok ak je potrebný
+        /// ✅ NOVÉ: Automaticky pridá nový prázdny riadok ak sa vyplní posledný
         /// </summary>
         public async Task EnsureEmptyRowAtEndAsync()
         {
@@ -239,7 +243,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Inteligentné pridanie riadku - kontroluje kapacitu
+        /// ✅ OPRAVENÉ CS0165: Inicializuje newRowIndex a inteligentné pridanie riadku
         /// </summary>
         private async Task<int> AddRowInternalAsync(Dictionary<string, object?>? initialData)
         {
@@ -247,7 +251,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             {
                 EnsureInitialized();
 
-                int newRowIndex;
+                int newRowIndex = -1; // ✅ FIX CS0165: Inicializácia premennej
 
                 await Task.Run(() =>
                 {
@@ -277,7 +281,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
                         _logger.LogDebug("Pridaný nový riadok na index {RowIndex} (celkom: {TotalRows})", newRowIndex, _gridData.Count);
 
-                        // ✅ NOVÁ LOGIKA: Zabezpeč prázdny riadok na konci
+                        // ✅ NOVÁ LOGIKA: Zabezpeč prázdny riadok na konci ak pridávame dáta
                         if (initialData != null) // Ak pridávame riadok s dátami
                         {
                             var emptyRow = CreateEmptyRow();
@@ -298,6 +302,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
         /// <summary>
         /// ✅ NOVÁ FUNKCIONALITA: Inteligentné mazanie s ochranou minimálneho počtu
+        /// - Ak mám viac riadkov ako minimum: fyzicky zmaž riadok
+        /// - Ak som na minimume: len vyčisti obsah riadku (ponechaj prázdny)
         /// </summary>
         private async Task DeleteRowInternalAsync(int rowIndex)
         {
@@ -345,7 +351,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
         #endregion
 
-        #region Internal Implementation Methods (bez zmien)
+        #region Internal Implementation Methods
 
         private Task<List<Dictionary<string, object?>>> GetAllDataInternalAsync()
         {
@@ -420,6 +426,19 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
                     _logger.LogDebug("Nastavená hodnota bunky [{RowIndex}, {ColumnName}] = {Value}",
                         rowIndex, columnName, convertedValue);
+
+                    // ✅ NOVÁ FUNKCIA: Kontrola či je teraz posledný riadok vyplnený
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await EnsureEmptyRowAtEndAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Chyba pri auto-add kontrole");
+                        }
+                    });
                 }
 
                 return Task.CompletedTask;

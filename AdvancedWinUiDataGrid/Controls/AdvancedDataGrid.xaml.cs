@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ CS0053 error
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ s Auto-Add funkciou
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -211,14 +211,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             try
             {
                 EnsureInitialized();
-                _logger.LogInformation($"Načítavajú sa dáta: {data.Count} riadkov");
+                _logger.LogInformation($"Načítavajú sa dáta: {data.Count} riadkov s auto-add funkciou");
 
                 ShowLoadingState("Načítavajú sa dáta...");
 
+                // ✅ NOVÁ FUNKCIONALITA: Data management service automaticky zabezpečí kapacitu
                 await _dataManagementService.LoadDataAsync(data);
-
-                // ✅ NOVÁ FUNKCIONALITA: Auto-add riadkov
-                await EnsureRowCapacityAsync(data.Count);
 
                 await RefreshGridDataAsync();
 
@@ -336,8 +334,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 await _dataManagementService.ClearAllDataAsync();
 
-                // ✅ NOVÁ FUNKCIONALITA: Zachovanie minimálneho počtu riadkov z inicializácie
-                await CreateEmptyRowsAsync(_configuration?.EmptyRowsCount ?? 15);
+                // ✅ NOVÁ FUNKCIONALITA: Refresh UI po vymazaní - zachová minimum riadkov
+                await RefreshGridDataAsync();
 
                 HideLoadingState();
                 _logger.LogInformation("Všetky dáta vymazané s zachovaním minimálneho počtu riadkov");
@@ -395,15 +393,15 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     }
                 }
 
-                // ✅ NOVÁ FUNKCIONALITA: Inteligentné mazanie s rešpektovaním minimálneho počtu
+                // ✅ NOVÁ FUNKCIONALITA: Inteligentné mazanie cez DataManagementService
                 foreach (var rowToDelete in rowsToDelete)
                 {
-                    await SmartDeleteRowAsync(rowToDelete);
+                    await _dataManagementService.DeleteRowAsync(rowToDelete.RowIndex);
                     deletedCount++;
                 }
 
-                // Preusporiadaj riadky (odstráň prázdne medzery)
-                await CompactRowsAsync();
+                // ✅ NOVÁ FUNKCIONALITA: Refresh UI po mazaní
+                await RefreshGridDataAsync();
 
                 HideLoadingState();
                 _logger.LogInformation($"Úspešne zmazaných {deletedCount} riadkov podľa custom validačných pravidiel");
@@ -418,39 +416,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÁ FUNKCIONALITA: Auto-Add Riadkov
+        #region ✅ NOVÁ FUNKCIONALITA: Auto-Add Riadkov Helper Methods
 
         /// <summary>
-        /// ✅ NOVÉ: Zabezpečí dostatok riadkov pre dáta plus jeden prázdny na konci
-        /// </summary>
-        private async Task EnsureRowCapacityAsync(int dataRowsCount)
-        {
-            try
-            {
-                var minimumRows = _configuration?.EmptyRowsCount ?? 15;
-                var requiredRows = Math.Max(dataRowsCount + 1, minimumRows); // +1 pre prázdny riadok na konci
-
-                _logger.LogDebug($"Zabezpečujem kapacitu: {requiredRows} riadkov (dáta: {dataRowsCount}, minimum: {minimumRows})");
-
-                // Ak máme menej riadkov ako potrebujeme, pridaj ich
-                while (_dataRows.Count < requiredRows)
-                {
-                    var newRow = CreateEmptyRow(_dataRows.Count);
-                    _dataRows.Add(newRow);
-                    _logger.LogDebug($"Pridaný nový riadok na index {_dataRows.Count - 1}");
-                }
-
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Chyba pri zabezpečovaní kapacity riadkov");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// ✅ NOVÉ: Automaticky pridá nový prázdny riadok ak sa vyplní posledný
+        /// ✅ NOVÉ: Automaticky skontroluje a pridá nový prázdny riadok ak je potrebný
         /// </summary>
         public async Task CheckAndAddNewRowIfNeededAsync()
         {
@@ -463,8 +432,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 {
                     _logger.LogDebug("Posledný riadok je vyplnený - pridávam nový prázdny riadok");
 
-                    var newRow = CreateEmptyRow(_dataRows.Count);
-                    _dataRows.Add(newRow);
+                    // Pridaj prázdny riadok cez DataManagementService
+                    await _dataManagementService.AddRowAsync(null);
+
+                    // Refresh UI
+                    await RefreshGridDataAsync();
 
                     _logger.LogInformation($"Automaticky pridaný nový prázdny riadok na index {_dataRows.Count - 1}");
                 }
@@ -474,37 +446,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Chyba pri automatickom pridávaní nového riadku");
-            }
-        }
-
-        /// <summary>
-        /// ✅ NOVÉ: Inteligentné mazanie riadku - fysicky zmaže ak je nad minimum, inak len vyčistí obsah
-        /// </summary>
-        private async Task SmartDeleteRowAsync(RowDataModel row)
-        {
-            try
-            {
-                var minimumRows = _configuration?.EmptyRowsCount ?? 15;
-
-                if (_dataRows.Count > minimumRows)
-                {
-                    // Máme viac ako minimum - fyzicky zmaž riadok
-                    _dataRows.Remove(row);
-                    _logger.LogDebug($"Fyzicky zmazaný riadok {row.RowIndex} (nad minimum)");
-                }
-                else
-                {
-                    // Sme na minimume - len vyčisti obsah
-                    await ClearRowDataAsync(row);
-                    _logger.LogDebug($"Vyčistený obsah riadku {row.RowIndex} (zachované minimum)");
-                }
-
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Chyba pri inteligentnom mazaní riadku");
-                throw;
             }
         }
 
@@ -595,43 +536,45 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             return row;
         }
 
+        /// <summary>
+        /// ✅ AKTUALIZOVANÉ: RefreshGridDataAsync - synchronizuje s DataManagementService
+        /// </summary>
         private async Task RefreshGridDataAsync()
         {
-            var data = await _dataManagementService.GetAllDataAsync();
-
-            // Aktualizuj existujúce riadky s dátami
-            for (int i = 0; i < data.Count && i < _dataRows.Count; i++)
+            try
             {
-                var rowData = data[i];
-                var rowModel = _dataRows[i];
+                var data = await _dataManagementService.GetAllDataAsync();
 
-                foreach (var cell in rowModel.Cells)
+                // Vyčisti existujúce riadky
+                _dataRows.Clear();
+
+                // Vytvor nové riadky na základe dát z DataManagementService
+                for (int i = 0; i < data.Count; i++)
                 {
-                    if (rowData.ContainsKey(cell.ColumnName))
-                    {
-                        cell.Value = rowData[cell.ColumnName];
-                    }
-                }
-            }
+                    var rowData = data[i];
+                    var rowModel = CreateEmptyRow(i);
 
-            // Ak je viac dát ako riadkov, pridaj nové riadky
-            for (int i = _dataRows.Count; i < data.Count; i++)
-            {
-                var newRow = CreateEmptyRow(i);
-                var rowData = data[i];
-
-                foreach (var cell in newRow.Cells)
-                {
-                    if (rowData.ContainsKey(cell.ColumnName))
+                    // Naplň dáta do buniek
+                    foreach (var cell in rowModel.Cells)
                     {
-                        cell.Value = rowData[cell.ColumnName];
+                        if (rowData.ContainsKey(cell.ColumnName))
+                        {
+                            cell.Value = rowData[cell.ColumnName];
+                        }
                     }
+
+                    _dataRows.Add(rowModel);
                 }
 
-                _dataRows.Add(newRow);
-            }
+                await RefreshValidationStateAsync();
 
-            await RefreshValidationStateAsync();
+                _logger.LogDebug($"Grid UI refreshnutý: {_dataRows.Count} riadkov");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri refresh grid data");
+                throw;
+            }
         }
 
         private async Task RefreshValidationStateAsync()
@@ -687,60 +630,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             return row.Cells
                 .Where(c => c.ColumnName != "DeleteRows" && c.ColumnName != "ValidAlerts")
                 .All(c => c.Value == null || string.IsNullOrWhiteSpace(c.Value?.ToString()));
-        }
-
-        private async Task ClearRowDataAsync(RowDataModel row)
-        {
-            foreach (var cell in row.Cells.Where(c => c.ColumnName != "ValidAlerts"))
-            {
-                cell.Value = null;
-                cell.IsValid = true;
-                cell.ValidationErrors = string.Empty;
-            }
-
-            // Vyčisti aj ValidAlerts
-            var validAlertsCell = row.Cells.FirstOrDefault(c => c.ColumnName == "ValidAlerts");
-            if (validAlertsCell != null)
-            {
-                validAlertsCell.Value = string.Empty;
-                validAlertsCell.IsValid = true;
-            }
-
-            await Task.CompletedTask;
-        }
-
-        private async Task CompactRowsAsync()
-        {
-            var nonEmptyRows = _dataRows.Where(r => !IsRowEmpty(r)).ToList();
-
-            // Prečísluj riadky
-            for (int i = 0; i < nonEmptyRows.Count; i++)
-            {
-                nonEmptyRows[i].RowIndex = i;
-                foreach (var cell in nonEmptyRows[i].Cells)
-                {
-                    cell.RowIndex = i;
-                }
-            }
-
-            // Vytvor prázdne riadky na koniec s rešpektovaním minima
-            var minimumRows = _configuration?.EmptyRowsCount ?? 15;
-            var totalRequiredRows = Math.Max(nonEmptyRows.Count + 1, minimumRows); // +1 prázdny na konci
-
-            for (int i = nonEmptyRows.Count; i < totalRequiredRows; i++)
-            {
-                var emptyRow = CreateEmptyRow(i);
-                nonEmptyRows.Add(emptyRow);
-            }
-
-            // Aktualizuj kolekciu
-            _dataRows.Clear();
-            foreach (var row in nonEmptyRows)
-            {
-                _dataRows.Add(row);
-            }
-
-            await Task.CompletedTask;
         }
 
         private void ShowLoadingState(string message)
@@ -820,6 +709,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 {
                     _realtimeValidationTimers[key].Stop();
                     cell.Value = textBox.Text;
+
+                    // Aktualizuj hodnotu v DataManagementService
+                    await _dataManagementService.SetCellValueAsync(cell.RowIndex, cell.ColumnName, textBox.Text);
+
                     await ValidateRowAsync(_dataRows.FirstOrDefault(r => r.Cells.Contains(cell))!);
 
                     // ✅ NOVÁ FUNKCIONALITA: Kontrola či treba pridať nový riadok
@@ -835,9 +728,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 if (sender is Button button && button.Tag is RowDataModel row)
                 {
-                    // ✅ NOVÁ FUNKCIONALITA: Inteligentné mazanie
-                    await SmartDeleteRowAsync(row);
-                    await CompactRowsAsync();
+                    // ✅ NOVÁ FUNKCIONALITA: Inteligentné mazanie cez DataManagementService
+                    await _dataManagementService.DeleteRowAsync(row.RowIndex);
+                    await RefreshGridDataAsync();
                 }
             }
             catch (Exception ex)
