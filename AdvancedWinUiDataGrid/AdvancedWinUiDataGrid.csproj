@@ -81,10 +81,21 @@
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
     <UseCompiledXaml>true</UseCompiledXaml>
   </PropertyGroup>
+  <ItemGroup>
+    <Page Remove="themes\Generic.xaml" />
+  </ItemGroup>
 
   <!-- Public API Surface -->
   <ItemGroup>
     <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Themes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Themes\Generic.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
   </ItemGroup>
 
   <!-- Ensure proper WinUI packaging -->

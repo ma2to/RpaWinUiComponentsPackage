@@ -1,30 +1,20 @@
-﻿<!-- AdvancedWinUiDataGrid/Themes/Generic.xaml - ✅ NOVÝ súbor pre WinUI3 komponent registráciu -->
+﻿<!-- AdvancedWinUiDataGrid/Themes/Generic.xaml - ✅ OPRAVENÝ pre WinUI3 UserControl support -->
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:RpaWinUiComponents.AdvancedWinUiDataGrid">
 
-    <!-- ✅ KĽÚČOVÉ: Default Style pre AdvancedDataGrid komponent -->
+    <!-- ✅ KĽÚČOVÉ: Default Style pre AdvancedDataGrid UserControl -->
     <Style TargetType="local:AdvancedDataGrid">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="4" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="local:AdvancedDataGrid">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{TemplateBinding CornerRadius}"
-                            Padding="{TemplateBinding Padding}">
-                        <!-- ContentPresenter pre UserControl obsah -->
-                        <ContentPresenter />
-                    </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="IsTabStop" Value="False" />
+        <!-- ✅ DÔLEŽITÉ: UserControl nepotrebuje Template - má vlastný XAML -->
     </Style>
 
     <!-- ✅ Štýly pre DataGridCell -->
@@ -34,6 +24,9 @@
         <Setter Property="BorderThickness" Value="0,0,1,1" />
         <Setter Property="Padding" Value="8,6" />
         <Setter Property="MinHeight" Value="36" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="IsTabStop" Value="False" />
     </Style>
 
     <!-- ✅ Štýly pre DeleteRowColumn -->
@@ -41,6 +34,9 @@
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="Width" Value="40" />
         <Setter Property="MinHeight" Value="36" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="IsTabStop" Value="False" />
     </Style>
 
     <!-- ✅ Štýly pre ValidationAlertsColumn -->
@@ -48,9 +44,12 @@
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="MinWidth" Value="200" />
         <Setter Property="MinHeight" Value="36" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="IsTabStop" Value="False" />
     </Style>
 
-    <!-- ✅ Globálne resources pre DataGrid -->
+    <!-- ✅ Globálne resources pre DataGrid témy -->
     <SolidColorBrush x:Key="DataGridCellBackgroundBrush" Color="{ThemeResource LayerFillColorDefault}" />
     <SolidColorBrush x:Key="DataGridCellBorderBrush" Color="{ThemeResource CardStrokeColorDefault}" />
     <SolidColorBrush x:Key="DataGridHeaderBackgroundBrush" Color="{ThemeResource LayerFillColorAlt}" />
@@ -61,5 +60,13 @@
     <Thickness x:Key="DataGridCellBorderThickness">0,0,1,1</Thickness>
     <Thickness x:Key="DataGridCellPadding">8,6</Thickness>
     <Thickness x:Key="DataGridValidationErrorBorderThickness">2</Thickness>
+
+    <!-- ✅ NOVÉ: Color theme default values -->
+    <Color x:Key="DataGridLightCellBackground">#FFFFFF</Color>
+    <Color x:Key="DataGridLightCellBorder">#D3D3D3</Color>
+    <Color x:Key="DataGridLightCellText">#000000</Color>
+    <Color x:Key="DataGridLightHeaderBackground">#F0F0F0</Color>
+    <Color x:Key="DataGridLightHeaderText">#000000</Color>
+    <Color x:Key="DataGridValidationError">#FF0000</Color>
 
 </ResourceDictionary>

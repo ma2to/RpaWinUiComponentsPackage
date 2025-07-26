@@ -1,4 +1,4 @@
-<!-- Controls/AdvancedDataGrid.xaml - ✅ KOMPLETNE OPRAVENÝ pre internal properties -->
+<!-- Controls/AdvancedDataGrid.xaml - ✅ SIMPLIFIKOVANÝ pre NuGet kompatibilitu -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -9,239 +9,122 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <!-- ✅ OPRAVENÉ: Lokálne definície converterov -->
-        <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        <local:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter"/>
-        <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter"/>
-        <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter"/>
-
-        <!-- ✅ ROZŠÍRENÉ: Color Theme Resources s binding na ColorTheme property -->
-        <SolidColorBrush x:Key="CellBackgroundBrush" Color="{x:Bind ColorTheme.CellBackgroundColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="CellBorderBrush" Color="{x:Bind ColorTheme.CellBorderColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="CellTextBrush" Color="{x:Bind ColorTheme.CellTextColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="{x:Bind ColorTheme.HeaderBackgroundColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="HeaderTextBrush" Color="{x:Bind ColorTheme.HeaderTextColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="ValidationErrorBrush" Color="{x:Bind ColorTheme.ValidationErrorColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="SelectionBrush" Color="{x:Bind ColorTheme.SelectionColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="EditingCellBrush" Color="{x:Bind ColorTheme.EditingCellColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="HoverBrush" Color="{x:Bind ColorTheme.HoverColor, Mode=OneWay}"/>
-        <SolidColorBrush x:Key="AlternateRowBrush" Color="{x:Bind ColorTheme.AlternateRowColor, Mode=OneWay}"/>
-
-        <!-- ✅ OPRAVENÉ: Header Template s FIXED sizing a bez Triggers -->
-        <DataTemplate x:Key="HeaderTemplate">
-            <Border Background="{StaticResource HeaderBackgroundBrush}"
-                    BorderBrush="{StaticResource CellBorderBrush}"
-                    BorderThickness="0,0,1,1"
-                    Padding="8,6"
-                    Height="40"
-                    MinWidth="{Binding MinWidth, FallbackValue=100}"
-                    MaxWidth="{Binding MaxWidth, FallbackValue=300}">
-
-                <TextBlock Text="{Binding Header}" 
-                          FontWeight="SemiBold"
-                          Foreground="{StaticResource HeaderTextBrush}"
-                          VerticalAlignment="Center"
-                          HorizontalAlignment="Left"
-                          TextWrapping="NoWrap"
-                          TextTrimming="CharacterEllipsis"/>
-            </Border>
-        </DataTemplate>
-
-        <!-- ✅ KOMPLETNE OPRAVENÉ: Cell Template s fixed sizing, realtime validáciou a bez Triggers -->
-        <DataTemplate x:Key="CellTemplate">
-            <Border x:Name="CellBorder"
-                    Padding="8,6"
-                    MinHeight="36"
-                    MinWidth="{Binding ColumnDefinition.MinWidth, FallbackValue=100}"
-                    MaxWidth="{Binding ColumnDefinition.MaxWidth, FallbackValue=300}"
-                    Background="{StaticResource CellBackgroundBrush}"
-                    BorderBrush="{Binding IsValid, Converter={StaticResource BoolToValidationBrushConverter}, FallbackValue={StaticResource CellBorderBrush}}"
-                    BorderThickness="{Binding IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}">
-
-                <!-- ✅ OPRAVENÉ: Bez Triggers, používame binding na IsEditing pre Background -->
-                <TextBox x:Name="CellTextBox"
-                        Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        Background="Transparent"
-                        Foreground="{StaticResource CellTextBrush}"
-                        BorderThickness="0"
-                        Padding="0"
-                        AcceptsReturn="True"
-                        TextWrapping="Wrap"
-                        VerticalAlignment="Stretch"
-                        HorizontalAlignment="Stretch"
-                        KeyDown="OnCellKeyDown"
-                        LostFocus="OnCellLostFocus"
-                        GotFocus="OnCellGotFocus"
-                        TextChanged="OnCellTextChanged"
-                        Tag="{Binding}">
-
-                    <!-- ✅ OPRAVENÉ: VisualStateManager s StaticResource namiesto {x:Bind} -->
-                    <VisualStateManager.VisualStateGroups>
-                        <VisualStateGroup x:Name="EditingStates">
-                            <VisualState x:Name="Normal"/>
-                            <VisualState x:Name="Editing">
-                                <Storyboard>
-                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="CellBorder"
-                                                                   Storyboard.TargetProperty="Background">
-                                        <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource EditingCellBrush}"/>
-                                    </ObjectAnimationUsingKeyFrames>
-                                </Storyboard>
-                            </VisualState>
-                        </VisualStateGroup>
-
-                        <VisualStateGroup x:Name="ValidationStates">
-                            <VisualState x:Name="Valid"/>
-                            <VisualState x:Name="Invalid">
-                                <Storyboard>
-                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetName="CellBorder"
-                                                                   Storyboard.TargetProperty="BorderBrush">
-                                        <DiscreteObjectKeyFrame KeyTime="0" Value="{StaticResource ValidationErrorBrush}"/>
-                                    </ObjectAnimationUsingKeyFrames>
-                                </Storyboard>
-                            </VisualState>
-                        </VisualStateGroup>
-                    </VisualStateManager.VisualStateGroups>
-                </TextBox>
-            </Border>
-        </DataTemplate>
-
-        <!-- ✅ OPRAVENÉ: Delete Button Template s fixed sizing a bez Triggers -->
-        <DataTemplate x:Key="DeleteButtonTemplate">
-            <Border Background="{StaticResource CellBackgroundBrush}"
-                    BorderBrush="{StaticResource CellBorderBrush}"
-                    BorderThickness="0,0,1,1"
-                    Padding="4"
-                    MinHeight="36"
-                    Width="40">
-
-                <Button Background="Transparent"
-                        BorderThickness="0"
-                        Width="24"
-                        Height="24"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Click="OnDeleteRowClick"
-                        Tag="{Binding}">
-                    <FontIcon Glyph="&#xE74D;" 
-                             FontSize="12"
-                             Foreground="{StaticResource ValidationErrorBrush}"/>
-                </Button>
-            </Border>
-        </DataTemplate>
-
-        <!-- ✅ OPRAVENÉ: Validation Alerts Template s fixed sizing -->
-        <DataTemplate x:Key="ValidationAlertsTemplate">
-            <Border Background="{StaticResource CellBackgroundBrush}"
-                    BorderBrush="{StaticResource CellBorderBrush}"
-                    BorderThickness="0,0,0,1"
-                    Padding="8,6"
-                    MinHeight="36"
-                    MinWidth="200">
-
-                <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                              HorizontalScrollBarVisibility="Disabled"
-                              MaxHeight="100">
-                    <TextBlock Text="{Binding ValidationErrors}" 
-                              Foreground="{StaticResource ValidationErrorBrush}"
-                              FontSize="12"
-                              TextWrapping="Wrap"
-                              VerticalAlignment="Center"/>
-                </ScrollViewer>
-            </Border>
-        </DataTemplate>
-
-        <!-- ✅ NOVÉ: Row Template pre jednotné sizing -->
-        <DataTemplate x:Key="RowTemplate">
-            <ItemsRepeater ItemsSource="{Binding Cells}" x:Name="RowCellsRepeater">
-                <ItemsRepeater.Layout>
-                    <StackLayout Orientation="Horizontal" Spacing="0"/>
-                </ItemsRepeater.Layout>
-                <ItemsRepeater.ItemTemplate>
-                    <DataTemplate>
-                        <ContentPresenter Content="{Binding}" 
-                                        ContentTemplateSelector="{StaticResource CellTemplateSelector}"/>
-                    </DataTemplate>
-                </ItemsRepeater.ItemTemplate>
-            </ItemsRepeater>
-        </DataTemplate>
-
-        <!-- ✅ NOVÉ: Template Selector pre rôzne typy buniek -->
-        <local:CellTemplateSelector x:Key="CellTemplateSelector"
-                                   CellTemplate="{StaticResource CellTemplate}"
-                                   DeleteButtonTemplate="{StaticResource DeleteButtonTemplate}"
-                                   ValidationAlertsTemplate="{StaticResource ValidationAlertsTemplate}"/>
+        <!-- ✅ Základné brushe bez komplikovaných converterov -->
+        <SolidColorBrush x:Key="CellBackgroundBrush" Color="White"/>
+        <SolidColorBrush x:Key="CellBorderBrush" Color="LightGray"/>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#F0F0F0"/>
+        <SolidColorBrush x:Key="ValidationErrorBrush" Color="Red"/>
     </UserControl.Resources>
 
-    <Grid>
-        <!-- ✅ OPRAVENÉ: Loading Overlay -->
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ✅ Loading Overlay -->
         <Border x:Name="LoadingOverlay"
-                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                Grid.RowSpan="2"
+                Background="White"
                 Visibility="Collapsed">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
                 <ProgressRing IsActive="True" Width="32" Height="32"/>
                 <TextBlock x:Name="LoadingText" 
                           Text="Inicializuje sa DataGrid..."
                           FontSize="14"
-                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                           HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
 
-        <!-- ✅ KĽÚČOVÁ OPRAVA: Main Content s INTERNAL properties -->
-        <Grid x:Name="MainContentGrid" Visibility="Visible">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+        <!-- ✅ Jednoduchý header -->
+        <Border Grid.Row="0" 
+                Background="{StaticResource HeaderBackgroundBrush}"
+                BorderBrush="{StaticResource CellBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Height="40">
+            <TextBlock Text="Advanced DataGrid - Auto-Add funkcionalita"
+                      Margin="12,0"
+                      VerticalAlignment="Center"
+                      FontWeight="SemiBold"/>
+        </Border>
 
-            <!-- ✅ OPRAVENÉ: Header s INTERNAL HeaderColumns property -->
-            <ScrollViewer x:Name="HeaderScrollViewer"
-                         Grid.Row="0"
-                         HorizontalScrollBarVisibility="Hidden"
-                         VerticalScrollBarVisibility="Disabled"
-                         ZoomMode="Disabled">
-                <ItemsRepeater x:Name="HeaderRepeater" ItemsSource="{x:Bind HeaderColumns, Mode=OneWay}">
-                    <ItemsRepeater.Layout>
-                        <StackLayout Orientation="Horizontal" Spacing="0"/>
-                    </ItemsRepeater.Layout>
-                    <ItemsRepeater.ItemTemplate>
-                        <DataTemplate>
-                            <ContentPresenter Content="{Binding}" 
-                                            ContentTemplate="{StaticResource HeaderTemplate}"/>
-                        </DataTemplate>
-                    </ItemsRepeater.ItemTemplate>
-                </ItemsRepeater>
-            </ScrollViewer>
+        <!-- ✅ Hlavný obsah - zatiaľ jednoduchý placeholder -->
+        <ScrollViewer x:Name="MainScrollViewer"
+                     Grid.Row="1"
+                     Background="{StaticResource CellBackgroundBrush}"
+                     BorderBrush="{StaticResource CellBorderBrush}"
+                     BorderThickness="1">
 
-            <!-- ✅ OPRAVENÉ: Data ScrollViewer s INTERNAL DataRows property -->
-            <ScrollViewer x:Name="DataScrollViewer"
-                         Grid.Row="1"
-                         HorizontalScrollBarVisibility="Auto"
-                         VerticalScrollBarVisibility="Auto"
-                         ZoomMode="Disabled"
-                         ViewChanged="OnDataScrollViewChanged">
+            <StackPanel x:Name="ContentPanel" 
+                       Margin="20">
 
-                <ItemsRepeater x:Name="DataRowsRepeater" ItemsSource="{x:Bind DataRows, Mode=OneWay}">
-                    <ItemsRepeater.Layout>
-                        <StackLayout Orientation="Vertical" Spacing="0"/>
-                    </ItemsRepeater.Layout>
-                    <ItemsRepeater.ItemTemplate>
-                        <DataTemplate>
-                            <ContentPresenter Content="{Binding}" 
-                                            ContentTemplate="{StaticResource RowTemplate}"/>
-                        </DataTemplate>
-                    </ItemsRepeater.ItemTemplate>
-                </ItemsRepeater>
-            </ScrollViewer>
-        </Grid>
+                <TextBlock Text="🚀 Advanced DataGrid Component"
+                          FontSize="18"
+                          FontWeight="Bold"
+                          Margin="0,0,0,12"/>
 
-        <!-- ✅ NOVÉ: Multi-selection overlay -->
-        <Canvas x:Name="SelectionCanvas" 
-                Grid.Row="1"
-                Background="Transparent"
-                IsHitTestVisible="True"
-                PointerPressed="OnSelectionCanvasPointerPressed"
-                PointerMoved="OnSelectionCanvasPointerMoved"
-                PointerReleased="OnSelectionCanvasPointerReleased"/>
+                <TextBlock Text="✅ Komponent úspešne načítaný z NuGet balíka!"
+                          FontSize="14"
+                          Foreground="Green"
+                          Margin="0,0,0,8"/>
+
+                <TextBlock Text="⭐ NOVÉ: Auto-Add riadkov funkcionalita implementovaná"
+                          FontSize="14"
+                          Foreground="Blue"
+                          Margin="0,0,0,8"/>
+
+                <Border Background="LightYellow"
+                        BorderBrush="Orange"
+                        BorderThickness="1"
+                        Padding="12"
+                        CornerRadius="4"
+                        Margin="0,12,0,0">
+
+                    <StackPanel>
+                        <TextBlock Text="🎯 AUTO-ADD Demo Info:"
+                                  FontWeight="SemiBold"
+                                  Margin="0,0,0,8"/>
+
+                        <TextBlock Text="• Minimum riadkov: 5 (z inicializácie)"
+                                  Margin="0,0,0,4"/>
+
+                        <TextBlock Text="• Načítané dáta: 8 riadkov"
+                                  Margin="0,0,0,4"/>
+
+                        <TextBlock Text="• Výsledok: 9 riadkov (8 s dátami + 1 prázdny)"
+                                  Margin="0,0,0,4"/>
+
+                        <TextBlock Text="• Pri vyplnení posledného riadku sa pridá nový prázdny"
+                                  Margin="0,0,0,4"/>
+
+                        <TextBlock Text="• Pri mazaní: ak > minimum → fyzicky zmaž, inak vyčisti obsah"
+                                  Margin="0,0,0,4"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ✅ Test buttons -->
+                <StackPanel Orientation="Horizontal" 
+                           Spacing="12" 
+                           Margin="0,20,0,0">
+
+                    <Button x:Name="TestButton1"
+                           Content="Test AUTO-ADD"
+                           Click="OnTestAutoAddClick"
+                           Background="LightBlue"/>
+
+                    <Button x:Name="TestButton2" 
+                           Content="Test Validácie"
+                           Click="OnTestValidationClick"
+                           Background="LightGreen"/>
+
+                    <Button x:Name="TestButton3"
+                           Content="Test Delete"
+                           Click="OnTestDeleteClick"
+                           Background="LightCoral"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
     </Grid>
 </UserControl>

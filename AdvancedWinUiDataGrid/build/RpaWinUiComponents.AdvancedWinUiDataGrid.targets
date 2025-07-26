@@ -30,6 +30,20 @@
       <HintPath>$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid.dll</HintPath>
       <Private>False</Private>
     </Reference>
+
+    <!-- ✅ KĽÚČOVÉ: Pridaj aj WinUI3 winmd reference ak existuje -->
+    <Reference Include="Microsoft.WinUI" Condition="Exists('$(AdvancedDataGridLibPath)Microsoft.WinUI.winmd')">
+      <HintPath>$(AdvancedDataGridLibPath)Microsoft.WinUI.winmd</HintPath>
+      <Private>False</Private>
+      <IsWinMDFile>true</IsWinMDFile>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ✅ NOVÉ: Skopíruj XBF súbory ak existujú -->
+  <ItemGroup Condition="'$(UseWinUI)' == 'true' AND Exists('$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid/')">
+    <Content Include="$(AdvancedDataGridLibPath)RpaWinUiComponents.AdvancedWinUiDataGrid/**/*.xbf" Link="RpaWinUiComponents.AdvancedWinUiDataGrid/%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- ✅ WinUI3 specific nastavenia -->
