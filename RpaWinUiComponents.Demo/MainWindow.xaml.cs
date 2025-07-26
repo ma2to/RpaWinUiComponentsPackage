@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNÉ s Auto-Add demo funkciami
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ s Auto-Add volaniami
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -46,7 +46,7 @@ namespace RpaWinUiComponents.Demo
             {
                 System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD funkcionalitou...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.5...", "Načítava sa z Package Reference s NETSDK1152 fix...");
+                UpdateLoadingState("Inicializuje sa balík v1.0.5...", "Načítava sa z Package Reference s AUTO-ADD funkciou...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
@@ -178,29 +178,21 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ NOVÉ: Auto-Add Demo Button Handlers
+        #region ✅ OPRAVENÉ: Auto-Add Demo Button Handlers
 
         private async void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔥 AUTO-ADD TEST: Načítavam 3 riadky (menej ako minimum 5)...");
+                System.Diagnostics.Debug.WriteLine("🔥 AUTO-ADD TEST: Volám TestAutoAddFewRowsAsync...");
 
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "AUTO-ADD Test: Načítavajú sa 3 riadky (menej ako minimum 5)...";
 
-                // ✅ Test: 3 riadky dát (menej ako minimum 5) → mal by zostať na 5+1=6 riadkoch
-                var fewRowsData = new List<Dictionary<string, object?>>
-                {
-                    new() { ["ID"] = 10, ["Meno"] = "Test Používateľ 1", ["Email"] = "test1@few.rows", ["Vek"] = 25, ["Plat"] = 2000m },
-                    new() { ["ID"] = 11, ["Meno"] = "Test Používateľ 2", ["Email"] = "test2@few.rows", ["Vek"] = 30, ["Plat"] = 2500m },
-                    new() { ["ID"] = 12, ["Meno"] = "Test Používateľ 3", ["Email"] = "test3@few.rows", ["Vek"] = 35, ["Plat"] = 3000m }
-                };
-
-                await DataGridControl.LoadDataAsync(fewRowsData);
+                await DataGridControl.TestAutoAddFewRowsAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔥 AUTO-ADD: 3 riadky načítané → zostalo na minimum 5 riadkov + 1 prázdny = 6 celkom";
+                    StatusTextBlock.Text = "🔥 AUTO-ADD: Test niekoľkých riadkov dokončený!";
 
                 System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD TEST 'few rows' dokončený");
             }
@@ -216,28 +208,15 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔥 AUTO-ADD TEST: Načítavam 8 riadkov (viac ako minimum 5)...");
+                System.Diagnostics.Debug.WriteLine("🔥 AUTO-ADD TEST: Volám TestAutoAddManyRowsAsync...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "AUTO-ADD Test: Načítavajú sa 8 riadkov (viac ako minimum 5)...";
+                    StatusTextBlock.Text = "AUTO-ADD Test: Načítavajú sa 20 riadkov (viac ako minimum 5)...";
 
-                // ✅ Test: 8 riadkov dát (viac ako minimum 5) → mal by vytvoriť 8+1=9 riadkov
-                var manyRowsData = new List<Dictionary<string, object?>>
-                {
-                    new() { ["ID"] = 21, ["Meno"] = "Osoba 1", ["Email"] = "osoba1@many.test", ["Vek"] = 25, ["Plat"] = 2200m },
-                    new() { ["ID"] = 22, ["Meno"] = "Osoba 2", ["Email"] = "osoba2@many.test", ["Vek"] = 30, ["Plat"] = 2700m },
-                    new() { ["ID"] = 23, ["Meno"] = "Osoba 3", ["Email"] = "osoba3@many.test", ["Vek"] = 35, ["Plat"] = 3200m },
-                    new() { ["ID"] = 24, ["Meno"] = "Osoba 4", ["Email"] = "osoba4@many.test", ["Vek"] = 28, ["Plat"] = 2900m },
-                    new() { ["ID"] = 25, ["Meno"] = "Osoba 5", ["Email"] = "osoba5@many.test", ["Vek"] = 32, ["Plat"] = 3400m },
-                    new() { ["ID"] = 26, ["Meno"] = "Osoba 6", ["Email"] = "osoba6@many.test", ["Vek"] = 27, ["Plat"] = 2600m },
-                    new() { ["ID"] = 27, ["Meno"] = "Osoba 7", ["Email"] = "osoba7@many.test", ["Vek"] = 33, ["Plat"] = 3600m },
-                    new() { ["ID"] = 28, ["Meno"] = "Osoba 8", ["Email"] = "osoba8@many.test", ["Vek"] = 29, ["Plat"] = 3100m }
-                };
-
-                await DataGridControl.LoadDataAsync(manyRowsData);
+                await DataGridControl.TestAutoAddManyRowsAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔥 AUTO-ADD: 8 riadkov načítaných → vytvorených 9 riadkov (8 s dátami + 1 prázdny)";
+                    StatusTextBlock.Text = "🔥 AUTO-ADD: Test množstva riadkov dokončený → vytvorených 21 riadkov (20 + 1 prázdny)";
 
                 System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD TEST 'many rows' dokončený");
             }
@@ -253,24 +232,12 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔥 AUTO-ADD DELETE TEST: Testuje sa inteligentné mazanie...");
+                System.Diagnostics.Debug.WriteLine("🔥 AUTO-ADD DELETE TEST: Volám TestAutoAddDeleteAsync...");
 
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "AUTO-ADD Test: Testuje sa inteligentné mazanie s ochranou minimálneho počtu...";
 
-                // ✅ Test inteligentného mazania s AUTO-ADD ochranou
-                var deleteRules = new List<PublicValidationRule>
-                {
-                    // Zmaž riadky s ID > 25 (mal by zachovať minimum)
-                    PublicValidationRule.Custom("ID", value =>
-                    {
-                        if (int.TryParse(value?.ToString(), out var id))
-                            return id > 25; // TRUE = zmaž riadok
-                        return false;
-                    }, "AUTO-ADD delete test: ID > 25")
-                };
-
-                await DataGridControl.DeleteRowsByCustomValidationAsync(deleteRules);
+                await DataGridControl.TestAutoAddDeleteAsync();
 
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "🔥 AUTO-ADD Delete: Inteligentné mazanie dokončené - minimum riadkov zachované!";
@@ -295,30 +262,9 @@ namespace RpaWinUiComponents.Demo
                 var allData = await DataGridControl.ExportToDataTableAsync();
                 var isAutoAddEnabled = DataGridControl.IsAutoAddEnabled;
                 var minimumRowCount = DataGridControl.MinimumRowCount;
+                var currentRowCount = DataGridControl.CurrentRowCount;
 
-                // Spočítaj neprázdne riadky
-                var nonEmptyRows = 0;
-                foreach (DataRow row in allData.Rows)
-                {
-                    bool isEmpty = true;
-                    foreach (DataColumn column in allData.Columns)
-                    {
-                        if (column.ColumnName == "DeleteRows" || column.ColumnName == "ValidAlerts")
-                            continue;
-
-                        var value = row[column];
-                        if (value != null && value != DBNull.Value && !string.IsNullOrWhiteSpace(value.ToString()))
-                        {
-                            isEmpty = false;
-                            break;
-                        }
-                    }
-                    if (!isEmpty) nonEmptyRows++;
-                }
-
-                var emptyRows = allData.Rows.Count - nonEmptyRows;
-
-                var statusMessage = $"📊 AUTO-ADD STATUS: {allData.Rows.Count} celkom riadkov | {nonEmptyRows} s dátami | {emptyRows} prázdnych | Minimum: {minimumRowCount} | Auto-Add: {(isAutoAddEnabled ? "✅ Aktívne" : "❌ Neaktívne")}";
+                var statusMessage = $"📊 AUTO-ADD STATUS: {currentRowCount} celkom riadkov | Minimum: {minimumRowCount} | Auto-Add: {(isAutoAddEnabled ? "✅ Aktívne" : "❌ Neaktívne")} | Export: {allData.Rows.Count} riadkov";
 
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = statusMessage;
@@ -331,6 +277,76 @@ namespace RpaWinUiComponents.Demo
                 System.Diagnostics.Debug.WriteLine($"❌ AUTO-ADD Status failed: {ex.Message}");
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = $"Chyba pri AUTO-ADD status: {ex.Message}";
+            }
+        }
+
+        #endregion
+
+        #region ✅ OPRAVENÉ: Test Button Handlers
+
+        private async void OnTestRealtimeValidationClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("⚡ REALTIME VALIDATION TEST...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Testujú sa realtime validácie...";
+
+                await DataGridControl.TestRealtimeValidationAsync();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "⚡ Realtime validation test dokončený - pozri červené orámovanie nevalidných buniek!";
+
+                System.Diagnostics.Debug.WriteLine("✅ REALTIME VALIDATION TEST dokončený");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Realtime validation test failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri realtime teste: {ex.Message}";
+            }
+        }
+
+        private async void OnTestNavigationClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🧭 NAVIGATION TEST...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Navigácia: Použite Tab/Enter/Esc/Shift+Enter v bunkách pre testovanie navigácie";
+
+                await DataGridControl.TestNavigationAsync();
+
+                System.Diagnostics.Debug.WriteLine("✅ NAVIGATION TEST dokončený");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Navigation test failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri navigation teste: {ex.Message}";
+            }
+        }
+
+        private async void OnTestCopyPasteClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("📋 COPY/PASTE TEST...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Copy/Paste: Použite Ctrl+C/V/X pre testovanie copy/paste funkcionalita";
+
+                await DataGridControl.TestCopyPasteAsync();
+
+                System.Diagnostics.Debug.WriteLine("✅ COPY/PASTE TEST dokončený");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Copy/paste test failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri copy/paste teste: {ex.Message}";
             }
         }
 
@@ -530,7 +546,7 @@ namespace RpaWinUiComponents.Demo
                 await DataGridControl.ClearAllDataAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "✨ AUTO-ADD: Všetky dáta vymazané, zostalo minimum 5 prázdnych riadkov + 1 extra";
+                    StatusTextBlock.Text = "✨ AUTO-ADD: Všetky dáta vymazané, zostalo minimum 5 prázdnych riadkov";
 
                 System.Diagnostics.Debug.WriteLine("✅ Dáta úspešne vymazané s AUTO-ADD ochranou");
             }

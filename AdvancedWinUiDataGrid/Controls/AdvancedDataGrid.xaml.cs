@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNÝ s Auto-Add funkciou a správnym PUBLIC API
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ s Auto-Add funkcionalitou
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services.Interfaces;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Services;
 using RpaWinUiComponents.AdvancedWinUiDataGrid.Models;
+using System.Linq;
 
 // ✅ OPRAVENÉ CS0104: Aliasy pre zamedzenie konfliktov s WinUI typmi
 using GridColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDefinition;
@@ -24,10 +25,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// AdvancedDataGrid komponent s kompletnou Auto-Add riadkov funkcionalitou - ✅ PUBLIC API
     /// 
     /// Auto-Add funkcionalita:
-    /// - Pri načítaní dát: Ak má viac dát ako minimum → vytvorí dáta + 1 prázdny riadok
+    /// - Pri načítaní dát: Ak má viac dát ako inicializovaných riadkov → vytvorí potrebné riadky + 1 prázdny
+    /// - Vždy zostane aspoň jeden prázdny riadok na konci
     /// - Pri vyplnení posledného riadku: Automaticky pridá nový prázdny riadok  
     /// - Pri mazaní: Ak je nad minimum → fyzicky zmaže, ak je na minimume → iba vyčistí obsah
-    /// - Vždy zostane aspoň jeden prázdny riadok na konci
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
@@ -43,11 +44,16 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private bool _isDisposed = false;
 
         // ✅ Auto-Add konfigurácia
-        private int _minimumRowCount = 5;
+        private int _initialRowCount = 15; // Počet riadkov definovaný pri inicializácii
+        private int _minimumRowCount = 15; // Minimálny počet riadkov (rovnaký ako initial)
         private bool _autoAddEnabled = true;
 
         // Color theme support
         private DataGridColorTheme _colorTheme = DataGridColorTheme.Light;
+
+        // ✅ NOVÉ: Interné dáta pre Auto-Add
+        private readonly List<Dictionary<string, object?>> _gridData = new();
+        private readonly List<GridColumnDefinition> _columns = new();
 
         #endregion
 
@@ -110,7 +116,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             try
             {
                 _logger.LogDebug("Color theme aplikovaná: {ThemeName}", _colorTheme.ToString());
-                UpdateDemoInfo($"Color theme aplikovaná: {_colorTheme}");
+                // TODO: Aplikovať theme na UI elementy
             }
             catch (Exception ex)
             {
@@ -133,12 +139,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         {
             try
             {
-                _logger.LogInformation("AUTO-ADD: Začína inicializácia DataGrid s minimálne {MinimumRows} riadkami...", emptyRowsCount);
+                _logger.LogInformation("AUTO-ADD: Začína inicializácia DataGrid s {EmptyRowsCount} riadkami...", emptyRowsCount);
                 ShowLoadingState("Inicializuje sa DataGrid s Auto-Add funkcionalitou...");
 
                 // ✅ Nastav Auto-Add parametre
-                _minimumRowCount = Math.Max(emptyRowsCount, 1);
+                _initialRowCount = Math.Max(emptyRowsCount, 1);
+                _minimumRowCount = _initialRowCount;
                 _autoAddEnabled = true;
+
+                // Ulož columns pre neskoršie použitie
+                _columns.Clear();
+                _columns.AddRange(columns ?? new List<GridColumnDefinition>());
 
                 // Vytvor konfiguráciu s Auto-Add nastaveniami
                 var configuration = new GridConfiguration
@@ -146,7 +157,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     Columns = columns ?? new List<GridColumnDefinition>(),
                     ValidationRules = validationRules ?? new List<GridValidationRule>(),
                     ThrottlingConfig = throttlingConfig ?? GridThrottlingConfig.Default,
-                    EmptyRowsCount = _minimumRowCount,
+                    EmptyRowsCount = _initialRowCount,
                     AutoAddNewRow = _autoAddEnabled,
                     GridName = "AdvancedDataGrid_AutoAdd"
                 };
@@ -156,11 +167,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 await _validationService.InitializeAsync(configuration);
                 await _exportService.InitializeAsync(configuration);
 
+                // ✅ Vytvor počiatočné prázdne riadky
+                CreateInitialEmptyRows();
+
                 _isInitialized = true;
                 HideLoadingState();
-
-                // ✅ Auto-Add demo info
-                UpdateDemoInfo($"AUTO-ADD inicializované: minimum {_minimumRowCount} riadkov, auto-add: {_autoAddEnabled}");
 
                 _logger.LogInformation("AUTO-ADD: DataGrid úspešne inicializovaný s Auto-Add funkciou");
             }
@@ -184,17 +195,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 ShowLoadingState("Načítavajú sa dáta s Auto-Add logikou...");
 
-                // ✅ Zavolaj Data Management Service ktorý implementuje Auto-Add logiku
-                await _dataManagementService.LoadDataAsync(data);
+                // ✅ Auto-Add logika pri načítaní dát
+                await LoadDataWithAutoAdd(data);
 
                 HideLoadingState();
-
-                // ✅ Auto-Add demo info update s detailmi
-                var totalRows = await _dataManagementService.GetAllDataAsync();
-                var nonEmptyRows = await _dataManagementService.GetNonEmptyRowCountAsync();
-                var emptyRows = totalRows.Count - nonEmptyRows;
-
-                UpdateDemoInfo($"AUTO-ADD: Načítané {data.Count} riadkov dát → celkom {totalRows.Count} riadkov ({nonEmptyRows} s dátami + {emptyRows} prázdnych)");
 
                 _logger.LogInformation("AUTO-ADD: Dáta úspešne načítané s auto-add riadkov");
             }
@@ -235,12 +239,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _logger.LogInformation("AUTO-ADD: Spúšťa sa validácia všetkých riadkov");
 
                 var isValid = await _validationService.ValidateAllRowsAsync();
-
-                var totalRows = await _dataManagementService.GetAllDataAsync();
-                var nonEmptyRows = await _dataManagementService.GetNonEmptyRowCountAsync();
-
-                UpdateDemoInfo($"AUTO-ADD validácia: {nonEmptyRows} neprázdnych z {totalRows.Count} riadkov, všetky validné: {isValid}");
-
                 return isValid;
             }
             catch (Exception ex)
@@ -261,10 +259,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _logger.LogInformation("AUTO-ADD: Exportujú sa dáta do DataTable");
 
                 var dataTable = await _exportService.ExportToDataTableAsync();
-
-                var nonEmptyRows = await _dataManagementService.GetNonEmptyRowCountAsync();
-                UpdateDemoInfo($"AUTO-ADD export: {dataTable.Rows.Count} riadkov exportovaných ({nonEmptyRows} s dátami)");
-
                 return dataTable;
             }
             catch (Exception ex)
@@ -286,12 +280,13 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 ShowLoadingState("AUTO-ADD: Vymazávajú sa dáta s ochranou minimálneho počtu...");
 
+                // ✅ Vymaž všetky dáta ale zachovaj minimálny počet prázdnych riadkov
+                _gridData.Clear();
+                CreateInitialEmptyRows();
+
                 await _dataManagementService.ClearAllDataAsync();
 
                 HideLoadingState();
-
-                var totalRows = await _dataManagementService.GetAllDataAsync();
-                UpdateDemoInfo($"AUTO-ADD clear: Všetky dáta vymazané, zachovaných {totalRows.Count} prázdnych riadkov (minimum {_minimumRowCount})");
 
                 _logger.LogInformation("AUTO-ADD: Všetky dáta vymazané s ochranou minimálneho počtu");
             }
@@ -314,14 +309,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 ShowLoadingState("AUTO-ADD: Aplikujú sa custom delete pravidlá...");
 
-                var allData = await _dataManagementService.GetAllDataAsync();
                 var deletedCount = 0;
-                var originalCount = allData.Count;
 
                 // ✅ Aplikuj delete pravidlá s Auto-Add ochranou
-                for (int i = allData.Count - 1; i >= 0; i--)
+                for (int i = _gridData.Count - 1; i >= 0; i--)
                 {
-                    var row = allData[i];
+                    var row = _gridData[i];
                     bool shouldDelete = false;
 
                     // Skontroluj každé pravidlo
@@ -340,17 +333,26 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                     if (shouldDelete)
                     {
-                        await _dataManagementService.DeleteRowAsync(i);
-                        deletedCount++;
+                        // ✅ Auto-Add inteligentné mazanie
+                        if (_gridData.Count > _minimumRowCount)
+                        {
+                            // Fyzicky zmaž riadok
+                            _gridData.RemoveAt(i);
+                            deletedCount++;
+                        }
+                        else
+                        {
+                            // Len vyčisti obsah riadku
+                            ClearRowData(row);
+                            deletedCount++;
+                        }
                     }
                 }
 
+                // ✅ Zabezpeč že je aspoň jeden prázdny riadok na konci
+                EnsureEmptyRowAtEnd();
+
                 HideLoadingState();
-
-                var finalData = await _dataManagementService.GetAllDataAsync();
-                var nonEmptyRows = await _dataManagementService.GetNonEmptyRowCountAsync();
-
-                UpdateDemoInfo($"AUTO-ADD delete: {deletedCount} riadkov spracovaných, zostalo {finalData.Count} riadkov ({nonEmptyRows} s dátami), minimum {_minimumRowCount} zachované");
 
                 _logger.LogInformation($"AUTO-ADD custom delete dokončené: {deletedCount} riadkov spracovaných");
             }
@@ -359,6 +361,126 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _logger.LogError(ex, "Chyba pri AUTO-ADD custom delete");
                 throw;
             }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Auto-Add Helper Methods
+
+        /// <summary>
+        /// Vytvorí počiatočné prázdne riadky
+        /// </summary>
+        private void CreateInitialEmptyRows()
+        {
+            _gridData.Clear();
+
+            for (int i = 0; i < _initialRowCount; i++)
+            {
+                _gridData.Add(CreateEmptyRow());
+            }
+
+            _logger.LogDebug("AUTO-ADD: Vytvorených {Count} počiatočných prázdnych riadkov", _initialRowCount);
+        }
+
+        /// <summary>
+        /// Načíta dáta s Auto-Add logikou
+        /// </summary>
+        private async Task LoadDataWithAutoAdd(List<Dictionary<string, object?>> data)
+        {
+            _gridData.Clear();
+
+            // ✅ Pridaj skutočné dáta
+            foreach (var rowData in data)
+            {
+                _gridData.Add(new Dictionary<string, object?>(rowData));
+            }
+
+            // ✅ Auto-Add logika: Zabezpeč že je dosť riadkov
+            var requiredRows = Math.Max(data.Count + 1, _minimumRowCount + 1); // +1 pre prázdny riadok
+
+            while (_gridData.Count < requiredRows)
+            {
+                _gridData.Add(CreateEmptyRow());
+            }
+
+            // ✅ Volaj data management service
+            await _dataManagementService.LoadDataAsync(_gridData);
+
+            _logger.LogDebug("AUTO-ADD: Načítané {DataCount} riadkov dát, celkom {TotalCount} riadkov",
+                data.Count, _gridData.Count);
+        }
+
+        /// <summary>
+        /// Zabezpečí že je aspoň jeden prázdny riadok na konci
+        /// </summary>
+        private void EnsureEmptyRowAtEnd()
+        {
+            if (_gridData.Count == 0)
+            {
+                _gridData.Add(CreateEmptyRow());
+                return;
+            }
+
+            // Skontroluj posledný riadok
+            var lastRow = _gridData[_gridData.Count - 1];
+            if (!IsRowEmpty(lastRow))
+            {
+                // Posledný riadok nie je prázdny → pridaj nový prázdny
+                _gridData.Add(CreateEmptyRow());
+                _logger.LogDebug("AUTO-ADD: Pridaný nový prázdny riadok na koniec");
+            }
+        }
+
+        /// <summary>
+        /// Vytvorí prázdny riadok
+        /// </summary>
+        private Dictionary<string, object?> CreateEmptyRow()
+        {
+            var row = new Dictionary<string, object?>();
+
+            foreach (var column in _columns)
+            {
+                row[column.Name] = column.DefaultValue;
+            }
+
+            // Pridaj ValidAlerts stĺpec
+            row["ValidAlerts"] = string.Empty;
+
+            return row;
+        }
+
+        /// <summary>
+        /// Vyčistí dáta riadku
+        /// </summary>
+        private void ClearRowData(Dictionary<string, object?> row)
+        {
+            foreach (var key in row.Keys.ToList())
+            {
+                if (key != "ValidAlerts") // ValidAlerts sa vyčistí osobne
+                {
+                    row[key] = null;
+                }
+            }
+            row["ValidAlerts"] = string.Empty;
+        }
+
+        /// <summary>
+        /// Kontroluje či je riadok prázdny
+        /// </summary>
+        private bool IsRowEmpty(Dictionary<string, object?> row)
+        {
+            foreach (var kvp in row)
+            {
+                // Ignoruj špeciálne stĺpce
+                if (kvp.Key == "DeleteRows" || kvp.Key == "ValidAlerts")
+                    continue;
+
+                // Ak je nejaká hodnota vyplnená, riadok nie je prázdny
+                if (kvp.Value != null && !string.IsNullOrWhiteSpace(kvp.Value.ToString()))
+                    return false;
+            }
+
+            return true;
         }
 
         #endregion
@@ -406,82 +528,24 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             });
         }
 
-        private void UpdateDemoInfo(string message)
-        {
-            // Demo info sa môže zobraziť v UI alebo len logovať
-            _logger.LogInformation($"AUTO-ADD DEMO: {message}");
-        }
-
         #endregion
 
-        #region Event Handlers s Auto-Add demo
+        #region ✅ NOVÉ: Auto-Add Properties (PUBLIC read-only info)
 
-        internal void OnTestAutoAddClick(object sender, RoutedEventArgs e)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    UpdateDemoInfo("AUTO-ADD Test: Simuluje sa pridávanie dát s auto-add logikou...");
+        /// <summary>
+        /// Či je Auto-Add funkcionalita povolená
+        /// </summary>
+        public bool IsAutoAddEnabled => _autoAddEnabled;
 
-                    // ✅ Test: Pridaj 2 riadky dát (menej ako minimum 5)
-                    var newData = new List<Dictionary<string, object?>>
-                    {
-                        new() { ["ID"] = 100, ["Meno"] = "Auto-Add Test 1", ["Email"] = "test1@auto.add", ["Vek"] = 30, ["Plat"] = 3000m },
-                        new() { ["ID"] = 101, ["Meno"] = "Auto-Add Test 2", ["Email"] = "test2@auto.add", ["Vek"] = 25, ["Plat"] = 2500m }
-                    };
+        /// <summary>
+        /// Minimálny počet riadkov ktorý sa zachováva
+        /// </summary>
+        public int MinimumRowCount => _minimumRowCount;
 
-                    await LoadDataAsync(newData);
-
-                    UpdateDemoInfo("AUTO-ADD Test: 2 riadky dát pridané → mal by zostať na minimálnych 5 riadkoch + 1 prázdny");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "AUTO-ADD Test failed");
-                }
-            });
-        }
-
-        internal void OnTestValidationClick(object sender, RoutedEventArgs e)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await ValidateAllRowsAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Test validácie failed");
-                }
-            });
-        }
-
-        internal void OnTestDeleteClick(object sender, RoutedEventArgs e)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    // ✅ Test Auto-Add delete s demo pravidlami
-                    var deleteRules = new List<GridValidationRule>
-                    {
-                        GridValidationRule.Custom("ID", value =>
-                        {
-                            if (int.TryParse(value?.ToString(), out var id))
-                                return id > 100; // Zmaž ID > 100
-                            return false;
-                        }, "Auto-Add test delete rule")
-                    };
-
-                    await DeleteRowsByCustomValidationAsync(deleteRules);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "AUTO-ADD Test delete failed");
-                }
-            });
-        }
+        /// <summary>
+        /// Aktuálny počet riadkov
+        /// </summary>
+        public int CurrentRowCount => _gridData.Count;
 
         #endregion
 
@@ -523,20 +587,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 System.Diagnostics.Debug.WriteLine($"Chyba pri dispose: {ex.Message}");
             }
         }
-
-        #endregion
-
-        #region ✅ NOVÉ: Auto-Add Properties (PUBLIC read-only info)
-
-        /// <summary>
-        /// Či je Auto-Add funkcionalita povolená
-        /// </summary>
-        public bool IsAutoAddEnabled => _autoAddEnabled;
-
-        /// <summary>
-        /// Minimálny počet riadkov ktorý sa zachováva
-        /// </summary>
-        public int MinimumRowCount => _minimumRowCount;
 
         #endregion
     }
