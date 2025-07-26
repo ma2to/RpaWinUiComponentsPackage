@@ -1,4 +1,4 @@
-﻿// Utilities/BoolToVisibilityConverter.cs - ✅ OPRAVENÝ
+﻿// Utilities/BoolToVisibilityConverter.cs - ✅ OPRAVENÝ - eliminovaný duplicates
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
@@ -10,6 +10,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// <summary>
     /// Konverter pre konverziu bool hodnôt na Visibility enum.
     /// Používa sa v XAML pre podmienené zobrazovanie elementov.
+    /// ✅ PUBLIC - potrebné pre XAML binding
     /// </summary>
     public class BoolToVisibilityConverter : IValueConverter
     {
@@ -36,6 +37,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
     /// <summary>
     /// Inverzný BoolToVisibilityConverter - true → Collapsed, false → Visible.
+    /// ✅ PUBLIC - potrebné pre XAML binding
     /// </summary>
     public class InvertedBoolToVisibilityConverter : IValueConverter
     {
@@ -62,6 +64,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
     /// <summary>
     /// Konverter pre validáciu - false → červený brush, true → default brush.
+    /// ✅ PUBLIC - potrebné pre XAML binding
     /// </summary>
     public class BoolToValidationBrushConverter : IValueConverter
     {
@@ -92,6 +95,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
     /// <summary>
     /// Konverter pre validáciu - false → hrubší border, true → štandardný border.
+    /// ✅ PUBLIC - potrebné pre XAML binding
     /// </summary>
     public class BoolToValidationThicknessConverter : IValueConverter
     {

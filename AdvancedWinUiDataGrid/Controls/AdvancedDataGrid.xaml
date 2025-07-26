@@ -1,51 +1,58 @@
-<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ OPRAVENÝ UserControl s Auto-Add funkcionalitou -->
+<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ OPRAVENÝ XAML parsing fix -->
 <UserControl x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:RpaWinUiComponents.AdvancedWinUiDataGrid">
 
+    <UserControl.Resources>
+        <!-- ✅ XAML parsing fix: Local converters -->
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:BoolToValidationBrushConverter x:Key="ValidationBrushConverter"/>
+        <local:BoolToValidationThicknessConverter x:Key="ValidationThicknessConverter"/>
+    </UserControl.Resources>
+
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
 
         <!-- ✅ Main Content Grid -->
-        <Grid x:Name="MainContentGrid">
+        <Grid x:Name="MainContentGrid" Visibility="{x:Bind IsInitialized, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
 
-            <!-- ✅ Placeholder pre DataGrid obsah - bude sa vytvárať dynamicky v C# -->
+            <!-- ✅ Header row pre stĺpce -->
+            <Grid x:Name="HeaderGrid" VerticalAlignment="Top" Height="40">
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1">
+                    <ScrollViewer x:Name="HeaderScrollViewer" 
+                                  HorizontalScrollBarVisibility="Hidden" 
+                                  VerticalScrollBarVisibility="Disabled"
+                                  ZoomMode="Disabled">
+                        <StackPanel x:Name="HeaderPanel" 
+                                    Orientation="Horizontal" 
+                                    Height="40"/>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+
+            <!-- ✅ Data rows area s auto-add podporou -->
             <ScrollViewer x:Name="DataGridScrollViewer"
+                          Margin="0,40,0,0"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"
                           ZoomMode="Disabled">
 
-                <!-- ✅ ItemsRepeater pre riadky -->
-                <StackPanel x:Name="DataGridContent" 
+                <StackPanel x:Name="DataRowsPanel" 
                             Orientation="Vertical"
-                            Spacing="0">
+                            Spacing="0"/>
 
-                    <!-- ✅ Header Panel -->
-                    <Border x:Name="HeaderBorder"
-                            Background="{ThemeResource LayerFillColorAltBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="0,0,0,1"
-                            MinHeight="36">
-
-                        <StackPanel x:Name="HeaderPanel" 
-                                    Orientation="Horizontal"/>
-                    </Border>
-
-                    <!-- ✅ Rows Panel - tu sa budú pridávať riadky -->
-                    <StackPanel x:Name="RowsPanel" 
-                                Orientation="Vertical"/>
-
-                </StackPanel>
             </ScrollViewer>
         </Grid>
 
-        <!-- ✅ Loading Overlay s potrebnými elementmi -->
+        <!-- ✅ Loading Overlay -->
         <Border x:Name="LoadingOverlay"
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                Visibility="Collapsed">
+                Visibility="{x:Bind IsInitialized, Mode=OneWay, Converter={StaticResource InvertedBoolToVisibilityConverter}}">
 
             <StackPanel HorizontalAlignment="Center" 
                        VerticalAlignment="Center" 

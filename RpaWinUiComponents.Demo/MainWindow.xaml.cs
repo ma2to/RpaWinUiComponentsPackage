@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ s Auto-Add volaniami
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s Auto-Add testovaním
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -46,7 +46,7 @@ namespace RpaWinUiComponents.Demo
             {
                 System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD funkcionalitou...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.6...", "Načítava sa z Package Reference s AUTO-ADD funkciou...");
+                UpdateLoadingState("Inicializuje sa balík v1.0.8...", "Načítava sa z Package Reference s KOMPLETNOU AUTO-ADD funkciou...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
