@@ -4,7 +4,7 @@
 
   <!-- ✅ Debug informácie (iba v Debug mode) -->
   <Target Name="DebugAdvancedDataGridPackage" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
-    <Message Text="🔍 AdvancedWinUiDataGrid: Package v1.0.5 loaded via NuGet (NETSDK1152 fixed)" Importance="normal" />
+    <Message Text="🔍 AdvancedWinUiDataGrid: Package v1.0.6 loaded via NuGet (NETSDK1152 fixed)" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: MSBuildThisFileDirectory = $(MSBuildThisFileDirectory)" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: TargetFramework = $(TargetFramework)" Importance="normal" />
   </Target>
