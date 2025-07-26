@@ -25,7 +25,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         private readonly object _dataLock = new object();
 
         // ✅ NOVÉ: Auto-Add state tracking
-        private int _minimumRowCount = 5;
+        private int _minimumRowCount = 15;
         private bool _autoAddEnabled = true;
 
         public DataManagementService(ILogger<DataManagementService> logger)
