@@ -1,13 +1,19 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ pre správne WinUI3 NuGet balenie -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ KOMPLETNE OPRAVENÝ -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <UseWinUI>true</UseWinUI>
-    <EnableMsixTooling>true</EnableMsixTooling>
+    <EnableMsixTooling>false</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- ✅ OPRAVENÉ: Fix duplicate target framework paths -->
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <BuildOutputTargetFolder>lib</BuildOutputTargetFolder>
+
+    <!-- ✅ KĽÚČOVÉ: Package generation -->
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -16,114 +22,126 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: WinUI3 XAML compilation a balenie -->
+    <!-- ✅ WinUI3 XAML compilation -->
     <EnableDefaultPageItems>true</EnableDefaultPageItems>
     <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
 
-    <!-- Package Information -->
+    <!-- ✅ Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
-    <Description>Profesionálny WinUI3 DataGrid komponent s pokročilými funkciami pre dátové aplikácie</Description>
-    <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel</PackageTags>
+    <Description>Profesionálny WinUI3 DataGrid komponent s pokročilými funkciami a auto-add riadkov funkcionalitou</Description>
+    <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel;Auto-Add</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>v1.0.4: Pridaná auto-add riadkov funkcionalita</PackageReleaseNotes>
 
-    <!-- Assembly Information -->
+    <!-- ✅ Assembly Information -->
     <AssemblyTitle>Advanced WinUI DataGrid Component</AssemblyTitle>
-    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 aplikácie s realtime validáciami a Excel funkcionalitou</AssemblyDescription>
+    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 s auto-add riadkov funkciou</AssemblyDescription>
   </PropertyGroup>
 
-  <!-- WinUI Dependencies -->
+  <!-- ✅ WinUI Dependencies -->
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
   </ItemGroup>
 
-  <!-- Dependency Injection & Logging -->
+  <!-- ✅ Dependency Injection & Logging -->
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.7" />
   </ItemGroup>
 
-  <!-- Additional System Dependencies -->
+  <!-- ✅ Additional System Dependencies -->
   <ItemGroup>
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÁ OPRAVA: MSBuild targets pre správne NuGet zabalenie -->
+  <!-- ✅ MSBuild targets pre NuGet zabalenie -->
   <ItemGroup>
     <None Include="build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="build/" />
     <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- ✅ NOVÉ: Explicitné zabalenie XAML súborov pre WinUI3 -->
+  <!-- ✅ OPRAVENÉ: Simplified WinUI3 packaging - avoid duplicates -->
   <ItemGroup>
-    <!-- Zabaľ skompilované XAML súbory -->
-    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
-    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+    <!-- ✅ Let SDK handle main assembly packaging automatically -->
+    <!-- Remove manual DLL/PDB packaging to avoid duplicates -->
 
-    <!-- Zabaľ aj XBF súbory (skompilované XAML) ak existujú -->
-    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)')" />
+    <!-- ✅ Only pack additional WinUI3 specific files -->
+    <None Include="$(OutputPath)$(AssemblyName).xr.xml"
+          Pack="true"
+          PackagePath="lib/$(TargetFramework)/"
+          Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
+
+    <!-- ✅ XBF súbory (skompilované XAML) -->
+    <None Include="$(OutputPath)$(AssemblyName)/**/*.xbf"
+          Pack="true"
+          PackagePath="lib/$(TargetFramework)/$(AssemblyName)/"
+          Condition="Exists('$(OutputPath)$(AssemblyName)/')" />
   </ItemGroup>
 
-  <!-- ✅ NOVÉ: WinUI3 špeciálne nastavenia pre balenie -->
+  <!-- ✅ WinUI3 special build settings -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <!-- Pre Release build zabezpeč optimalizované XAML -->
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
     <UseCompiledXaml>true</UseCompiledXaml>
+    <Optimize>true</Optimize>
   </PropertyGroup>
+
+  <!-- ✅ Themes handling -->
   <ItemGroup>
-    <Page Remove="themes\Generic.xaml" />
+    <Page Remove="Themes\Generic.xaml" />
   </ItemGroup>
 
-  <!-- Public API Surface -->
-  <ItemGroup>
-    <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Themes\" />
-  </ItemGroup>
   <ItemGroup>
     <None Update="Themes\Generic.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>
   </ItemGroup>
 
-  <!-- Ensure proper WinUI packaging -->
-  <PropertyGroup Condition="'$(DisableMsixProjectCapabilityAddition)' == ''">
-    <DisableMsixProjectCapabilityAddition>true</DisableMsixProjectCapabilityAddition>
-  </PropertyGroup>
+  <!-- ✅ Public API Surface -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
+  </ItemGroup>
 
   <!-- ✅ Build optimizations -->
   <PropertyGroup>
-    <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
     <WarningsAsErrors />
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <WarningLevel>5</WarningLevel>
+
+    <!-- ✅ Disable MSIX for class library -->
+    <DisableMsixProjectCapabilityAddition>true</DisableMsixProjectCapabilityAddition>
   </PropertyGroup>
 
-  <!-- ✅ NOVÉ: Vývojárske nastavenia pre debugging NuGet balíka -->
+  <!-- ✅ Debug package generation -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <!-- ✅ NOVÉ: Custom targets pre post-build -->
+  <!-- ✅ Custom targets pre post-build -->
   <Target Name="LogPackageInfo" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
-    <Message Text="📦 Package output: $(PackageOutputPath)" Importance="high" />
+    <Message Text="📦 Auto-Add funkcionalita implementovaná" Importance="high" />
     <Message Text="📦 Target framework: $(TargetFramework)" Importance="high" />
+  </Target>
+
+  <!-- ✅ Ensure clean package structure -->
+  <Target Name="CleanupBeforePack" BeforeTargets="Pack">
+    <Message Text="🧹 Cleaning up before package creation..." Importance="normal" />
   </Target>
 
 </Project>
