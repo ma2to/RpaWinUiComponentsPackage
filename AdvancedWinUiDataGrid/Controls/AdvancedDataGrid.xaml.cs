@@ -395,10 +395,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _gridData.Add(new Dictionary<string, object?>(rowData));
             }
 
-            // ✅ Auto-Add logika: Zabezpeč že je dosť riadkov
-            var requiredRows = Math.Max(data.Count + 1, _minimumRowCount + 1); // +1 pre prázdny riadok
+            // ✅ KĽÚČOVÁ Auto-Add logika:
+            // Ak má viac dát ako minimum → vytvorí data.Count + 1 prázdny riadok
+            // Ak má menej dát ako minimum → vytvorí minimum riadkov + 1 prázdny riadok
+            var requiredDataRows = data.Count;
+            var totalRowsNeeded = Math.Max(requiredDataRows + 1, _minimumRowCount + 1); // +1 pre prázdny riadok
 
-            while (_gridData.Count < requiredRows)
+            // Pridaj prázdne riadky až do požadovaného počtu
+            while (_gridData.Count < totalRowsNeeded)
             {
                 _gridData.Add(CreateEmptyRow());
             }
@@ -406,8 +410,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             // ✅ Volaj data management service
             await _dataManagementService.LoadDataAsync(_gridData);
 
-            _logger.LogDebug("AUTO-ADD: Načítané {DataCount} riadkov dát, celkom {TotalCount} riadkov",
-                data.Count, _gridData.Count);
+            _logger.LogDebug("AUTO-ADD: Načítané {DataCount} riadkov dát, celkom {TotalCount} riadkov (vrátane {EmptyCount} prázdnych)",
+                data.Count, _gridData.Count, totalRowsNeeded - data.Count);
         }
 
         /// <summary>
@@ -427,7 +431,35 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 // Posledný riadok nie je prázdny → pridaj nový prázdny
                 _gridData.Add(CreateEmptyRow());
-                _logger.LogDebug("AUTO-ADD: Pridaný nový prázdny riadok na koniec");
+                _logger.LogDebug("AUTO-ADD: Pridaný nový prázdny riadok na koniec (celkom: {TotalRows})", _gridData.Count);
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÁ: Metóda volaná pri editácii bunky - zabezpeč auto-add nových riadkov
+        /// </summary>
+        public void OnCellValueChanged(int rowIndex, string columnName, object? newValue)
+        {
+            try
+            {
+                if (!_autoAddEnabled || IsSpecialColumn(columnName))
+                    return;
+
+                // Ak editujem posledný riadok a nie je už prázdny
+                if (rowIndex == _gridData.Count - 1)
+                {
+                    var lastRow = _gridData[rowIndex];
+                    if (!IsRowEmpty(lastRow))
+                    {
+                        // Pridaj nový prázdny riadok
+                        _gridData.Add(CreateEmptyRow());
+                        _logger.LogDebug("AUTO-ADD: Vyplnený posledný riadok → pridaný nový prázdny (celkom: {TotalRows})", _gridData.Count);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba pri AUTO-ADD OnCellValueChanged");
             }
         }
 
@@ -481,6 +513,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Skontroluje či je stĺpec špeciálny (neráta sa do Auto-Add logiky)
+        /// </summary>
+        private bool IsSpecialColumn(string columnName)
+        {
+            return columnName == "DeleteRows" || columnName == "ValidAlerts";
         }
 
         #endregion
@@ -546,6 +586,186 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// Aktuálny počet riadkov
         /// </summary>
         public int CurrentRowCount => _gridData.Count;
+
+        #endregion
+
+        #region ✅ NOVÉ: Public Test Methods pre Demo aplikáciu
+
+        /// <summary>
+        /// Test metóda pre auto-add s malým počtom riadkov (menej ako minimum)
+        /// </summary>
+        public async Task TestAutoAddFewRowsAsync()
+        {
+            try
+            {
+                _logger.LogInformation("AUTO-ADD TEST: TestAutoAddFewRowsAsync začína...");
+
+                // Načítaj 3 riadky (menej ako minimum 5)
+                var testData = new List<Dictionary<string, object?>>
+                {
+                    new() { ["ID"] = 201, ["Meno"] = "Test User 1", ["Email"] = "test1@auto.add", ["Vek"] = 25, ["Plat"] = 2500m },
+                    new() { ["ID"] = 202, ["Meno"] = "Test User 2", ["Email"] = "test2@auto.add", ["Vek"] = 30, ["Plat"] = 3000m },
+                    new() { ["ID"] = 203, ["Meno"] = "Test User 3", ["Email"] = "test3@auto.add", ["Vek"] = 35, ["Plat"] = 3500m }
+                };
+
+                await LoadDataAsync(testData);
+
+                // Malo by byť: minimálne riadky (5) + 1 prázdny = 6 riadkov
+                _logger.LogInformation("AUTO-ADD TEST: Načítané {DataCount} riadky, výsledok: {TotalCount} riadkov",
+                    testData.Count, CurrentRowCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba v TestAutoAddFewRowsAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Test metóda pre auto-add s veľkým počtom riadkov (viac ako minimum)
+        /// </summary>
+        public async Task TestAutoAddManyRowsAsync()
+        {
+            try
+            {
+                _logger.LogInformation("AUTO-ADD TEST: TestAutoAddManyRowsAsync začína...");
+
+                // Načítaj 20 riadkov (viac ako minimum 5)
+                var testData = new List<Dictionary<string, object?>>();
+                for (int i = 1; i <= 20; i++)
+                {
+                    testData.Add(new Dictionary<string, object?>
+                    {
+                        ["ID"] = 300 + i,
+                        ["Meno"] = $"Bulk User {i}",
+                        ["Email"] = $"bulk{i}@auto.add",
+                        ["Vek"] = 20 + (i % 40),
+                        ["Plat"] = 2000m + (i * 100)
+                    });
+                }
+
+                await LoadDataAsync(testData);
+
+                // Malo by byť: 20 dátových riadkov + 1 prázdny = 21 riadkov
+                _logger.LogInformation("AUTO-ADD TEST: Načítané {DataCount} riadky, výsledok: {TotalCount} riadkov",
+                    testData.Count, CurrentRowCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba v TestAutoAddManyRowsAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Test metóda pre auto-add inteligentné mazanie
+        /// </summary>
+        public async Task TestAutoAddDeleteAsync()
+        {
+            try
+            {
+                _logger.LogInformation("AUTO-ADD DELETE TEST: TestAutoAddDeleteAsync začína...");
+
+                // Najprv načítaj dáta
+                await TestAutoAddFewRowsAsync();
+
+                // Test custom delete pravidiel s auto-add ochranou
+                var deleteRules = new List<GridValidationRule>
+                {
+                    GridValidationRule.Custom("Vek", value =>
+                    {
+                        if (int.TryParse(value?.ToString(), out var age))
+                            return age < 30; // Zmaž mladších ako 30
+                        return false;
+                    }, "Too young - deleted by auto-add test")
+                };
+
+                await DeleteRowsByCustomValidationAsync(deleteRules);
+
+                _logger.LogInformation("AUTO-ADD DELETE TEST: Po delete operácii: {TotalCount} riadkov", CurrentRowCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba v TestAutoAddDeleteAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Test metóda pre realtime validácie
+        /// </summary>
+        public async Task TestRealtimeValidationAsync()
+        {
+            try
+            {
+                _logger.LogInformation("REALTIME VALIDATION TEST: TestRealtimeValidationAsync začína...");
+
+                // Načítaj dáta s validačnými chybami
+                var testData = new List<Dictionary<string, object?>>
+                {
+                    new() { ["ID"] = 401, ["Meno"] = "", ["Email"] = "invalid-email", ["Vek"] = 150, ["Plat"] = -1000m },
+                    new() { ["ID"] = 402, ["Meno"] = "X", ["Email"] = "", ["Vek"] = 5, ["Plat"] = 999999m },
+                    new() { ["ID"] = 403, ["Meno"] = "Valid User", ["Email"] = "valid@test.com", ["Vek"] = 25, ["Plat"] = 3000m }
+                };
+
+                await LoadDataAsync(testData);
+
+                // Spustiť validáciu
+                var isValid = await ValidateAllRowsAsync();
+
+                _logger.LogInformation("REALTIME VALIDATION TEST: Validácia dokončená, všetko validné: {IsValid}", isValid);
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba v TestRealtimeValidationAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Test metóda pre navigáciu (Tab/Enter/Esc)
+        /// </summary>
+        public async Task TestNavigationAsync()
+        {
+            try
+            {
+                _logger.LogInformation("NAVIGATION TEST: TestNavigationAsync začína...");
+
+                // Jednoducho načítaj dáta pre navigáciu
+                await TestAutoAddFewRowsAsync();
+
+                _logger.LogInformation("NAVIGATION TEST: Dáta pripravené pre navigačný test - použite Tab/Enter/Esc v bunkách");
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba v TestNavigationAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Test metóda pre copy/paste funkcionalitu
+        /// </summary>
+        public async Task TestCopyPasteAsync()
+        {
+            try
+            {
+                _logger.LogInformation("COPY/PASTE TEST: TestCopyPasteAsync začína...");
+
+                // Načítaj dáta pre copy/paste test
+                await TestAutoAddFewRowsAsync();
+
+                _logger.LogInformation("COPY/PASTE TEST: Dáta pripravené pre copy/paste test - použite Ctrl+C/V/X");
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Chyba v TestCopyPasteAsync");
+                throw;
+            }
+        }
 
         #endregion
 

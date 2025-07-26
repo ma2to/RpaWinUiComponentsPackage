@@ -122,16 +122,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                         _columnTypes[column.Name] = column.DataType;
                     }
 
-                    // ✅ KĽÚČOVÉ: Vytvor minimálny počet prázdnych riadkov
-                    for (int i = 0; i < _minimumRowCount; i++)
+                    // ✅ KĽÚČOVÉ: Vytvor minimálny počet prázdnych riadkov + 1 extra pre auto-add
+                    var initialRowCount = _autoAddEnabled ? _minimumRowCount + 1 : _minimumRowCount;
+                    for (int i = 0; i < initialRowCount; i++)
                     {
                         _gridData.Add(CreateEmptyRow());
                     }
                 }
 
                 _isInitialized = true;
-                _logger.LogInformation("DataManagementService inicializovaný s {ColumnCount} stĺpcami, {MinimumRows} minimálnymi riadkami, Auto-Add: {AutoAddEnabled}",
-                    _configuration.Columns.Count, _minimumRowCount, _autoAddEnabled);
+                _logger.LogInformation("DataManagementService inicializovaný s {ColumnCount} stĺpcami, {InitialRows} riadkami ({MinimumRows} minimum + {ExtraRows} extra), Auto-Add: {AutoAddEnabled}",
+                    _configuration.Columns.Count, _gridData.Count, _minimumRowCount, _autoAddEnabled ? 1 : 0, _autoAddEnabled);
 
                 await Task.CompletedTask;
             }
@@ -241,7 +242,13 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                     // ✅ KĽÚČOVÁ Auto-Add logika: Kontrola či treba pridať nový prázdny riadok
                     if (_autoAddEnabled && !IsSpecialColumn(columnName))
                     {
-                        CheckAndAddEmptyRowIfNeeded();
+                        // Ak editujeme posledný riadok a nie je už prázdny
+                        if (rowIndex == _gridData.Count - 1 && !IsRowEmpty(row))
+                        {
+                            // Pridaj nový prázdny riadok
+                            _gridData.Add(CreateEmptyRow());
+                            _logger.LogDebug("AUTO-ADD: Vyplnený posledný riadok → pridaný nový prázdny (celkom: {TotalRows})", _gridData.Count);
+                        }
                     }
                 }
 
@@ -251,28 +258,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             {
                 _logger.LogError(ex, "Chyba pri nastavovaní hodnoty bunky [{RowIndex}, {ColumnName}]", rowIndex, columnName);
                 throw;
-            }
-        }
-
-        /// <summary>
-        /// ✅ KĽÚČOVÁ: Kontroluje či treba pridať nový prázdny riadok na koniec
-        /// </summary>
-        private void CheckAndAddEmptyRowIfNeeded()
-        {
-            if (!_autoAddEnabled || _gridData.Count == 0) return;
-
-            // Kontrola: Je posledný riadok prázdny?
-            var lastRow = _gridData[^1]; // C# 8.0 syntax
-            var isLastRowEmpty = IsRowEmpty(lastRow);
-
-            if (!isLastRowEmpty)
-            {
-                // Posledný riadok nie je prázdny → pridaj nový prázdny
-                var newEmptyRow = CreateEmptyRow();
-                _gridData.Add(newEmptyRow);
-
-                _logger.LogDebug("AUTO-ADD: Automaticky pridaný nový prázdny riadok na index {Index} (celkom: {TotalRows})",
-                    _gridData.Count - 1, _gridData.Count);
             }
         }
 
@@ -407,14 +392,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                         // Vyčisti všetky dáta
                         _gridData.Clear();
 
-                        // ✅ Auto-Add logika: Vytvor minimálny počet prázdnych riadkov
-                        for (int i = 0; i < _minimumRowCount; i++)
-                        {
-                            _gridData.Add(CreateEmptyRow());
-                        }
-
-                        // ✅ Pridaj jeden extra prázdny riadok ak je Auto-Add povolený
-                        if (_autoAddEnabled)
+                        // ✅ Auto-Add logika: Vytvor minimálny počet prázdnych riadkov + 1 extra ak je auto-add
+                        var requiredRows = _autoAddEnabled ? _minimumRowCount + 1 : _minimumRowCount;
+                        for (int i = 0; i < requiredRows; i++)
                         {
                             _gridData.Add(CreateEmptyRow());
                         }
@@ -516,6 +496,28 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// ✅ KĽÚČOVÁ: Kontroluje či treba pridať nový prázdny riadok na koniec
+        /// </summary>
+        private void CheckAndAddEmptyRowIfNeeded()
+        {
+            if (!_autoAddEnabled || _gridData.Count == 0) return;
+
+            // Kontrola: Je posledný riadok prázdny?
+            var lastRow = _gridData[^1]; // C# 8.0 syntax
+            var isLastRowEmpty = IsRowEmpty(lastRow);
+
+            if (!isLastRowEmpty)
+            {
+                // Posledný riadok nie je prázdny → pridaj nový prázdny
+                var newEmptyRow = CreateEmptyRow();
+                _gridData.Add(newEmptyRow);
+
+                _logger.LogDebug("AUTO-ADD: Automaticky pridaný nový prázdny riadok na index {Index} (celkom: {TotalRows})",
+                    _gridData.Count - 1, _gridData.Count);
+            }
         }
 
         /// <summary>
