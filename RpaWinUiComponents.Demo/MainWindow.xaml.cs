@@ -46,7 +46,7 @@ namespace RpaWinUiComponents.Demo
             {
                 System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD funkcionalitou...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.5...", "Načítava sa z Package Reference s AUTO-ADD funkciou...");
+                UpdateLoadingState("Inicializuje sa balík v1.0.6...", "Načítava sa z Package Reference s AUTO-ADD funkciou...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
@@ -178,8 +178,11 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ OPRAVENÉ: Auto-Add Demo Button Handlers
+        #region ✅ NOVÉ: Auto-Add Demo Button Handlers
 
+        /// <summary>
+        /// Test metóda pre auto-add s malým počtom riadkov (menej ako minimum)
+        /// </summary>
         private async void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e)
         {
             try
@@ -249,34 +252,6 @@ namespace RpaWinUiComponents.Demo
                 System.Diagnostics.Debug.WriteLine($"❌ AUTO-ADD Delete test failed: {ex.Message}");
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = $"Chyba pri AUTO-ADD delete teste: {ex.Message}";
-            }
-        }
-
-        private async void OnShowAutoAddStatusClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("📊 AUTO-ADD STATUS: Zobrazuje sa stav AUTO-ADD funkcie...");
-
-                // ✅ Získaj status informácie z PUBLIC API
-                var allData = await DataGridControl.ExportToDataTableAsync();
-                var isAutoAddEnabled = DataGridControl.IsAutoAddEnabled;
-                var minimumRowCount = DataGridControl.MinimumRowCount;
-                var currentRowCount = DataGridControl.CurrentRowCount;
-
-                var statusMessage = $"📊 AUTO-ADD STATUS: {currentRowCount} celkom riadkov | Minimum: {minimumRowCount} | Auto-Add: {(isAutoAddEnabled ? "✅ Aktívne" : "❌ Neaktívne")} | Export: {allData.Rows.Count} riadkov";
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = statusMessage;
-
-                System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD STATUS zobrazený");
-                System.Diagnostics.Debug.WriteLine(statusMessage);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ AUTO-ADD Status failed: {ex.Message}");
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri AUTO-ADD status: {ex.Message}";
             }
         }
 
