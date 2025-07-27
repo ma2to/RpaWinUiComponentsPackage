@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ pre DataGridColorConfig ako PRIMARY PUBLIC API
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ pre DataGridColorConfig jako PRIMARY PUBLIC API + Search/Sort
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -36,10 +36,15 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// - Individual farby sa nastavujú iba pri inicializácii cez InitializeAsync
     /// - Ak sa nenastavujú, používajú sa default farby
     /// - Žiadne runtime color switching
+    /// 
+    /// Search & Sort:
+    /// - Search v stĺpcoch pomocou SetColumnSearchFilter
+    /// - Sort by column header click pomocou ToggleColumnSort
+    /// - Prázdne riadky vždy na konci
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
-        #region Private Fields - ✅ AUTO-ADD + DataGridColorConfig
+        #region Private Fields - ✅ AUTO-ADD + DataGridColorConfig + Search/Sort
 
         private IServiceProvider? _serviceProvider;
         private ILogger<AdvancedDataGrid>? _logger;
@@ -73,7 +78,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔧 AdvancedDataGrid: Začína inicializácia s AUTO-ADD a DataGridColorConfig...");
+                System.Diagnostics.Debug.WriteLine("🔧 AdvancedDataGrid: Začína inicializácia s AUTO-ADD, DataGridColorConfig a Search/Sort...");
 
                 // ✅ Bezpečná XAML inicializácia
                 InitializeXamlSafely();
@@ -82,7 +87,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 {
                     System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid: XAML InitializeComponent úspešne dokončené");
                     InitializeDependencyInjection();
-                    System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid s AUTO-ADD úspešne inicializovaný");
+                    System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid s AUTO-ADD, Search/Sort úspešne inicializovaný");
                     UpdateUIVisibility();
                 }
                 else
@@ -134,7 +139,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _validationService = _serviceProvider.GetService<IValidationService>();
                 _exportService = _serviceProvider.GetService<IExportService>();
 
-                _logger?.LogInformation("AdvancedDataGrid s AUTO-ADD inicializovaný");
+                // ✅ NOVÉ: Search & Sort service
+                _searchAndSortService = new SearchAndSortService(_logger);
+
+                _logger?.LogInformation("AdvancedDataGrid s AUTO-ADD, Search/Sort inicializovaný");
             }
             catch (Exception ex)
             {
@@ -194,6 +202,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _dataManagementService = _serviceProvider.GetService<IDataManagementService>();
                 _validationService = _serviceProvider.GetService<IValidationService>();
                 _exportService = _serviceProvider.GetService<IExportService>();
+
+                // ✅ NOVÉ: Search & Sort service
+                _searchAndSortService = new SearchAndSortService(_logger);
             }
             catch (Exception serviceEx)
             {
@@ -231,7 +242,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 if (!_xamlLoadFailed)
                 {
-                    ShowLoadingState("Inicializuje sa DataGrid s AUTO-ADD a DataGridColorConfig...");
+                    ShowLoadingState("Inicializuje sa DataGrid s AUTO-ADD, DataGridColorConfig a Search/Sort...");
                 }
 
                 // ✅ AUTO-ADD: Iba jedna hodnota pre oba koncepty
@@ -264,7 +275,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     ThrottlingConfig = throttlingConfig ?? GridThrottlingConfig.Default,
                     EmptyRowsCount = _unifiedRowCount, // ✅ UNIFIED hodnota
                     AutoAddNewRow = _autoAddEnabled,
-                    GridName = "AdvancedDataGrid_Unified_AutoAdd"
+                    GridName = "AdvancedDataGrid_Unified_AutoAdd_SearchSort"
                 };
 
                 // Safe service calls s null checks
@@ -281,6 +292,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     await _exportService.InitializeAsync(configuration);
                 }
 
+                // ✅ NOVÉ: Inicializuj Search & Sort service
+                if (_searchAndSortService != null)
+                {
+                    _logger?.LogInformation("Search & Sort služba inicializovaná");
+                }
+
                 // ✅ Vytvor počiatočné prázdne riadky
                 await CreateInitialEmptyRowsAsync();
 
@@ -292,12 +309,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     HideLoadingState();
                 }
 
-                _logger?.LogInformation("AUTO-ADD: DataGrid úspešne inicializovaný s {RowCount} riadkami (initial=minimum), ColorConfig: {HasColors}",
+                _logger?.LogInformation("AUTO-ADD: DataGrid úspešne inicializovaný s {RowCount} riadkami (initial=minimum), ColorConfig: {HasColors}, Search/Sort: Ready",
                     _unifiedRowCount, colorConfig != null);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Chyba pri inicializácii DataGrid s AUTO-ADD");
+                _logger?.LogError(ex, "Chyba pri inicializácii DataGrid s AUTO-ADD, Search/Sort");
                 if (!_xamlLoadFailed)
                 {
                     ShowLoadingState($"Chyba: {ex.Message}");
@@ -458,6 +475,129 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
+        #region ✅ NOVÉ: Search & Sort PUBLIC API
+
+        /// <summary>
+        /// Nastaví search filter pre stĺpec
+        /// </summary>
+        public void SetColumnSearchFilter(string columnName, string searchText)
+        {
+            try
+            {
+                EnsureInitialized();
+                _searchAndSortService?.SetColumnSearchFilter(columnName, searchText);
+                _logger?.LogDebug("Search filter nastavený pre {ColumnName}: '{SearchText}'", columnName, searchText);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba pri nastavovaní search filter");
+            }
+        }
+
+        /// <summary>
+        /// Získa aktuálny search filter pre stĺpec
+        /// </summary>
+        public string GetColumnSearchFilter(string columnName)
+        {
+            try
+            {
+                EnsureInitialized();
+                return _searchAndSortService?.GetColumnSearchFilter(columnName) ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba pri získavaní search filter");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Vyčistí všetky search filtre
+        /// </summary>
+        public void ClearAllSearchFilters()
+        {
+            try
+            {
+                EnsureInitialized();
+                _searchAndSortService?.ClearAllSearchFilters();
+                _logger?.LogDebug("Všetky search filtre vyčistené");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba pri čistení search filtrov");
+            }
+        }
+
+        /// <summary>
+        /// Togglene sort pre stĺpec (None → Ascending → Descending → None)
+        /// </summary>
+        public SortDirection ToggleColumnSort(string columnName)
+        {
+            try
+            {
+                EnsureInitialized();
+                var newDirection = _searchAndSortService?.ToggleColumnSort(columnName) ?? SortDirection.None;
+                _logger?.LogDebug("Sort toggled pre {ColumnName}: {Direction}", columnName, newDirection);
+                return newDirection;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba pri toggle sort");
+                return SortDirection.None;
+            }
+        }
+
+        /// <summary>
+        /// Získa aktuálny sort direction pre stĺpec
+        /// </summary>
+        public SortDirection GetColumnSortDirection(string columnName)
+        {
+            try
+            {
+                EnsureInitialized();
+                return _searchAndSortService?.GetColumnSortDirection(columnName) ?? SortDirection.None;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba pri získavaní sort direction");
+                return SortDirection.None;
+            }
+        }
+
+        /// <summary>
+        /// Vyčistí všetky sort stavy
+        /// </summary>
+        public void ClearAllSorts()
+        {
+            try
+            {
+                EnsureInitialized();
+                _searchAndSortService?.ClearAllSorts();
+                _logger?.LogDebug("Všetky sort stavy vyčistené");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba pri čistení sort stavov");
+            }
+        }
+
+        /// <summary>
+        /// Má aktívne search filtre
+        /// </summary>
+        public bool HasActiveSearchFilters => _searchAndSortService?.HasActiveSearchFilters ?? false;
+
+        /// <summary>
+        /// Má aktívny sort
+        /// </summary>
+        public bool HasActiveSort => _searchAndSortService?.HasActiveSort ?? false;
+
+        /// <summary>
+        /// Získa Search & Sort status info
+        /// </summary>
+        public string GetSearchSortStatus() => _searchAndSortService?.GetStatusInfo() ?? "Not available";
+
+        #endregion
+
         #region ✅ OPRAVENÉ: DataGridColorConfig Configuration (nastavuje sa iba pri inicializácii)
 
         /// <summary>
@@ -607,6 +747,58 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             }
         }
 
+        /// <summary>
+        /// ✅ NOVÝ: Test Search functionality
+        /// </summary>
+        public async Task TestSearchAsync()
+        {
+            try
+            {
+                _logger?.LogInformation("SEARCH TEST začína...");
+
+                // Demo search filters
+                SetColumnSearchFilter("Meno", "Test");
+                SetColumnSearchFilter("Email", "@test");
+
+                _logger?.LogInformation("Search filtre nastavené - Meno: 'Test', Email: '@test'");
+                _logger?.LogInformation("Search status: {Status}", GetSearchSortStatus());
+
+                await Task.CompletedTask;
+                _logger?.LogInformation("SEARCH TEST dokončený");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba v TestSearchAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÝ: Test Sort functionality
+        /// </summary>
+        public async Task TestSortAsync()
+        {
+            try
+            {
+                _logger?.LogInformation("SORT TEST začína...");
+
+                // Demo sort operations
+                var direction1 = ToggleColumnSort("Meno"); // Ascending
+                var direction2 = ToggleColumnSort("Meno"); // Descending
+                var direction3 = ToggleColumnSort("Meno"); // None
+
+                _logger?.LogInformation("Sort test - Meno: {Dir1} → {Dir2} → {Dir3}", direction1, direction2, direction3);
+
+                await Task.CompletedTask;
+                _logger?.LogInformation("SORT TEST dokončený");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Chyba v TestSortAsync");
+                throw;
+            }
+        }
+
         #endregion
 
         #region Helper Methods
@@ -747,7 +939,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <summary>
         /// Diagnostické info o stave komponentu
         /// </summary>
-        public string DiagnosticInfo => $"Initialized: {_isInitialized}, XAML: {!_xamlLoadFailed}, Auto-Add: {_autoAddEnabled}, Unified-RowCount: {_unifiedRowCount}, Data-Rows: {_gridData.Count}, ColorConfig: {_individualColorConfig != null}";
+        public string DiagnosticInfo => $"Initialized: {_isInitialized}, XAML: {!_xamlLoadFailed}, Auto-Add: {_autoAddEnabled}, Unified-RowCount: {_unifiedRowCount}, Data-Rows: {_gridData.Count}, ColorConfig: {_individualColorConfig != null}, Search/Sort: {_searchAndSortService != null}";
 
         /// <summary>
         /// AUTO-ADD status
@@ -779,11 +971,13 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
             try
             {
+                _searchAndSortService?.Dispose();
+
                 if (_serviceProvider is IDisposable disposableProvider)
                     disposableProvider.Dispose();
 
                 _isDisposed = true;
-                _logger?.LogInformation("AdvancedDataGrid s AUTO-ADD funkciou disposed");
+                _logger?.LogInformation("AdvancedDataGrid s AUTO-ADD, Search/Sort funkciou disposed");
             }
             catch (Exception ex)
             {
@@ -792,5 +986,15 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// ✅ NOVÉ: Sort direction enum - PUBLIC (súčasť Search & Sort API)
+    /// </summary>
+    public enum SortDirection
+    {
+        None,
+        Ascending,
+        Descending
     }
 }

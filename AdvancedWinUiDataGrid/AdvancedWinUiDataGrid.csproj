@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ NETSDK1152 FIX + Search/Sort/Zebra -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ NETSDK1152 FIX + Individual Color Config -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -35,21 +35,21 @@
 
     <!-- ✅ Package Information - UPDATED -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.15</Version>
+    <Version>1.0.16</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
-    <Description>WinUI3 DataGrid s AUTO-ADD, Individual Colors, Search, Sorting, Zebra Rows - NETSDK1152 FIXED</Description>
-    <PackageTags>WinUI3;DataGrid;Auto-Add;Search;Sort;Colors;Validation;Excel;RealTime;Zebra</PackageTags>
+    <Description>WinUI3 DataGrid s AUTO-ADD, Individual Colors, Search, Sorting - NETSDK1152 FIXED</Description>
+    <PackageTags>WinUI3;DataGrid;Auto-Add;Search;Sort;Colors;Validation;Excel;RealTime</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.15: NETSDK1152 FIXED + Search/Sort + Zebra Rows + Individual Colors</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.16: NETSDK1152 FIXED + Individual Colors + Search/Sort + Zebra Rows</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
-    <AssemblyTitle>WinUI3 DataGrid with Search, Sort, Zebra Rows - NETSDK1152 FIXED</AssemblyTitle>
+    <AssemblyTitle>WinUI3 DataGrid with Search, Sort, Colors - NETSDK1152 FIXED</AssemblyTitle>
     <AssemblyDescription>DataGrid s AUTO-ADD, individual colors, search, sorting, zebra rows</AssemblyDescription>
 
     <!-- ✅ NETSDK1152 FIX: Suppress all packaging conflicts -->
@@ -138,7 +138,9 @@
   <Target Name="LogPackageInfo" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
     <Message Text="📦 ✅ NETSDK1152 FIXED - single TFM: $(TargetFramework)" Importance="high" />
-    <Message Text="📦 ✨ Search/Sort/Zebra + Individual Color Config implementovaná" Importance="high" />
+    <Message Text="📦 ✨ Individual Color Config implementovaná" Importance="high" />
+    <Message Text="📦 🔍 Search/Sort funkcionalita pridaná" Importance="high" />
+    <Message Text="📦 🦓 Zebra rows support pridaný" Importance="high" />
     <Message Text="📦 🔒 Clean PUBLIC API (AdvancedDataGrid, ColumnDefinition, ValidationRule, ThrottlingConfig, DataGridColorConfig)" Importance="high" />
   </Target>
 

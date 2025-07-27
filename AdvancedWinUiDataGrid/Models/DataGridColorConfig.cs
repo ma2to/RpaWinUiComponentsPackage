@@ -9,6 +9,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// <summary>
     /// Individual color konfigurácia pre DataGrid - nastavuje sa iba pri inicializácii
     /// ✅ PUBLIC API - umožňuje nastaviť jednotlivé farby namiesto celých themes
+    /// 
+    /// POZNÁMKA: DataGridColorTheme a DataGridColorThemeBuilder sú teraz INTERNAL.
+    /// Táto trieda je nový PRIMARY PUBLIC API pre farby.
     /// </summary>
     public class DataGridColorConfig : INotifyPropertyChanged
     {

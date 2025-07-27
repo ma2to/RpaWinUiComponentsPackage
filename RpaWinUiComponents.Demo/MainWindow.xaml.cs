@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ pre DataGridColorConfig API
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ pre DataGridColorConfig API + Search/Sort
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -14,6 +14,7 @@ using PublicColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDe
 using PublicValidationRule = RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationRule;
 using PublicThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.ThrottlingConfig;
 using PublicDataGridColorConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorConfig;
+using PublicSortDirection = RpaWinUiComponents.AdvancedWinUiDataGrid.SortDirection;
 
 // ✅ Windows.UI.Color pre farby
 using Windows.UI;
@@ -49,9 +50,9 @@ namespace RpaWinUiComponents.Demo
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD a DataGridColorConfig...");
+                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD, DataGridColorConfig a Search/Sort...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.13...", "Načítava sa z Package Reference s AUTO-ADD a DataGridColorConfig...");
+                UpdateLoadingState("Inicializuje sa balík v1.0.16...", "Načítava sa z Package Reference s AUTO-ADD, DataGridColorConfig a Search/Sort...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
@@ -107,7 +108,7 @@ namespace RpaWinUiComponents.Demo
                 // ✅ KROK 4: Dokončenie inicializácie
                 CompleteInitialization();
 
-                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s AUTO-ADD a DataGridColorConfig!");
+                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s AUTO-ADD, DataGridColorConfig a Search/Sort!");
 
             }
             catch (Exception ex)
@@ -170,13 +171,13 @@ namespace RpaWinUiComponents.Demo
 
                 if (InitStatusText != null)
                 {
-                    InitStatusText.Text = "✅ AUTO-ADD + DataGridColorConfig Pripravené!";
+                    InitStatusText.Text = "✅ AUTO-ADD + DataGridColorConfig + Search/Sort Pripravené!";
                     InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 128, 0)); // Green
                 }
 
                 if (StatusTextBlock != null)
                 {
-                    StatusTextBlock.Text = "🔥 AUTO-ADD je aktívne! DataGridColorConfig nastavené! Vyplň posledný riadok → automaticky sa pridá nový! 🎉";
+                    StatusTextBlock.Text = "🔥 AUTO-ADD je aktívne! DataGridColorConfig nastavené! Search/Sort ready! Vyplň posledný riadok → automaticky sa pridá nový! 🎉";
                 }
             });
         }
@@ -300,15 +301,16 @@ namespace RpaWinUiComponents.Demo
                     HeaderTextColor = Color.FromArgb(255, 255, 255, 255),     // White
                     ValidationErrorColor = Color.FromArgb(255, 139, 0, 0),    // DarkRed
                     SelectionColor = Color.FromArgb(100, 255, 165, 0),        // Orange alpha
-                    EditingCellColor = Color.FromArgb(50, 255, 215, 0)        // Gold alpha
+                    EditingCellColor = Color.FromArgb(50, 255, 215, 0),       // Gold alpha
+                    AlternateRowColor = Color.FromArgb(30, 255, 200, 0)       // ✅ NOVÉ: Zebra effect
                 };
 
-                await InitializeDataGridWithColorConfig(customConfig, "Custom Orange DataGridColorConfig");
+                await InitializeDataGridWithColorConfig(customConfig, "Custom Orange DataGridColorConfig s Zebra");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Custom Orange DataGridColorConfig aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Custom Orange DataGridColorConfig s Zebra aplikované!";
 
-                System.Diagnostics.Debug.WriteLine("✅ Custom DataGridColorConfig úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Custom DataGridColorConfig s Zebra úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -340,6 +342,104 @@ namespace RpaWinUiComponents.Demo
                 System.Diagnostics.Debug.WriteLine($"❌ Chyba pri reset colors: {ex.Message}");
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = $"Chyba pri reset colors: {ex.Message}";
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Search & Sort Button Handlers
+
+        private async void OnTestSearchClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🔍 SEARCH TEST: Testuje sa search funkcionalita...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🔍 Search Test: Nastavujú sa filtre...";
+
+                // Demo search filters
+                DataGridControl.SetColumnSearchFilter("Meno", "Test");
+                DataGridControl.SetColumnSearchFilter("Email", "@test");
+
+                var hasActiveFilters = DataGridControl.HasActiveSearchFilters;
+                var searchStatus = DataGridControl.GetSearchSortStatus();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"🔍 Search filtre nastavené! Active: {hasActiveFilters}, Status: {searchStatus}";
+
+                System.Diagnostics.Debug.WriteLine($"✅ Search Test dokončený - Active filters: {hasActiveFilters}");
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Search test failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri search teste: {ex.Message}";
+            }
+        }
+
+        private async void OnTestSortClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("📊 SORT TEST: Testuje sa sort funkcionalita...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "📊 Sort Test: Toggleuje sa sort na 'Meno'...";
+
+                // Demo sort operations
+                var direction1 = DataGridControl.ToggleColumnSort("Meno"); // None → Ascending
+                await Task.Delay(500);
+
+                var direction2 = DataGridControl.ToggleColumnSort("Meno"); // Ascending → Descending
+                await Task.Delay(500);
+
+                var direction3 = DataGridControl.ToggleColumnSort("Meno"); // Descending → None
+
+                var hasActiveSort = DataGridControl.HasActiveSort;
+                var sortStatus = DataGridControl.GetSearchSortStatus();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"📊 Sort Test: {direction1} → {direction2} → {direction3}, Active: {hasActiveSort}";
+
+                System.Diagnostics.Debug.WriteLine($"✅ Sort Test dokončený - Directions: {direction1} → {direction2} → {direction3}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Sort test failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri sort teste: {ex.Message}";
+            }
+        }
+
+        private async void OnClearSearchSortClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🧹 CLEAR SEARCH/SORT: Čistia sa všetky filtre a sort...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🧹 Čistia sa search filtre a sort stavy...";
+
+                DataGridControl.ClearAllSearchFilters();
+                DataGridControl.ClearAllSorts();
+
+                var hasActiveFilters = DataGridControl.HasActiveSearchFilters;
+                var hasActiveSort = DataGridControl.HasActiveSort;
+                var status = DataGridControl.GetSearchSortStatus();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"🧹 Všetko vyčistené! Filters: {hasActiveFilters}, Sort: {hasActiveSort}, Status: {status}";
+
+                System.Diagnostics.Debug.WriteLine("✅ Search/Sort vyčistené");
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Clear search/sort failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri clear search/sort: {ex.Message}";
             }
         }
 
