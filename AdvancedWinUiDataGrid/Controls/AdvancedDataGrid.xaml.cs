@@ -58,6 +58,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         // ✅ OPRAVENÉ: DataGridColorConfig namiesto DataGridColorTheme
         private DataGridColorConfig? _individualColorConfig;
 
+        // ✅ NOVÉ: Search & Sort služba
+        private SearchAndSortService? _searchAndSortService;
+
         // ✅ Interné dáta pre AUTO-ADD
         private readonly List<Dictionary<string, object?>> _gridData = new();
         private readonly List<GridColumnDefinition> _columns = new();

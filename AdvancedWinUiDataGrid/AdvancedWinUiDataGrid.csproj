@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- ✅ OPRAVENÉ: Unified target framework - iba jeden formát -->
+    <!-- ✅ KĽÚČOVÁ OPRAVA NETSDK1152: Iba jeden unified target framework -->
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <UseWinUI>true</UseWinUI>
@@ -10,10 +10,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: XBF generation + Packaging fix -->
+    <!-- ✅ NETSDK1152 FIX: Force single TFM packaging -->
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <BuildOutputTargetFolder>lib</BuildOutputTargetFolder>
     <ContentTargetFolders>content</ContentTargetFolders>
+    <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
+    <NoBuild>false</NoBuild>
 
     <!-- ✅ XAML compilation -->
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
@@ -33,25 +35,25 @@
 
     <!-- ✅ Package Information - UPDATED -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.13</Version>
+    <Version>1.0.14</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
-    <Description>Profesionálny WinUI3 DataGrid komponent s AUTO-ADD funkciou, individual color config a NETSDK1152 fix</Description>
-    <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel;Auto-Add;ColorConfig;RealTime;XAML</PackageTags>
+    <Description>WinUI3 DataGrid s AUTO-ADD, Individual Colors, Search, Sorting - NETSDK1152 FIXED</Description>
+    <PackageTags>WinUI3;DataGrid;Auto-Add;Search;Sort;Colors;Validation;Excel;RealTime</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.13: NETSDK1152 fix + Individual Color Config + AUTO-ADD unified</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.14: NETSDK1152 FIXED + Individual Colors + Search/Sort + Zebra Rows</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
-    <AssemblyTitle>Advanced WinUI DataGrid Component with Individual Color Config</AssemblyTitle>
-    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 s AUTO-ADD a individual color config</AssemblyDescription>
+    <AssemblyTitle>WinUI3 DataGrid with Search, Sort, Colors - NETSDK1152 FIXED</AssemblyTitle>
+    <AssemblyDescription>DataGrid s AUTO-ADD, individual colors, search, sorting, zebra rows</AssemblyDescription>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: Potlač packaging warnings + duplicate warnings -->
-    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277</NoWarn>
+    <!-- ✅ NETSDK1152 FIX: Suppress all packaging conflicts -->
+    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277;NETSDK1152</NoWarn>
   </PropertyGroup>
 
   <!-- ✅ EXPLICITNÉ XAML súbory -->

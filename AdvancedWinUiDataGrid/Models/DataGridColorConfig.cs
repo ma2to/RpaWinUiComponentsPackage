@@ -1,4 +1,4 @@
-﻿// Models/DataGridColorConfig.cs - ✅ NOVÝ SÚBOR pre individual color settings
+﻿// Models/DataGridColorConfig.cs - ✅ NOVÝ PUBLIC API pre individual colors
 using Microsoft.UI;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -7,8 +7,8 @@ using Windows.UI;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Konfigurácia farieb pre DataGrid - nastavuje sa pri inicializácii - ✅ PUBLIC API
-    /// Umožňuje nastavovať jednotlivé farby namiesto predpripravených themes
+    /// Individual color konfigurácia pre DataGrid - nastavuje sa iba pri inicializácii
+    /// ✅ PUBLIC API - umožňuje nastaviť jednotlivé farby namiesto celých themes
     /// </summary>
     public class DataGridColorConfig : INotifyPropertyChanged
     {
@@ -21,13 +21,13 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private Color? _headerTextColor;
         private Color? _validationErrorColor;
         private Color? _selectionColor;
-        private Color? _alternateRowColor;
+        private Color? _alternateRowColor;  // ✅ NOVÉ: Pre zebra effect
         private Color? _hoverColor;
         private Color? _editingCellColor;
 
         #endregion
 
-        #region ✅ Optional Color Properties (null = použije sa default)
+        #region ✅ Individual Color Properties (null = default farba)
 
         /// <summary>
         /// Farba pozadia bunky (null = default)
@@ -93,7 +93,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// Farba alternatívnych riadkov - zebra effect (null = žiadny effect)
+        /// ✅ NOVÉ: Farba alternatívnych riadkov - zebra effect (null = žiadny effect)
         /// </summary>
         public Color? AlternateRowColor
         {
@@ -121,118 +121,64 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Default Values (používajú sa ak nie je nastavená custom farba)
-
-        /// <summary>
-        /// Získa default farbu pre CellBackground
-        /// </summary>
-        public static Color GetDefaultCellBackgroundColor() => Colors.White;
-
-        /// <summary>
-        /// Získa default farbu pre CellBorder
-        /// </summary>
-        public static Color GetDefaultCellBorderColor() => Colors.LightGray;
-
-        /// <summary>
-        /// Získa default farbu pre CellText
-        /// </summary>
-        public static Color GetDefaultCellTextColor() => Colors.Black;
-
-        /// <summary>
-        /// Získa default farbu pre HeaderBackground
-        /// </summary>
-        public static Color GetDefaultHeaderBackgroundColor() => Color.FromArgb(255, 240, 240, 240);
-
-        /// <summary>
-        /// Získa default farbu pre HeaderText
-        /// </summary>
-        public static Color GetDefaultHeaderTextColor() => Colors.Black;
-
-        /// <summary>
-        /// Získa default farbu pre ValidationError
-        /// </summary>
-        public static Color GetDefaultValidationErrorColor() => Colors.Red;
-
-        /// <summary>
-        /// Získa default farbu pre Selection
-        /// </summary>
-        public static Color GetDefaultSelectionColor() => Color.FromArgb(100, 0, 120, 215);
-
-        /// <summary>
-        /// Získa default farbu pre AlternateRow
-        /// </summary>
-        public static Color GetDefaultAlternateRowColor() => Color.FromArgb(20, 0, 0, 0);
-
-        /// <summary>
-        /// Získa default farbu pre Hover
-        /// </summary>
-        public static Color GetDefaultHoverColor() => Color.FromArgb(50, 0, 120, 215);
-
-        /// <summary>
-        /// Získa default farbu pre EditingCell
-        /// </summary>
-        public static Color GetDefaultEditingCellColor() => Color.FromArgb(30, 255, 255, 0);
-
-        #endregion
-
         #region ✅ Resolved Colors (vráti custom color alebo default)
 
         /// <summary>
         /// Vráti skutočnú farbu pre CellBackground (custom alebo default)
         /// </summary>
-        public Color ResolvedCellBackgroundColor => CellBackgroundColor ?? GetDefaultCellBackgroundColor();
+        public Color ResolvedCellBackgroundColor => CellBackgroundColor ?? Colors.White;
 
         /// <summary>
         /// Vráti skutočnú farbu pre CellBorder (custom alebo default)
         /// </summary>
-        public Color ResolvedCellBorderColor => CellBorderColor ?? GetDefaultCellBorderColor();
+        public Color ResolvedCellBorderColor => CellBorderColor ?? Colors.LightGray;
 
         /// <summary>
         /// Vráti skutočnú farbu pre CellText (custom alebo default)
         /// </summary>
-        public Color ResolvedCellTextColor => CellTextColor ?? GetDefaultCellTextColor();
+        public Color ResolvedCellTextColor => CellTextColor ?? Colors.Black;
 
         /// <summary>
         /// Vráti skutočnú farbu pre HeaderBackground (custom alebo default)
         /// </summary>
-        public Color ResolvedHeaderBackgroundColor => HeaderBackgroundColor ?? GetDefaultHeaderBackgroundColor();
+        public Color ResolvedHeaderBackgroundColor => HeaderBackgroundColor ?? Color.FromArgb(255, 240, 240, 240);
 
         /// <summary>
         /// Vráti skutočnú farbu pre HeaderText (custom alebo default)
         /// </summary>
-        public Color ResolvedHeaderTextColor => HeaderTextColor ?? GetDefaultHeaderTextColor();
+        public Color ResolvedHeaderTextColor => HeaderTextColor ?? Colors.Black;
 
         /// <summary>
         /// Vráti skutočnú farbu pre ValidationError (custom alebo default)
         /// </summary>
-        public Color ResolvedValidationErrorColor => ValidationErrorColor ?? GetDefaultValidationErrorColor();
+        public Color ResolvedValidationErrorColor => ValidationErrorColor ?? Colors.Red;
 
         /// <summary>
         /// Vráti skutočnú farbu pre Selection (custom alebo default)
         /// </summary>
-        public Color ResolvedSelectionColor => SelectionColor ?? GetDefaultSelectionColor();
+        public Color ResolvedSelectionColor => SelectionColor ?? Color.FromArgb(100, 0, 120, 215);
 
         /// <summary>
-        /// Vráti skutočnú farbu pre AlternateRow (custom alebo default)
+        /// ✅ NOVÉ: Vráti skutočnú farbu pre AlternateRow (custom alebo default)
         /// </summary>
-        public Color ResolvedAlternateRowColor => AlternateRowColor ?? GetDefaultAlternateRowColor();
+        public Color ResolvedAlternateRowColor => AlternateRowColor ?? Color.FromArgb(20, 0, 0, 0);
 
         /// <summary>
         /// Vráti skutočnú farbu pre Hover (custom alebo default)
         /// </summary>
-        public Color ResolvedHoverColor => HoverColor ?? GetDefaultHoverColor();
+        public Color ResolvedHoverColor => HoverColor ?? Color.FromArgb(50, 0, 120, 215);
 
         /// <summary>
         /// Vráti skutočnú farbu pre EditingCell (custom alebo default)
         /// </summary>
-        public Color ResolvedEditingCellColor => EditingCellColor ?? GetDefaultEditingCellColor();
+        public Color ResolvedEditingCellColor => EditingCellColor ?? Color.FromArgb(30, 255, 255, 0);
 
         #endregion
 
         #region ✅ Helper Methods
 
         /// <summary>
-        /// Skontroluje či má nastavenú nejakú custom farbu
+        /// Skontroluje či má nastavené nejaké custom farby
         /// </summary>
         public bool HasAnyCustomColors =>
             CellBackgroundColor.HasValue || CellBorderColor.HasValue || CellTextColor.HasValue ||
@@ -303,7 +249,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             CellTextColor = Colors.Black,
             HeaderBackgroundColor = Color.FromArgb(255, 240, 240, 240),
             HeaderTextColor = Colors.Black,
-            ValidationErrorColor = Colors.Red
+            ValidationErrorColor = Colors.Red,
+            AlternateRowColor = Color.FromArgb(10, 0, 0, 0) // Jemný zebra effect
         };
 
         /// <summary>
@@ -316,7 +263,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             CellTextColor = Colors.White,
             HeaderBackgroundColor = Color.FromArgb(255, 48, 48, 48),
             HeaderTextColor = Colors.White,
-            ValidationErrorColor = Color.FromArgb(255, 255, 100, 100)
+            ValidationErrorColor = Color.FromArgb(255, 255, 100, 100),
+            AlternateRowColor = Color.FromArgb(20, 255, 255, 255) // Jemný zebra effect
         };
 
         /// <summary>
@@ -328,7 +276,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             CellBorderColor = Color.FromArgb(255, 200, 220, 255),
             CellTextColor = Color.FromArgb(255, 20, 40, 80),
             HeaderBackgroundColor = Color.FromArgb(255, 230, 240, 255),
-            HeaderTextColor = Color.FromArgb(255, 20, 40, 80)
+            HeaderTextColor = Color.FromArgb(255, 20, 40, 80),
+            AlternateRowColor = Color.FromArgb(15, 0, 100, 200) // Jemný zebra effect
         };
 
         #endregion
@@ -354,7 +303,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         public override string ToString()
         {
-            return $"DataGridColorConfig: {CustomColorsCount}/10 custom colors set, HasCustom: {HasAnyCustomColors}";
+            return $"DataGridColorConfig: {CustomColorsCount}/10 custom colors, Zebra: {AlternateRowColor.HasValue}";
         }
     }
 }
