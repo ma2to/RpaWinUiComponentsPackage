@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ Individual Color Config (nie themes)
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ pre DataGridColorConfig ako PRIMARY PUBLIC API
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -22,7 +22,7 @@ using GridThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.Throttling
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// AdvancedDataGrid komponent s AUTO-ADD a Individual Color Config - ✅ PUBLIC API
+    /// AdvancedDataGrid komponent s AUTO-ADD a DataGridColorConfig - ✅ PUBLIC API
     /// 
     /// AUTO-ADD funkcionalita:
     /// - initialRowCount = minimumRowCount (vždy rovnaké číslo zadané v emptyRowsCount)
@@ -32,14 +32,14 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     /// - Pri vyplnení posledného riadku: Automaticky pridá nový prázdny riadok
     /// - Pri mazaní: Ak je nad zadaný počet → fyzicky zmaže, ak je na zadanom počte → iba vyčistí obsah
     /// 
-    /// Individual Color Config:
-    /// - Farby sa nastavujú iba pri inicializácii cez InitializeAsync
+    /// DataGridColorConfig:
+    /// - Individual farby sa nastavujú iba pri inicializácii cez InitializeAsync
     /// - Ak sa nenastavujú, používajú sa default farby
-    /// - Žiadne runtime theme switching
+    /// - Žiadne runtime color switching
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
-        #region Private Fields - ✅ AUTO-ADD + Individual Colors
+        #region Private Fields - ✅ AUTO-ADD + DataGridColorConfig
 
         private IServiceProvider? _serviceProvider;
         private ILogger<AdvancedDataGrid>? _logger;
@@ -55,8 +55,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private int _unifiedRowCount = 15; // ✅ initialRowCount = minimumRowCount (vždy rovnaké)
         private bool _autoAddEnabled = true;
 
-        // ✅ NOVÉ: Individual color configuration (nastavuje sa iba pri inicializácii)
-        private DataGridColorTheme? _individualColors;
+        // ✅ OPRAVENÉ: DataGridColorConfig namiesto DataGridColorTheme
+        private DataGridColorConfig? _individualColorConfig;
 
         // ✅ Interné dáta pre AUTO-ADD
         private readonly List<Dictionary<string, object?>> _gridData = new();
@@ -70,7 +70,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔧 AdvancedDataGrid: Začína inicializácia s AUTO-ADD a Individual Color Config...");
+                System.Diagnostics.Debug.WriteLine("🔧 AdvancedDataGrid: Začína inicializácia s AUTO-ADD a DataGridColorConfig...");
 
                 // ✅ Bezpečná XAML inicializácia
                 InitializeXamlSafely();
@@ -200,10 +200,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ PUBLIC API Methods s AUTO-ADD a Individual Color Config
+        #region ✅ PUBLIC API Methods s AUTO-ADD a DataGridColorConfig
 
         /// <summary>
-        /// Inicializuje DataGrid s konfiguráciou - ✅ s AUTO-ADD a Individual Color Config
+        /// Inicializuje DataGrid s konfiguráciou - ✅ s AUTO-ADD a DataGridColorConfig
         /// </summary>
         /// <param name="columns">Definície stĺpcov</param>
         /// <param name="validationRules">Validačné pravidlá</param>
@@ -215,7 +215,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             List<GridValidationRule> validationRules,
             GridThrottlingConfig throttlingConfig,
             int emptyRowsCount = 15,
-            DataGridColorTheme? colorConfig = null)
+            DataGridColorConfig? colorConfig = null)
         {
             try
             {
@@ -228,7 +228,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 if (!_xamlLoadFailed)
                 {
-                    ShowLoadingState("Inicializuje sa DataGrid s AUTO-ADD a Individual Color Config...");
+                    ShowLoadingState("Inicializuje sa DataGrid s AUTO-ADD a DataGridColorConfig...");
                 }
 
                 // ✅ AUTO-ADD: Iba jedna hodnota pre oba koncepty
@@ -237,16 +237,16 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 _logger?.LogInformation("AUTO-ADD: Nastavený počet riadkov = {RowCount} (rovnaký pre initial aj minimum)", _unifiedRowCount);
 
-                // ✅ Individual color configuration - nastavuje sa iba pri inicializácii
-                _individualColors = colorConfig?.Clone() ?? DataGridColorTheme.Light; // Default Light theme
+                // ✅ OPRAVENÉ: DataGridColorConfig namiesto DataGridColorTheme
+                _individualColorConfig = colorConfig?.Clone() ?? DataGridColorConfig.Light; // Default Light colors
                 if (colorConfig != null)
                 {
-                    _logger?.LogInformation("Individual Color Config: Custom colors set pri inicializácii");
-                    ApplyIndividualColorsToUI();
+                    _logger?.LogInformation("DataGridColorConfig: Custom colors set pri inicializácii");
+                    ApplyColorConfigToUI();
                 }
                 else
                 {
-                    _logger?.LogInformation("Individual Color Config: Using default Light colors");
+                    _logger?.LogInformation("DataGridColorConfig: Using default Light colors");
                 }
 
                 // Ulož columns pre neskoršie použitie
@@ -289,7 +289,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                     HideLoadingState();
                 }
 
-                _logger?.LogInformation("AUTO-ADD: DataGrid úspešne inicializovaný s {RowCount} riadkami (initial=minimum), Individual colors: {HasColors}",
+                _logger?.LogInformation("AUTO-ADD: DataGrid úspešne inicializovaný s {RowCount} riadkami (initial=minimum), ColorConfig: {HasColors}",
                     _unifiedRowCount, colorConfig != null);
             }
             catch (Exception ex)
@@ -455,23 +455,23 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Individual Color Configuration (nastavuje sa iba pri inicializácii)
+        #region ✅ OPRAVENÉ: DataGridColorConfig Configuration (nastavuje sa iba pri inicializácii)
 
         /// <summary>
-        /// Aktuálna individual color configuration (read-only po inicializácii)
+        /// Aktuálna DataGridColorConfig (read-only po inicializácii)
         /// </summary>
-        public DataGridColorTheme? IndividualColors => _individualColors?.Clone();
+        public DataGridColorConfig? ColorConfig => _individualColorConfig?.Clone();
 
         /// <summary>
-        /// Aplikuje individual colors na UI elementy (internal použitie)
+        /// Aplikuje DataGridColorConfig na UI elementy (internal použitie)
         /// </summary>
-        private void ApplyIndividualColorsToUI()
+        private void ApplyColorConfigToUI()
         {
             try
             {
-                if (_individualColors == null || _xamlLoadFailed) return;
+                if (_individualColorConfig == null || _xamlLoadFailed) return;
 
-                _logger?.LogDebug("Individual Color Config aplikovaná na UI elementy");
+                _logger?.LogDebug("DataGridColorConfig aplikovaná na UI elementy");
 
                 // TODO: Aplikovať individual colors na konkrétne UI elementy
                 // Toto by sa malo implementovať v UI layer - nastaviť brushes na UI elementoch
@@ -479,7 +479,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Chyba pri aplikovaní individual color config na UI");
+                _logger?.LogError(ex, "Chyba pri aplikovaní DataGridColorConfig na UI");
             }
         }
 
@@ -744,7 +744,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <summary>
         /// Diagnostické info o stave komponentu
         /// </summary>
-        public string DiagnosticInfo => $"Initialized: {_isInitialized}, XAML: {!_xamlLoadFailed}, Auto-Add: {_autoAddEnabled}, Unified-RowCount: {_unifiedRowCount}, Data-Rows: {_gridData.Count}, Individual-Colors: {_individualColors != null}";
+        public string DiagnosticInfo => $"Initialized: {_isInitialized}, XAML: {!_xamlLoadFailed}, Auto-Add: {_autoAddEnabled}, Unified-RowCount: {_unifiedRowCount}, Data-Rows: {_gridData.Count}, ColorConfig: {_individualColorConfig != null}";
 
         /// <summary>
         /// AUTO-ADD status

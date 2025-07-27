@@ -1,4 +1,4 @@
-﻿// Models/DataGridColorTheme.cs - ✅ NOVÝ SÚBOR
+﻿// Models/DataGridColorTheme.cs - ✅ OPRAVENÝ na INTERNAL
 using Microsoft.UI;
 using System;
 using System.ComponentModel;
@@ -8,10 +8,10 @@ using Windows.UI;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Definuje color theme pre DataGrid komponent - PUBLIC API
-    /// Umožňuje customizáciu všetkých farieb v komponente
+    /// ✅ INTERNAL: Stará implementácia color themes - NAHRADENÁ DataGridColorConfig
+    /// Ponechaná pre backward compatibility ale nie je súčasťou PUBLIC API
     /// </summary>
-    public class DataGridColorTheme : INotifyPropertyChanged
+    internal class DataGridColorTheme : INotifyPropertyChanged
     {
         #region Private Fields
 
@@ -271,9 +271,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     }
 
     /// <summary>
-    /// Builder pattern pre jednoduchšie vytváranie custom color themes
+    /// ✅ INTERNAL: Builder pattern pre DataGridColorTheme (NAHRADENÉ DataGridColorConfig)
     /// </summary>
-    public class DataGridColorThemeBuilder
+    internal class DataGridColorThemeBuilder
     {
         private readonly DataGridColorTheme _theme = new();
 

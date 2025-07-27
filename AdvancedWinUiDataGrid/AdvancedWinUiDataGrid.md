@@ -330,6 +330,176 @@ services.AddSingleton<IDataManagementService, DataManagementService>();
 services.AddSingleton<ICopyPasteService, CopyPasteService>();
 services.AddTransient<IExportService, ExportService>();
 
+# ✅ OPRAVENÉ: PUBLIC API definícia - DataGridColorConfig
+
+## 🔒 Accessibility Rules - KRITICKÉ!
+
+### PUBLIC API (iba tieto triedy)
+```csharp
+✅ AdvancedDataGrid           // Hlavný komponent
+✅ ColumnDefinition           // Definícia stĺpca  
+✅ ValidationRule             // Validačné pravidlá
+✅ ThrottlingConfig           // Throttling nastavenia
+✅ DataGridColorConfig        // Individual color configuration ⭐ NOVÉ
+```
+
+### INTERNAL (všetko ostatné)
+```csharp
+❌ Všetky Services, Models, Utilities
+❌ Všetky Interfaces  
+❌ Všetky Helper triedy
+❌ Všetky Extension metódy
+❌ Všetky implementation detaily
+❌ DataGridColorTheme + DataGridColorThemeBuilder  // ✅ OPRAVENÉ: Teraz INTERNAL
+```
+
+## 🎨 DataGridColorConfig API (NOVÉ)
+
+**Individual color configuration** - umožňuje nastaviť jednotlivé farby pri inicializácii DataGrid komponentu.
+
+### ✅ Použitie v aplikácii
+
+```csharp
+// 1. Bez custom farieb (default Light farby)
+await DataGridControl.InitializeAsync(columns, rules, throttling, 15, null);
+
+// 2. S predpripravenými farbami
+await DataGridControl.InitializeAsync(columns, rules, throttling, 15, DataGridColorConfig.Light);
+await DataGridControl.InitializeAsync(columns, rules, throttling, 15, DataGridColorConfig.Dark);
+await DataGridControl.InitializeAsync(columns, rules, throttling, 15, DataGridColorConfig.Blue);
+
+// 3. S custom farbami
+var customColors = new DataGridColorConfig
+{
+    CellBackgroundColor = Color.FromArgb(255, 255, 255, 224), // LightYellow
+    CellBorderColor = Color.FromArgb(255, 255, 165, 0),       // Orange
+    CellTextColor = Color.FromArgb(255, 0, 0, 139),           // DarkBlue
+    HeaderBackgroundColor = Color.FromArgb(255, 255, 165, 0), // Orange
+    HeaderTextColor = Color.FromArgb(255, 255, 255, 255),     // White
+    ValidationErrorColor = Color.FromArgb(255, 139, 0, 0),    // DarkRed
+    SelectionColor = Color.FromArgb(100, 255, 165, 0),        // Orange alpha
+    EditingCellColor = Color.FromArgb(50, 255, 215, 0)        // Gold alpha
+};
+
+await DataGridControl.InitializeAsync(columns, rules, throttling, 15, customColors);
+```
+
+### 🔧 DataGridColorConfig Properties
+
+```csharp
+public class DataGridColorConfig
+{
+    // ✅ Optional Color Properties (null = použije sa default)
+    public Color? CellBackgroundColor { get; set; }      // Farba pozadia bunky
+    public Color? CellBorderColor { get; set; }          // Farba okraja bunky
+    public Color? CellTextColor { get; set; }            // Farba textu v bunke
+    public Color? HeaderBackgroundColor { get; set; }    // Farba pozadia header-u
+    public Color? HeaderTextColor { get; set; }          // Farba textu header-u
+    public Color? ValidationErrorColor { get; set; }     // Farba validačných chýb (červené orámovanie)
+    public Color? SelectionColor { get; set; }           // Farba označenia buniek
+    public Color? AlternateRowColor { get; set; }        // Farba alternatívnych riadkov (zebra effect)
+    public Color? HoverColor { get; set; }               // Farba pri hover nad bunkou
+    public Color? EditingCellColor { get; set; }         // Farba bunky ktorá sa edituje
+    
+    // ✅ Helper methods
+    public bool HasAnyCustomColors { get; }              // Skontroluje či má nastavené custom farby
+    public int CustomColorsCount { get; }                // Počet nastavených custom farieb
+    public DataGridColorConfig Clone();                  // Vytvorí kópiu
+    public void ResetToDefaults();                       // Resetuje všetky farby na default (null)
+    
+    // ✅ Static factory methods
+    public static DataGridColorConfig Default { get; }   // Všetky farby null (použijú sa defaults)
+    public static DataGridColorConfig Light { get; }     // Light color scheme
+    public static DataGridColorConfig Dark { get; }      // Dark color scheme
+    public static DataGridColorConfig Blue { get; }      // Blue color scheme
+}
+```
+
+### ⚡ AUTO-ADD Funkcionalita
+
+```csharp
+// ✅ inicialRowCount = minimumRowCount (vždy rovnaké číslo)
+await DataGridControl.InitializeAsync(columns, rules, throttling, emptyRowsCount: 5);
+
+// Ak emptyRowsCount nenastavíš → default 15
+await DataGridControl.InitializeAsync(columns, rules, throttling); // 15 riadkov default
+```
+
+**AUTO-ADD logika:**
+- ✅ Ak načítaš **viac dát** ako `emptyRowsCount` → vytvorí potrebné riadky + **1 prázdny**
+- ✅ Ak načítaš **menej dát** ako `emptyRowsCount` → bude mať `emptyRowsCount` riadkov + **1 prázdny** 
+- ✅ **Vždy zostane aspoň jeden prázdny riadok** na konci
+- ✅ Pri vyplnení posledného riadku → **automaticky pridá nový prázdny**
+- ✅ Pri mazaní: Ak je **nad** `emptyRowsCount` → **fyzicky zmaže**, ak je **na** `emptyRowsCount` → **iba vyčistí obsah**
+
+### 🎯 InitializeAsync Signature
+
+```csharp
+public async Task InitializeAsync(
+    List<ColumnDefinition> columns,                    // Definície stĺpcov
+    List<ValidationRule> validationRules,              // Validačné pravidlá
+    ThrottlingConfig throttlingConfig,                 // Throttling konfigurácia
+    int emptyRowsCount = 15,                           // ✅ initialRowCount = minimumRowCount (unified)
+    DataGridColorConfig? colorConfig = null            // ✅ Individual color config (optional)
+);
+```
+
+## 🚨 Dôležité zmeny
+
+### ✅ OPRAVENÉ CS1503 chyby
+- **DataGridColorTheme** → **INTERNAL** (nie PUBLIC)
+- **DataGridColorConfig** → **PUBLIC** (primary API)
+- **MainWindow.xaml.cs** → používa **DataGridColorConfig**
+- **AdvancedDataGrid.xaml.cs** → používa **DataGridColorConfig**
+
+### ✅ Jednotný workflow
+1. **Vytvoríš DataGridColorConfig** (alebo použiješ predpripravené)
+2. **Zavoláš InitializeAsync** s colorConfig parametrom
+3. **Farby sa nastavia iba pri inicializácii** (žiadne runtime switching)
+4. **Ak colorConfig je null** → použijú sa default Light farby
+
+### ✅ Clean PUBLIC API
+```csharp
+// ✅ Tieto triedy sú PUBLIC a môžeš ich importovať:
+using RpaWinUiComponents.AdvancedWinUiDataGrid;
+
+var grid = new AdvancedDataGrid();
+var column = new ColumnDefinition("Name", typeof(string));
+var rule = ValidationRule.Required("Name", "Required");
+var throttling = ThrottlingConfig.Default;
+var colors = new DataGridColorConfig();
+
+// ❌ Tieto sú INTERNAL - nemôžeš ich priamo použiť:
+// var service = new DataManagementService(); // COMPILER ERROR
+// var theme = new DataGridColorTheme();       // COMPILER ERROR
+```
+
+## 📋 Migration Guide
+
+Ak si predtým používal **DataGridColorTheme**:
+
+```csharp
+// ❌ STARÉ (už INTERNAL):
+var theme = DataGridColorThemeBuilder.Create()
+    .WithCellBackground(Colors.Yellow)
+    .Build();
+
+// ✅ NOVÉ (PUBLIC API):
+var config = new DataGridColorConfig
+{
+    CellBackgroundColor = Colors.Yellow
+};
+```
+
+## 🎉 Výsledok
+
+- ✅ **CS1503 chyba opravená**
+- ✅ **Clean PUBLIC API** - iba 5 PUBLIC tried
+- ✅ **DataGridColorConfig** ako primary color API
+- ✅ **AUTO-ADD** plne funkčné s unified row count
+- ✅ **Package Reference** testovanie funkčné
+- ✅ **Individual colors** nastaviteľné pri inicializácii
+
 🔒 Accessibility & Security
 PUBLIC vs INTERNAL API
 Iba tieto triedy sú PUBLIC:

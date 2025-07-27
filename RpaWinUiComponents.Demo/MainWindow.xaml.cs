@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ Individual Color Config
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ pre DataGridColorConfig API
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -13,8 +13,7 @@ using RpaWinUiComponents.AdvancedWinUiDataGrid;
 using PublicColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDefinition;
 using PublicValidationRule = RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationRule;
 using PublicThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.ThrottlingConfig;
-using PublicDataGridColorTheme = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorTheme;
-using PublicDataGridColorThemeBuilder = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorThemeBuilder;
+using PublicDataGridColorConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorConfig;
 
 // ✅ Windows.UI.Color pre farby
 using Windows.UI;
@@ -50,9 +49,9 @@ namespace RpaWinUiComponents.Demo
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD a Individual Color Config...");
+                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD a DataGridColorConfig...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.13...", "Načítava sa z Package Reference s AUTO-ADD a Individual Colors...");
+                UpdateLoadingState("Inicializuje sa balík v1.0.13...", "Načítava sa z Package Reference s AUTO-ADD a DataGridColorConfig...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
@@ -87,8 +86,8 @@ namespace RpaWinUiComponents.Demo
                 _baseThrottlingConfig = PublicThrottlingConfig.Default;
                 _baseRowCount = 5;
 
-                // ✅ KROK 2: Inicializácia s default Light colors
-                await InitializeDataGridWithColors(null, "default Light colors");
+                // ✅ KROK 2: Inicializácia s default colors
+                await InitializeDataGridWithColorConfig(null, "default colors");
 
                 // ✅ KROK 3: Načítanie testových dát s AUTO-ADD demonstráciou
                 UpdateLoadingState("Načítavajú sa AUTO-ADD demo dáta...", "Pripravujú sa záznamy pre auto-add test...");
@@ -108,7 +107,7 @@ namespace RpaWinUiComponents.Demo
                 // ✅ KROK 4: Dokončenie inicializácie
                 CompleteInitialization();
 
-                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s AUTO-ADD a Individual Color Config!");
+                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s AUTO-ADD a DataGridColorConfig!");
 
             }
             catch (Exception ex)
@@ -120,20 +119,20 @@ namespace RpaWinUiComponents.Demo
             }
         }
 
-        #region ✅ NOVÉ: Individual Color Config Helper Metódy
+        #region ✅ OPRAVENÉ: DataGridColorConfig Helper Metódy
 
         /// <summary>
         /// Inicializuje DataGrid s určitými farbami
         /// </summary>
-        private async Task InitializeDataGridWithColors(PublicDataGridColorTheme? colorTheme, string colorDescription)
+        private async Task InitializeDataGridWithColorConfig(PublicDataGridColorConfig? colorConfig, string colorDescription)
         {
             try
             {
-                UpdateLoadingState($"Inicializuje sa DataGrid s {colorDescription}...", "Volám InitializeAsync s individual colors...");
+                UpdateLoadingState($"Inicializuje sa DataGrid s {colorDescription}...", "Volám InitializeAsync s DataGridColorConfig...");
                 await Task.Delay(200);
 
                 System.Diagnostics.Debug.WriteLine($"🔧 Volám InitializeAsync s {colorDescription}...");
-                await DataGridControl.InitializeAsync(_baseColumns, _baseValidationRules, _baseThrottlingConfig, _baseRowCount, colorTheme);
+                await DataGridControl.InitializeAsync(_baseColumns, _baseValidationRules, _baseThrottlingConfig, _baseRowCount, colorConfig);
                 System.Diagnostics.Debug.WriteLine($"✅ InitializeAsync dokončené s {colorDescription}");
             }
             catch (Exception ex)
@@ -171,13 +170,13 @@ namespace RpaWinUiComponents.Demo
 
                 if (InitStatusText != null)
                 {
-                    InitStatusText.Text = "✅ AUTO-ADD + Individual Colors Pripravené!";
+                    InitStatusText.Text = "✅ AUTO-ADD + DataGridColorConfig Pripravené!";
                     InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 128, 0)); // Green
                 }
 
                 if (StatusTextBlock != null)
                 {
-                    StatusTextBlock.Text = "🔥 AUTO-ADD je aktívne! Individual colors nastavené! Vyplň posledný riadok → automaticky sa pridá nový! 🎉";
+                    StatusTextBlock.Text = "🔥 AUTO-ADD je aktívne! DataGridColorConfig nastavené! Vyplň posledný riadok → automaticky sa pridá nový! 🎉";
                 }
             });
         }
@@ -202,25 +201,25 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ OPRAVENÉ: Individual Color Config Button Handlers (cez reinicializáciu)
+        #region ✅ OPRAVENÉ: DataGridColorConfig Button Handlers (cez reinicializáciu)
 
         private async void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Light Individual Colors...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Light DataGridColorConfig...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Light Individual Colors...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Light DataGridColorConfig...";
 
-                // ✅ Light colors
-                var lightColors = PublicDataGridColorTheme.Light;
-                await InitializeDataGridWithColors(lightColors, "Light Individual Colors");
+                // ✅ Light colors pomocou DataGridColorConfig.Light
+                var lightConfig = PublicDataGridColorConfig.Light;
+                await InitializeDataGridWithColorConfig(lightConfig, "Light DataGridColorConfig");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Light Individual Colors aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Light DataGridColorConfig aplikované cez reinicializáciu";
 
-                System.Diagnostics.Debug.WriteLine("✅ Light Individual Colors úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Light DataGridColorConfig úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -234,19 +233,19 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Dark Individual Colors...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Dark DataGridColorConfig...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Dark Individual Colors...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Dark DataGridColorConfig...";
 
-                // ✅ Dark colors
-                var darkColors = PublicDataGridColorTheme.Dark;
-                await InitializeDataGridWithColors(darkColors, "Dark Individual Colors");
+                // ✅ Dark colors pomocou DataGridColorConfig.Dark
+                var darkConfig = PublicDataGridColorConfig.Dark;
+                await InitializeDataGridWithColorConfig(darkConfig, "Dark DataGridColorConfig");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Dark Individual Colors aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Dark DataGridColorConfig aplikované cez reinicializáciu";
 
-                System.Diagnostics.Debug.WriteLine("✅ Dark Individual Colors úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Dark DataGridColorConfig úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -260,19 +259,19 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Blue Individual Colors...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Blue DataGridColorConfig...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Blue Individual Colors...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Blue DataGridColorConfig...";
 
-                // ✅ Blue colors
-                var blueColors = PublicDataGridColorTheme.Blue;
-                await InitializeDataGridWithColors(blueColors, "Blue Individual Colors");
+                // ✅ Blue colors pomocou DataGridColorConfig.Blue
+                var blueConfig = PublicDataGridColorConfig.Blue;
+                await InitializeDataGridWithColorConfig(blueConfig, "Blue DataGridColorConfig");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Blue Individual Colors aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Blue DataGridColorConfig aplikované cez reinicializáciu";
 
-                System.Diagnostics.Debug.WriteLine("✅ Blue Individual Colors úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Blue DataGridColorConfig úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -286,29 +285,30 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Custom Individual Colors...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Custom DataGridColorConfig...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Custom Individual Colors...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Custom DataGridColorConfig...";
 
-                // ✅ Custom colors pomocou PUBLIC DataGridColorThemeBuilder
-                var customColors = PublicDataGridColorThemeBuilder.Create()
-                    .WithCellBackground(Color.FromArgb(255, 255, 255, 224)) // LightYellow
-                    .WithCellBorder(Color.FromArgb(255, 255, 165, 0))       // Orange
-                    .WithCellText(Color.FromArgb(255, 0, 0, 139))           // DarkBlue
-                    .WithHeaderBackground(Color.FromArgb(255, 255, 165, 0)) // Orange
-                    .WithHeaderText(Color.FromArgb(255, 255, 255, 255))     // White
-                    .WithValidationError(Color.FromArgb(255, 139, 0, 0))    // DarkRed
-                    .WithSelection(Color.FromArgb(100, 255, 165, 0))        // Orange alpha
-                    .WithEditingCell(Color.FromArgb(50, 255, 215, 0))       // Gold alpha
-                    .Build();
+                // ✅ Custom colors pomocou DataGridColorConfig (vytvor custom inštanciu)
+                var customConfig = new PublicDataGridColorConfig
+                {
+                    CellBackgroundColor = Color.FromArgb(255, 255, 255, 224), // LightYellow
+                    CellBorderColor = Color.FromArgb(255, 255, 165, 0),       // Orange
+                    CellTextColor = Color.FromArgb(255, 0, 0, 139),           // DarkBlue
+                    HeaderBackgroundColor = Color.FromArgb(255, 255, 165, 0), // Orange
+                    HeaderTextColor = Color.FromArgb(255, 255, 255, 255),     // White
+                    ValidationErrorColor = Color.FromArgb(255, 139, 0, 0),    // DarkRed
+                    SelectionColor = Color.FromArgb(100, 255, 165, 0),        // Orange alpha
+                    EditingCellColor = Color.FromArgb(50, 255, 215, 0)        // Gold alpha
+                };
 
-                await InitializeDataGridWithColors(customColors, "Custom Orange Individual Colors");
+                await InitializeDataGridWithColorConfig(customConfig, "Custom Orange DataGridColorConfig");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Custom Orange Individual Colors aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Custom Orange DataGridColorConfig aplikované cez reinicializáciu";
 
-                System.Diagnostics.Debug.WriteLine("✅ Custom Individual Colors úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Custom DataGridColorConfig úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -322,18 +322,18 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na default Individual Colors...");
+                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na default DataGridColorConfig...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Resetuje sa na default Individual Colors...";
+                    StatusTextBlock.Text = "Resetuje sa na default DataGridColorConfig...";
 
-                // ✅ Reset na default (Light)
-                await InitializeDataGridWithColors(null, "default Light Individual Colors");
+                // ✅ Reset na default (null = použije default colors)
+                await InitializeDataGridWithColorConfig(null, "default DataGridColorConfig");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔄 Reset na default Light Individual Colors cez reinicializáciu";
+                    StatusTextBlock.Text = "🔄 Reset na default DataGridColorConfig cez reinicializáciu";
 
-                System.Diagnostics.Debug.WriteLine("✅ Individual Colors úspešne resetované");
+                System.Diagnostics.Debug.WriteLine("✅ DataGridColorConfig úspešne resetované");
             }
             catch (Exception ex)
             {
@@ -421,7 +421,7 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ OPRAVENÉ: Test Button Handlers
+        #region ✅ Test Button Handlers
 
         private async void OnTestRealtimeValidationClick(object sender, RoutedEventArgs e)
         {
