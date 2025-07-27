@@ -24,6 +24,7 @@ namespace RpaWinUiComponents.Demo
     public sealed partial class MainWindow : Window
     {
         private bool _isInitialized = false;
+        private AdvancedDataGrid? _dataGridControl; // ✅ NOVÉ: Programmaticky vytvorený DataGrid
 
         public MainWindow()
         {

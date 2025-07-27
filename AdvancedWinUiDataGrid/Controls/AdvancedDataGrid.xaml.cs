@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s Auto-Add funkcionalitou
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s Auto-Add funkcionalitou a XAML fix
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -63,6 +63,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("🔧 AdvancedDataGrid: Začína inicializácia...");
+
+                // ✅ OPRAVA: Najprv inicializuj XAML, potom DI
+                this.InitializeComponent();
+                System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid: XAML InitializeComponent úspešne dokončené");
+
                 // Inicializácia DI kontajnera
                 var services = new ServiceCollection();
                 ConfigureServices(services);
@@ -74,13 +80,23 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _validationService = _serviceProvider.GetRequiredService<IValidationService>();
                 _exportService = _serviceProvider.GetRequiredService<IExportService>();
 
-                this.InitializeComponent();
-                _logger.LogInformation("AdvancedDataGrid s Auto-Add funkciou inicializovaný");
+                _logger?.LogInformation("AdvancedDataGrid s Auto-Add funkciou inicializovaný");
+                System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid s Auto-Add funkciou úspešne inicializovaný");
+
+                // ✅ Nastav počiatočný UI stav
+                UpdateUIVisibility();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ KRITICKÁ CHYBA v konstruktor: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ KRITICKÁ CHYBA v AdvancedDataGrid konstruktor: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+
+                // Pre debugging - skús identifikovať kde presne sa to pokazilo
+                if (ex.Message.Contains("XAML") || ex.Message.Contains("LoadComponent"))
+                {
+                    System.Diagnostics.Debug.WriteLine("❌ XAML PARSING ERROR - problém v AdvancedDataGrid.xaml súbore");
+                }
+
                 throw;
             }
         }
@@ -180,6 +196,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 await CreateInitialEmptyRowsAsync();
 
                 _isInitialized = true;
+                UpdateUIVisibility();
                 HideLoadingState();
 
                 _logger.LogInformation("AUTO-ADD: DataGrid úspešne inicializovaný s Auto-Add funkciou");
@@ -560,6 +577,18 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         {
             if (!_isInitialized)
                 throw new InvalidOperationException("DataGrid nie je inicializovaný. Zavolajte InitializeAsync() najprv.");
+        }
+
+        private void UpdateUIVisibility()
+        {
+            this.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (MainContentGrid != null)
+                    MainContentGrid.Visibility = _isInitialized ? Visibility.Visible : Visibility.Collapsed;
+
+                if (LoadingOverlay != null)
+                    LoadingOverlay.Visibility = _isInitialized ? Visibility.Collapsed : Visibility.Visible;
+            });
         }
 
         private void ShowLoadingState(string message)
