@@ -51,6 +51,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private int _rowCount = 15; // ✅ UNIFIED: initialRowCount = minimumRowCount (vždy rovnaké)
         private bool _autoAddEnabled = true;
 
+        // ✅ NOVÉ: Individual color configuration
+        private DataGridColorConfig? _colorConfig;
+
         // Color theme support
         private DataGridColorTheme _colorTheme = DataGridColorTheme.Light;
 
