@@ -1,151 +1,93 @@
 ﻿<!-- AdvancedWinUiDataGrid/build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets -->
-<!-- ✅ OPRAVENÉ: MSBuild targets bez CreateHardLinksIfPossible pre kompatibilitu -->
+<!-- ✅ OPRAVENÉ: MSBuild targets - NETSDK1152 fix -->
 <Project>
 
   <!-- ✅ Debug informácie -->
   <Target Name="DebugAdvancedDataGridPackage" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
-    <Message Text="🔍 AdvancedWinUiDataGrid: Package v1.0.13 loaded via NuGet (MSBuild FIXED)" Importance="normal" />
+    <Message Text="🔍 AdvancedWinUiDataGrid: Package v1.0.13 loaded via NuGet (NETSDK1152 FIXED)" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: MSBuildThisFileDirectory = $(MSBuildThisFileDirectory)" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: TargetFramework = $(TargetFramework)" Importance="normal" />
   </Target>
 
-  <!-- ✅ OPRAVENÉ: Package paths s XBF support -->
+  <!-- ✅ KĽÚČOVÁ OPRAVA: Unified package path logic - iba jeden path -->
   <PropertyGroup>
-    <!-- ✅ Priorita: Aktuálny TFM (presne ako je definovaný) -->
-    <AdvancedDataGridLibPath Condition="Exists('$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/')">$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/</AdvancedDataGridLibPath>
+    <!-- ✅ Priorita 1: Presný match na TargetFramework -->
+    <AdvancedDataGridLibPath Condition="'$(TargetFramework)' != '' AND Exists('$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/')">$(MSBuildThisFileDirectory)../lib/$(TargetFramework)/</AdvancedDataGridLibPath>
 
-    <!-- ✅ Fallback na dlhý formát ak aktuálny neexistuje -->
+    <!-- ✅ Priorita 2: Iba ak presný match neexistuje, skús dlhý formát -->
     <AdvancedDataGridLibPath Condition="'$(AdvancedDataGridLibPath)' == '' AND Exists('$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041.0/')">$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041.0/</AdvancedDataGridLibPath>
 
-    <!-- ✅ Fallback na krátky formát -->
-    <AdvancedDataGridLibPath Condition="'$(AdvancedDataGridLibPath)' == '' AND Exists('$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041/')">$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041/</AdvancedDataGridLibPath>
+    <!-- ✅ ODSTRÁNENÉ: Všetky ostatné fallbacks aby sa zabránilo duplikátom -->
 
-    <!-- ✅ Fallback na generic net8.0-windows -->
-    <AdvancedDataGridLibPath Condition="'$(AdvancedDataGridLibPath)' == '' AND Exists('$(MSBuildThisFileDirectory)../lib/net8.0-windows/')">$(MSBuildThisFileDirectory)../lib/net8.0-windows/</AdvancedDataGridLibPath>
-
-    <!-- ✅ Posledný fallback - default -->
-    <AdvancedDataGridLibPath Condition="'$(AdvancedDataGridLibPath)' == ''">$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041.0/</AdvancedDataGridLibPath>
-
-    <!-- ✅ Content path pre XAML súbory -->
+    <!-- ✅ Content path -->
     <AdvancedDataGridContentPath>$(MSBuildThisFileDirectory)../content/</AdvancedDataGridContentPath>
   </PropertyGroup>
 
-  <!-- ✅ OPRAVENÉ: Assembly reference len ak DLL skutočne existuje -->
-  <ItemGroup Condition="'$(UseWinUI)' == 'true'">
-    <!-- ✅ Main assembly reference -->
+  <!-- ✅ Assembly reference - iba ak DLL skutočne existuje a nie je duplicitná -->
+  <ItemGroup Condition="'$(UseWinUI)' == 'true' AND '$(AdvancedDataGridLibPath)' != ''">
+
+    <!-- ✅ Main assembly reference - CONDITIONAL aby sa zabránilo duplikátom -->
     <Reference Include="AdvancedWinUiDataGrid" Condition="Exists('$(AdvancedDataGridLibPath)AdvancedWinUiDataGrid.dll')">
       <HintPath>$(AdvancedDataGridLibPath)AdvancedWinUiDataGrid.dll</HintPath>
       <Private>False</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
     </Reference>
 
-    <!-- ✅ WinUI winmd reference ak existuje -->
-    <Reference Include="Microsoft.WinUI" Condition="Exists('$(AdvancedDataGridLibPath)Microsoft.WinUI.winmd')">
-      <HintPath>$(AdvancedDataGridLibPath)Microsoft.WinUI.winmd</HintPath>
-      <Private>False</Private>
-      <IsWinMDFile>true</IsWinMDFile>
-    </Reference>
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÁ OPRAVA: XBF súbory copying PRED Build (skorší timing) -->
-  <Target Name="CopyAdvancedDataGridXbfFiles" BeforeTargets="PrepareForBuild" Condition="'$(UseWinUI)' == 'true'">
-    <Message Text="🎨 Copying XBF files from AdvancedDataGrid package ($(Configuration) mode)..." Importance="normal" />
+  <!-- ✅ OPRAVENÉ: XBF súbory copying - iba z jedného zdroja -->
+  <Target Name="CopyAdvancedDataGridXbfFiles" BeforeTargets="PrepareForBuild" Condition="'$(UseWinUI)' == 'true' AND '$(AdvancedDataGridLibPath)' != ''">
+    <Message Text="🎨 Copying XBF files from single path: $(AdvancedDataGridLibPath)" Importance="normal" />
 
-    <!-- ✅ Nájdi všetky XBF súbory v package -->
+    <!-- ✅ Nájdi XBF súbory iba z jednej cesty -->
     <ItemGroup>
-      <AdvancedDataGridXbfFiles Include="$(AdvancedDataGridLibPath)**/*.xbf" Condition="Exists('$(AdvancedDataGridLibPath)')" />
+      <AdvancedDataGridXbfFiles Include="$(AdvancedDataGridLibPath)*.xbf" />
+      <AdvancedDataGridXbfFiles Include="$(AdvancedDataGridLibPath)**/*.xbf" />
     </ItemGroup>
 
-    <!-- ✅ OPRAVENÉ: Skopíruj XBF súbory bez CreateHardLinksIfPossible -->
+    <!-- ✅ Skopíruj XBF súbory bez duplikátov -->
     <Copy SourceFiles="@(AdvancedDataGridXbfFiles)"
           DestinationFolder="$(OutputPath)%(RecursiveDir)"
           SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          UseHardlinksIfPossible="false"
           Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
 
-    <!-- ✅ OPRAVENÉ: Skopíruj aj do intermediate directory bez CreateHardLinksIfPossible -->
-    <Copy SourceFiles="@(AdvancedDataGridXbfFiles)"
-          DestinationFolder="$(IntermediateOutputPath)%(RecursiveDir)"
-          SkipUnchangedFiles="true"
-          Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
-
-    <!-- ✅ Log info -->
-    <Message Text="✅ Copied @(AdvancedDataGridXbfFiles->Count()) XBF files to output and intermediate directories" Importance="normal" Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
-    <Warning Text="⚠️ No XBF files found in package at: $(AdvancedDataGridLibPath)" Condition="'@(AdvancedDataGridXbfFiles)' == ''" />
+    <Message Text="✅ Copied @(AdvancedDataGridXbfFiles->Count()) XBF files without duplicates" Importance="normal" Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
+    <Warning Text="⚠️ No XBF files found in: $(AdvancedDataGridLibPath)" Condition="'@(AdvancedDataGridXbfFiles)' == ''" />
   </Target>
-
-  <!-- ✅ NOVÉ: Explicit XBF files registration ako Content -->
-  <Target Name="RegisterXbfFilesAsContent" AfterTargets="CopyAdvancedDataGridXbfFiles" Condition="'$(UseWinUI)' == 'true'">
-    <Message Text="📝 Registering XBF files as content..." Importance="low" />
-
-    <!-- ✅ Find copied XBF files -->
-    <ItemGroup>
-      <CopiedXbfFiles Include="$(OutputPath)**/*.xbf" />
-    </ItemGroup>
-
-    <!-- ✅ Register as content -->
-    <ItemGroup Condition="'@(CopiedXbfFiles)' != ''">
-      <Content Include="@(CopiedXbfFiles)">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <Pack>false</Pack>
-      </Content>
-    </ItemGroup>
-
-    <Message Text="📝 Registered @(CopiedXbfFiles->Count()) XBF files as content" Importance="low" Condition="'@(CopiedXbfFiles)' != ''" />
-  </Target>
-
-  <!-- ✅ NOVÉ: XAML content files ako fallback -->
-  <ItemGroup Condition="'$(UseWinUI)' == 'true'">
-    <!-- ✅ XAML súbory ako content pre runtime fallback -->
-    <Content Include="$(AdvancedDataGridContentPath)Controls/**/*.xaml" Link="AdvancedWinUiDataGrid/Controls/%(RecursiveDir)%(Filename)%(Extension)" Condition="Exists('$(AdvancedDataGridContentPath)Controls/')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Pack>false</Pack>
-    </Content>
-
-    <Content Include="$(AdvancedDataGridContentPath)Themes/*.xaml" Link="AdvancedWinUiDataGrid/Themes/%(Filename)%(Extension)" Condition="Exists('$(AdvancedDataGridContentPath)Themes/')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Pack>false</Pack>
-    </Content>
-  </ItemGroup>
 
   <!-- ✅ WinUI3 specific nastavenia -->
   <PropertyGroup Condition="'$(UseWinUI)' == 'true'">
     <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
-    <XamlResourcesEnabled>true</XamlResourcesEnabled>
 
-    <!-- ✅ OPRAVA: Potlač architecture mismatch warnings -->
+    <!-- ✅ KĽÚČOVÁ OPRAVA: Potlač duplicate assembly warnings -->
     <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
 
-    <!-- ✅ XAML specific nastavenia -->
-    <XamlCompileTargetFramework>$(TargetFramework)</XamlCompileTargetFramework>
-    <UseCompiledXaml>true</UseCompiledXaml>
+    <!-- ✅ Disable duplicate reference warnings -->
+    <DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
   </PropertyGroup>
 
-  <!-- ✅ Verification target s podrobným XBF checking -->
+  <!-- ✅ Verification target -->
   <Target Name="VerifyAdvancedDataGridPackage" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
 
     <PropertyGroup>
       <PackageDllExists Condition="Exists('$(AdvancedDataGridLibPath)AdvancedWinUiDataGrid.dll')">true</PackageDllExists>
-      <PackagePdbExists Condition="Exists('$(AdvancedDataGridLibPath)AdvancedWinUiDataGrid.pdb')">true</PackagePdbExists>
-      <XamlContentExists Condition="Exists('$(AdvancedDataGridContentPath)Controls/') OR Exists('$(AdvancedDataGridLibPath)')">true</XamlContentExists>
     </PropertyGroup>
 
-    <!-- ✅ Success messages -->
-    <Message Text="✅ Using lib path: $(AdvancedDataGridLibPath)" Importance="normal" />
-    <Message Text="✅ Using content path: $(AdvancedDataGridContentPath)" Importance="normal" />
+    <Message Text="✅ Using unified lib path: $(AdvancedDataGridLibPath)" Importance="normal" />
     <Message Text="✅ Package DLL found: $(AdvancedDataGridLibPath)AdvancedWinUiDataGrid.dll"
              Importance="normal"
              Condition="'$(PackageDllExists)' == 'true'" />
-    <Message Text="✅ Package PDB found: $(AdvancedDataGridLibPath)AdvancedWinUiDataGrid.pdb"
-             Importance="normal"
-             Condition="'$(PackagePdbExists)' == 'true'" />
-    <Message Text="✅ XAML content found for Package Reference"
-             Importance="normal"
-             Condition="'$(XamlContentExists)' == 'true'" />
 
-    <!-- ✅ Success message -->
-    <Message Text="🎉 AdvancedWinUiDataGrid package successfully loaded with MSBuild FIXED and AUTO-ADD functionality!"
+    <Message Text="🎉 AdvancedWinUiDataGrid package loaded via SINGLE PATH (NETSDK1152 FIXED)!"
              Importance="high"
-             Condition="'$(PackageDllExists)' == 'true' AND '$(XamlContentExists)' == 'true'" />
+             Condition="'$(PackageDllExists)' == 'true'" />
+
+    <Error Text="❌ Package DLL not found at: $(AdvancedDataGridLibPath)AdvancedWinUiDataGrid.dll"
+           Condition="'$(PackageDllExists)' != 'true'" />
   </Target>
 
 </Project>

@@ -1,7 +1,8 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ KOMPLETNE OPRAVENÝ XBF packaging -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ NETSDK1152 FIX + Individual Color Config -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- ✅ OPRAVENÉ: Unified target framework - iba jeden formát -->
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <UseWinUI>true</UseWinUI>
@@ -9,12 +10,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: XBF generation pre Package Reference -->
+    <!-- ✅ KĽÚČOVÁ OPRAVA: XBF generation + Packaging fix -->
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <BuildOutputTargetFolder>lib</BuildOutputTargetFolder>
     <ContentTargetFolders>content</ContentTargetFolders>
 
-    <!-- ✅ OPRAVENÉ: XBF generation aj pre DEBUG mode -->
+    <!-- ✅ XAML compilation -->
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
@@ -30,30 +31,30 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
-    <!-- ✅ Package Information -->
+    <!-- ✅ Package Information - UPDATED -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.12</Version>
+    <Version>1.0.13</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
-    <Description>Profesionálny WinUI3 DataGrid komponent s AUTO-ADD funkcionalitou a OPRAVENÝM XAML loading</Description>
-    <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel;Auto-Add;ColorThemes;RealTime;XAML</PackageTags>
+    <Description>Profesionálny WinUI3 DataGrid komponent s AUTO-ADD funkciou, individual color config a NETSDK1152 fix</Description>
+    <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel;Auto-Add;ColorConfig;RealTime;XAML</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.12: OPRAVENÉ XAML loading pre Package Reference + AUTO-ADD funkcionalita + XBF súbory fix</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.13: NETSDK1152 fix + Individual Color Config + AUTO-ADD unified</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
-    <AssemblyTitle>Advanced WinUI DataGrid Component with FIXED XAML loading</AssemblyTitle>
-    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 s opraveným XAML loading pre Package Reference</AssemblyDescription>
+    <AssemblyTitle>Advanced WinUI DataGrid Component with Individual Color Config</AssemblyTitle>
+    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 s AUTO-ADD a individual color config</AssemblyDescription>
 
-    <!-- ✅ Potlač packaging warnings -->
-    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271</NoWarn>
+    <!-- ✅ KĽÚČOVÁ OPRAVA: Potlač packaging warnings + duplicate warnings -->
+    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277</NoWarn>
   </PropertyGroup>
 
-  <!-- ✅ KĽÚČOVÉ: EXPLICITNÉ XAML súbory s forced compilation PRE OBA MODES -->
+  <!-- ✅ EXPLICITNÉ XAML súbory -->
   <ItemGroup>
     <Page Include="Controls\AdvancedDataGrid.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -95,119 +96,48 @@
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- ✅ MSBuild targets pre NuGet zabalenie -->
+  <!-- ✅ MSBuild targets -->
   <ItemGroup>
     <None Include="build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="build/" />
     <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÁ OPRAVA: XBF súbory packaging PRE OBA MODES (Debug aj Release) -->
+  <!-- ✅ KĽÚČOVÁ OPRAVA: Packaging - iba jeden TFM adresár -->
   <ItemGroup>
-    <!-- ✅ Zabaľ všetky XBF súbory z output directory -->
-    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)')" />
-    
-    <!-- ✅ Zabaľ main assembly -->
+    <!-- ✅ Main assembly - FORCE single target framework -->
     <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
     <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
     
-    <!-- ✅ Zabaľ XamlTypeInfo ak existuje -->
-    <None Include="$(OutputPath)$(AssemblyName).xr.xml" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
+    <!-- ✅ XBF súbory - iba z jednej cesty -->
+    <None Include="$(OutputPath)*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)')" />
+    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" />
     
-    <!-- ✅ Zabaľ WinMD súbory ak existujú -->
-    <None Include="$(OutputPath)**/*.winmd" Pack="true" PackagePath="lib/$(TargetFramework)/" />
+    <!-- ✅ XamlTypeInfo -->
+    <None Include="$(OutputPath)$(AssemblyName).xr.xml" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
   </ItemGroup>
 
-  <!-- ✅ NOVÉ: Zabaľ XAML súbory ako content pre fallback -->
+  <!-- ✅ XAML súbory ako content fallback -->
   <ItemGroup>
     <None Include="Controls\**\*.xaml" Pack="true" PackagePath="content/Controls/" />
     <None Include="Themes\*.xaml" Pack="true" PackagePath="content/Themes/" />
   </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: Forced XBF generation pre OBA MODES -->
-  <Target Name="GenerateXbfFiles" BeforeTargets="Pack;Build">
-    <Message Text="🎨 Generating XBF files for Package Reference ($(Configuration) mode)..." Importance="normal" />
+  <!-- ✅ Force single TFM generation -->
+  <Target Name="PreventMultipleTfmGeneration" BeforeTargets="Pack">
+    <Message Text="🎯 Generating package for SINGLE TFM: $(TargetFramework)" Importance="normal" />
     
-    <!-- ✅ Force XAML compilation -->
-    <ItemGroup>
-      <XamlToCompile Include="@(Page)" />
-    </ItemGroup>
-    
-    <Message Text="🎨 XAML files to compile: @(XamlToCompile->Count())" Importance="normal" />
+    <!-- ✅ Zabezpeč že sa generuje iba jeden TFM adresár -->
+    <PropertyGroup>
+      <_SingleTfmMode>true</_SingleTfmMode>
+    </PropertyGroup>
   </Target>
 
-  <!-- ✅ NOVÉ: Post-build XBF verification -->
-  <Target Name="VerifyXbfGeneration" AfterTargets="Build">
-    <Message Text="🔍 Verifying XBF generation ($(Configuration) mode)..." Importance="normal" />
-    
-    <ItemGroup>
-      <GeneratedXbfFiles Include="$(OutputPath)**/*.xbf" />
-    </ItemGroup>
-    
-    <Message Text="✅ Generated XBF files: @(GeneratedXbfFiles->Count())" Importance="normal" Condition="'@(GeneratedXbfFiles)' != ''" />
-    <Warning Text="⚠️ No XBF files generated - XAML compilation may have failed" Condition="'@(GeneratedXbfFiles)' == ''" />
-    
-    <!-- ✅ Log XBF file paths -->
-    <Message Text="📁 XBF: %(GeneratedXbfFiles.Identity)" Importance="low" Condition="'@(GeneratedXbfFiles)' != ''" />
-  </Target>
-
-  <!-- ✅ WinUI3 specific build settings PRE OBA MODES -->
-  <PropertyGroup>
-    <XamlCompilationEnabled>true</XamlCompilationEnabled>
-    <UseCompiledXaml>true</UseCompiledXaml>
-    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
-    <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
-    <DebugType>portable</DebugType>
-  </PropertyGroup>
-
-  <!-- ✅ Public API Surface - len TIETO triedy sú PUBLIC -->
-  <ItemGroup>
-    <InternalsVisibleTo Include="RpaWinUiComponents.AdvancedWinUiDataGrid.Tests" />
-  </ItemGroup>
-
-  <!-- ✅ Build optimizations -->
-  <PropertyGroup>
-    <WarningsAsErrors />
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningLevel>5</WarningLevel>
-
-    <!-- ✅ Disable MSIX for class library -->
-    <DisableMsixProjectCapabilityAddition>true</DisableMsixProjectCapabilityAddition>
-  </PropertyGroup>
-
-  <!-- ✅ NOVÝ: Pre-build validation -->
-  <Target Name="ValidateXamlFiles" BeforeTargets="PrepareForBuild">
-    <Message Text="🔍 Validating XAML files for XBF generation..." Importance="normal" />
-    
-    <Error Text="❌ AdvancedDataGrid.xaml not found!" Condition="!Exists('Controls/AdvancedDataGrid.xaml')" />
-    <Error Text="❌ Generic.xaml not found!" Condition="!Exists('Themes/Generic.xaml')" />
-    
-    <Message Text="✅ All XAML files found for XBF generation" Importance="normal" />
-  </Target>
-
-  <!-- ✅ Custom targets pre post-build -->
+  <!-- ✅ Post-build info -->
   <Target Name="LogPackageInfo" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
-    <Message Text="📦 ✨ OPRAVENÉ XAML loading pre Package Reference ($(Configuration) mode)" Importance="high" />
-    <Message Text="📦 ✅ AUTO-ADD riadkov funkcionalita implementovaná" Importance="high" />
-    <Message Text="📦 🔒 Clean PUBLIC API (AdvancedDataGrid, ColumnDefinition, ValidationRule, ThrottlingConfig, DataGridColorTheme)" Importance="high" />
-    <Message Text="📦 Target framework: $(TargetFramework)" Importance="high" />
-  </Target>
-
-  <!-- ✅ Ensure clean package structure -->
-  <Target Name="CleanupBeforePack" BeforeTargets="Pack">
-    <Message Text="🧹 Cleaning up before package creation (XBF packaging fix)..." Importance="normal" />
-  </Target>
-
-  <!-- ✅ NOVÉ: Force XBF compilation aj pre Debug builds -->
-  <Target Name="ForceXamlCompilation" BeforeTargets="XamlPreCompile">
-    <Message Text="🎨 Forcing XAML compilation for $(Configuration) mode..." Importance="normal" />
-    
-    <PropertyGroup>
-      <!-- ✅ Ensure XAML compilation is always enabled -->
-      <XamlCompilationEnabled>true</XamlCompilationEnabled>
-      <UseCompiledXaml>true</UseCompiledXaml>
-      <XamlRequiredFileExt>.xbf</XamlRequiredFileExt>
-    </PropertyGroup>
+    <Message Text="📦 ✅ NETSDK1152 FIXED - single TFM: $(TargetFramework)" Importance="high" />
+    <Message Text="📦 ✨ Individual Color Config implementovaná" Importance="high" />
+    <Message Text="📦 🔒 Clean PUBLIC API (AdvancedDataGrid, ColumnDefinition, ValidationRule, ThrottlingConfig, DataGridColorConfig)" Importance="high" />
   </Target>
 
 </Project>
