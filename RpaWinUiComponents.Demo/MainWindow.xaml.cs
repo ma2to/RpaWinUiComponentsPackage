@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - všetky warnings vyriešené
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ Individual Color Config
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -23,8 +23,13 @@ namespace RpaWinUiComponents.Demo
 {
     public sealed partial class MainWindow : Window
     {
-        // ✅ OPRAVENÉ CS0169: Odstránený nepoužitý field _dataGridControl
         private bool _isInitialized = false;
+
+        // ✅ NOVÉ: Store pre základnú konfiguráciu (pre reinicializáciu s inými farbami)
+        private List<PublicColumnDefinition> _baseColumns = new();
+        private List<PublicValidationRule> _baseValidationRules = new();
+        private PublicThrottlingConfig _baseThrottlingConfig = PublicThrottlingConfig.Default;
+        private int _baseRowCount = 5;
 
         public MainWindow()
         {
@@ -45,9 +50,9 @@ namespace RpaWinUiComponents.Demo
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD funkcionalitou...");
+                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD a Individual Color Config...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.11...", "Načítava sa z Package Reference s KOMPLETNOU AUTO-ADD funkciou...");
+                UpdateLoadingState("Inicializuje sa balík v1.0.13...", "Načítava sa z Package Reference s AUTO-ADD a Individual Colors...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
@@ -60,19 +65,18 @@ namespace RpaWinUiComponents.Demo
 
                 System.Diagnostics.Debug.WriteLine("✅ DataGridControl komponent je dostupný");
 
-                // ✅ KROK 1: Definícia stĺpcov pomocou PUBLIC API
-                var columns = new List<PublicColumnDefinition>
+                // ✅ KROK 1: Definícia základnej konfigurácie (store pre reinicializáciu)
+                _baseColumns = new List<PublicColumnDefinition>
                 {
                     new("ID", typeof(int)) { MinWidth = 60, Width = 80, Header = "🔢 ID" },
                     new("Meno", typeof(string)) { MinWidth = 120, Width = 150, Header = "👤 Meno" },
                     new("Email", typeof(string)) { MinWidth = 200, Width = 200, Header = "📧 Email" },
                     new("Vek", typeof(int)) { MinWidth = 80, Width = 100, Header = "🎂 Vek" },
                     new("Plat", typeof(decimal)) { MinWidth = 100, Width = 120, Header = "💰 Plat" },
-                    new("DeleteRows", typeof(string)) { Width = 40, Header = "🗑️" } // Špeciálny delete stĺpec
+                    new("DeleteRows", typeof(string)) { Width = 40, Header = "🗑️" }
                 };
 
-                // ✅ KROK 2: Validačné pravidlá pomocou PUBLIC API
-                var validationRules = new List<PublicValidationRule>
+                _baseValidationRules = new List<PublicValidationRule>
                 {
                     PublicValidationRule.Required("Meno", "Meno je povinné"),
                     PublicValidationRule.Email("Email", "Neplatný email formát"),
@@ -80,22 +84,16 @@ namespace RpaWinUiComponents.Demo
                     PublicValidationRule.Range("Plat", 500, 50000, "Plat musí byť 500-50000")
                 };
 
-                // ✅ KROK 3: Throttling konfigurácia pomocou PUBLIC API
-                var throttlingConfig = PublicThrottlingConfig.Default;
+                _baseThrottlingConfig = PublicThrottlingConfig.Default;
+                _baseRowCount = 5;
 
-                // ✅ KROK 4: Inicializácia komponentu s minimálne 5 riadkami pre AUTO-ADD demo
-                UpdateLoadingState("Inicializuje sa DataGrid s AUTO-ADD...", "Volám InitializeAsync s minimálne 5 riadkami...");
-                await Task.Delay(200);
+                // ✅ KROK 2: Inicializácia s default Light colors
+                await InitializeDataGridWithColors(null, "default Light colors");
 
-                System.Diagnostics.Debug.WriteLine("🔧 Volám InitializeAsync s PUBLIC API (AUTO-ADD minimum 5 riadkov)...");
-                await DataGridControl.InitializeAsync(columns, validationRules, throttlingConfig, 5); // ✅ AUTO-ADD: minimum 5 riadkov
-                System.Diagnostics.Debug.WriteLine("✅ InitializeAsync dokončené úspešne s AUTO-ADD");
-
-                // ✅ KROK 5: Načítanie testových dát s AUTO-ADD demonstráciou
+                // ✅ KROK 3: Načítanie testových dát s AUTO-ADD demonstráciou
                 UpdateLoadingState("Načítavajú sa AUTO-ADD demo dáta...", "Pripravujú sa záznamy pre auto-add test...");
                 await Task.Delay(200);
 
-                // ✅ Štartovanie dáta: Načítaj 3 riadky (menej ako minimum 5) - mal by zostať na 5 + 1 prázdny = 6 celkom
                 var initialData = new List<Dictionary<string, object?>>
                 {
                     new() { ["ID"] = 1, ["Meno"] = "Ján Novák", ["Email"] = "jan@example.com", ["Vek"] = 30, ["Plat"] = 2500.00m },
@@ -107,10 +105,10 @@ namespace RpaWinUiComponents.Demo
                 await DataGridControl.LoadDataAsync(initialData);
                 System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD test dáta načítané - mal by byť 6 riadkov celkom (5 minimum + 1 prázdny)");
 
-                // ✅ KROK 6: Dokončenie inicializácie
+                // ✅ KROK 4: Dokončenie inicializácie
                 CompleteInitialization();
 
-                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s AUTO-ADD funkciou!");
+                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s AUTO-ADD a Individual Color Config!");
 
             }
             catch (Exception ex)
@@ -121,6 +119,31 @@ namespace RpaWinUiComponents.Demo
                 ShowError($"Chyba pri inicializácii: {ex.Message}");
             }
         }
+
+        #region ✅ NOVÉ: Individual Color Config Helper Metódy
+
+        /// <summary>
+        /// Inicializuje DataGrid s určitými farbami
+        /// </summary>
+        private async Task InitializeDataGridWithColors(PublicDataGridColorTheme? colorTheme, string colorDescription)
+        {
+            try
+            {
+                UpdateLoadingState($"Inicializuje sa DataGrid s {colorDescription}...", "Volám InitializeAsync s individual colors...");
+                await Task.Delay(200);
+
+                System.Diagnostics.Debug.WriteLine($"🔧 Volám InitializeAsync s {colorDescription}...");
+                await DataGridControl.InitializeAsync(_baseColumns, _baseValidationRules, _baseThrottlingConfig, _baseRowCount, colorTheme);
+                System.Diagnostics.Debug.WriteLine($"✅ InitializeAsync dokončené s {colorDescription}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri InitializeAsync s {colorDescription}: {ex.Message}");
+                throw;
+            }
+        }
+
+        #endregion
 
         #region UI Helper metódy
 
@@ -148,13 +171,13 @@ namespace RpaWinUiComponents.Demo
 
                 if (InitStatusText != null)
                 {
-                    InitStatusText.Text = "✅ AUTO-ADD Pripravené!";
+                    InitStatusText.Text = "✅ AUTO-ADD + Individual Colors Pripravené!";
                     InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 128, 0)); // Green
                 }
 
                 if (StatusTextBlock != null)
                 {
-                    StatusTextBlock.Text = "🔥 AUTO-ADD je aktívne! Vyplň posledný riadok → automaticky sa pridá nový prázdny! 🎉";
+                    StatusTextBlock.Text = "🔥 AUTO-ADD je aktívne! Individual colors nastavené! Vyplň posledný riadok → automaticky sa pridá nový! 🎉";
                 }
             });
         }
@@ -179,11 +202,151 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ NOVÉ: Auto-Add Demo Button Handlers
+        #region ✅ OPRAVENÉ: Individual Color Config Button Handlers (cez reinicializáciu)
 
-        /// <summary>
-        /// Test metóda pre auto-add s malým počtom riadkov (menej ako minimum)
-        /// </summary>
+        private async void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Light Individual Colors...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Reinicializuje sa s Light Individual Colors...";
+
+                // ✅ Light colors
+                var lightColors = PublicDataGridColorTheme.Light;
+                await InitializeDataGridWithColors(lightColors, "Light Individual Colors");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🎨 Light Individual Colors aplikované cez reinicializáciu";
+
+                System.Diagnostics.Debug.WriteLine("✅ Light Individual Colors úspešne aplikované");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Light colors: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Light colors: {ex.Message}";
+            }
+        }
+
+        private async void OnApplyDarkThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Dark Individual Colors...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Reinicializuje sa s Dark Individual Colors...";
+
+                // ✅ Dark colors
+                var darkColors = PublicDataGridColorTheme.Dark;
+                await InitializeDataGridWithColors(darkColors, "Dark Individual Colors");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🎨 Dark Individual Colors aplikované cez reinicializáciu";
+
+                System.Diagnostics.Debug.WriteLine("✅ Dark Individual Colors úspešne aplikované");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Dark colors: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Dark colors: {ex.Message}";
+            }
+        }
+
+        private async void OnApplyBlueThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Blue Individual Colors...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Reinicializuje sa s Blue Individual Colors...";
+
+                // ✅ Blue colors
+                var blueColors = PublicDataGridColorTheme.Blue;
+                await InitializeDataGridWithColors(blueColors, "Blue Individual Colors");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🎨 Blue Individual Colors aplikované cez reinicializáciu";
+
+                System.Diagnostics.Debug.WriteLine("✅ Blue Individual Colors úspešne aplikované");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Blue colors: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Blue colors: {ex.Message}";
+            }
+        }
+
+        private async void OnApplyCustomThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Custom Individual Colors...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Reinicializuje sa s Custom Individual Colors...";
+
+                // ✅ Custom colors pomocou PUBLIC DataGridColorThemeBuilder
+                var customColors = PublicDataGridColorThemeBuilder.Create()
+                    .WithCellBackground(Color.FromArgb(255, 255, 255, 224)) // LightYellow
+                    .WithCellBorder(Color.FromArgb(255, 255, 165, 0))       // Orange
+                    .WithCellText(Color.FromArgb(255, 0, 0, 139))           // DarkBlue
+                    .WithHeaderBackground(Color.FromArgb(255, 255, 165, 0)) // Orange
+                    .WithHeaderText(Color.FromArgb(255, 255, 255, 255))     // White
+                    .WithValidationError(Color.FromArgb(255, 139, 0, 0))    // DarkRed
+                    .WithSelection(Color.FromArgb(100, 255, 165, 0))        // Orange alpha
+                    .WithEditingCell(Color.FromArgb(50, 255, 215, 0))       // Gold alpha
+                    .Build();
+
+                await InitializeDataGridWithColors(customColors, "Custom Orange Individual Colors");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🎨 Custom Orange Individual Colors aplikované cez reinicializáciu";
+
+                System.Diagnostics.Debug.WriteLine("✅ Custom Individual Colors úspešne aplikované");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Custom colors: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri Custom colors: {ex.Message}";
+            }
+        }
+
+        private async void OnResetThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na default Individual Colors...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "Resetuje sa na default Individual Colors...";
+
+                // ✅ Reset na default (Light)
+                await InitializeDataGridWithColors(null, "default Light Individual Colors");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🔄 Reset na default Light Individual Colors cez reinicializáciu";
+
+                System.Diagnostics.Debug.WriteLine("✅ Individual Colors úspešne resetované");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri reset colors: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri reset colors: {ex.Message}";
+            }
+        }
+
+        #endregion
+
+        #region ✅ AUTO-ADD Demo Button Handlers
+
         private async void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e)
         {
             try
@@ -328,127 +491,6 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region Color Theme Button Handlers - PUBLIC API
-
-        private void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Light Theme cez PUBLIC API...");
-
-                DataGridControl.ApplyColorTheme(PublicDataGridColorTheme.Light);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Light theme aplikovaná cez PUBLIC API";
-
-                System.Diagnostics.Debug.WriteLine("✅ Light theme úspešne aplikovaná");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Light theme: {ex.Message}");
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri Light theme: {ex.Message}";
-            }
-        }
-
-        private void OnApplyDarkThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Dark Theme cez PUBLIC API...");
-
-                DataGridControl.ApplyColorTheme(PublicDataGridColorTheme.Dark);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Dark theme aplikovaná cez PUBLIC API";
-
-                System.Diagnostics.Debug.WriteLine("✅ Dark theme úspešne aplikovaná");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Dark theme: {ex.Message}");
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri Dark theme: {ex.Message}";
-            }
-        }
-
-        private void OnApplyBlueThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🎨 Aplikujem Blue Theme cez PUBLIC API...");
-
-                DataGridControl.ApplyColorTheme(PublicDataGridColorTheme.Blue);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Blue theme aplikovaná cez PUBLIC API";
-
-                System.Diagnostics.Debug.WriteLine("✅ Blue theme úspešne aplikovaná");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Blue theme: {ex.Message}");
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri Blue theme: {ex.Message}";
-            }
-        }
-
-        private void OnApplyCustomThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🎨 Vytváram Custom Theme cez PUBLIC API...");
-
-                // ✅ Custom theme pomocou PUBLIC DataGridColorThemeBuilder
-                var customTheme = PublicDataGridColorThemeBuilder.Create()
-                    .WithCellBackground(Color.FromArgb(255, 255, 255, 224)) // LightYellow
-                    .WithCellBorder(Color.FromArgb(255, 255, 165, 0))       // Orange
-                    .WithCellText(Color.FromArgb(255, 0, 0, 139))           // DarkBlue
-                    .WithHeaderBackground(Color.FromArgb(255, 255, 165, 0)) // Orange
-                    .WithHeaderText(Color.FromArgb(255, 255, 255, 255))     // White
-                    .WithValidationError(Color.FromArgb(255, 139, 0, 0))    // DarkRed
-                    .WithSelection(Color.FromArgb(100, 255, 165, 0))        // Orange alpha
-                    .WithEditingCell(Color.FromArgb(50, 255, 215, 0))       // Gold alpha
-                    .Build();
-
-                DataGridControl.ApplyColorTheme(customTheme);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Custom Orange theme vytvorená a aplikovaná cez PUBLIC API";
-
-                System.Diagnostics.Debug.WriteLine("✅ Custom theme úspešne vytvorená a aplikovaná");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri Custom theme: {ex.Message}");
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri Custom theme: {ex.Message}";
-            }
-        }
-
-        private void OnResetThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na default theme...");
-
-                DataGridControl.ResetToDefaultTheme();
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔄 Reset na default Light theme cez PUBLIC API";
-
-                System.Diagnostics.Debug.WriteLine("✅ Theme úspešne resetovaná");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri reset theme: {ex.Message}");
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri reset theme: {ex.Message}";
-            }
-        }
-
-        #endregion
-
         #region Standard Button Event Handlers - PUBLIC API
 
         private async void OnLoadSampleDataClick(object sender, RoutedEventArgs e)
@@ -460,7 +502,6 @@ namespace RpaWinUiComponents.Demo
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "Načítavajú sa ukážkové dáta s AUTO-ADD...";
 
-                // ✅ Načítaj 6 riadkov ukážkových dát
                 var sampleData = new List<Dictionary<string, object?>>
                 {
                     new() { ["ID"] = 101, ["Meno"] = "Anna Nováková", ["Email"] = "anna@test.sk", ["Vek"] = 25, ["Plat"] = 3000m },
@@ -558,7 +599,6 @@ namespace RpaWinUiComponents.Demo
             }
         }
 
-        // ✅ Custom Delete Validation cez PUBLIC API
         private async void OnDeleteByCustomValidationClick(object sender, RoutedEventArgs e)
         {
             try
@@ -568,7 +608,6 @@ namespace RpaWinUiComponents.Demo
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "Aplikujú sa custom delete pravidlá s AUTO-ADD ochranou...";
 
-                // ✅ Definuj custom validačné pravidlá pre mazanie pomocou PUBLIC API
                 var deleteValidationRules = new List<PublicValidationRule>
                 {
                     // Zmaž riadky kde plat > 10000
@@ -594,7 +633,6 @@ namespace RpaWinUiComponents.Demo
                     }, "Vysoký vek - riadok zmazaný s AUTO-ADD ochranou")
                 };
 
-                // ✅ Zavolaj NOVÚ metódu cez PUBLIC API
                 await DataGridControl.DeleteRowsByCustomValidationAsync(deleteValidationRules);
 
                 if (StatusTextBlock != null)

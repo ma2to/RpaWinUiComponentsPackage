@@ -1,10 +1,10 @@
-<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ OPRAVENÝ AccentButtonBackgroundBrush -->
+<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ OPRAVENÉ Individual Color Config UI -->
 <Window x:Class="RpaWinUiComponents.Demo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:RpaWinUiComponents.Demo"
         xmlns:grid="using:RpaWinUiComponents.AdvancedWinUiDataGrid"
-        Title="RPA WinUI Components - Demo Aplikácia s Color Theme API">
+        Title="RPA WinUI Components - Demo Aplikácia s Individual Color Config">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
@@ -33,7 +33,7 @@
                               FontWeight="Medium"
                               Foreground="White"/>
                 </StackPanel>
-                <TextBlock Text="✨ NOVÉ: Color Theme API + Realtime Validácie + Enhanced Navigation" 
+                <TextBlock Text="✨ NOVÉ: Individual Color Config + AUTO-ADD + Realtime Validácie" 
                           FontSize="12" 
                           FontWeight="Medium"
                           Foreground="White"
@@ -88,47 +88,52 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Color Theme Operácie -->
+                    <!-- Individual Color Config Operácie -->
                     <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
                             CornerRadius="8"
                             Padding="16,12">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="🎨 Color Themes (NOVÉ)" 
+                            <TextBlock Text="🎨 Individual Colors (NOVÉ)" 
                                       FontWeight="SemiBold" 
                                       FontSize="14"
                                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                                       Margin="0,0,0,4"/>
 
                             <Button x:Name="ApplyLightThemeButton"
-                                    Content="☀️ Light Theme"
+                                    Content="☀️ Light Colors"
                                     Click="OnApplyLightThemeClick"
-                                    Width="180"/>
+                                    Width="180"
+                                    ToolTipService.ToolTip="Reinicializuje s Light individual colors"/>
 
                             <Button x:Name="ApplyDarkThemeButton"
-                                    Content="🌙 Dark Theme"
+                                    Content="🌙 Dark Colors"
                                     Click="OnApplyDarkThemeClick"
                                     Width="180"
-                                    Background="{ThemeResource SystemFillColorSolidNeutralBrush}"/>
+                                    Background="{ThemeResource SystemFillColorSolidNeutralBrush}"
+                                    ToolTipService.ToolTip="Reinicializuje s Dark individual colors"/>
 
                             <Button x:Name="ApplyBlueThemeButton"
-                                    Content="💙 Blue Theme"
+                                    Content="💙 Blue Colors"
                                     Click="OnApplyBlueThemeClick"
                                     Width="180"
-                                    Background="{ThemeResource SystemFillColorSolidNeutralBrush}"/>
+                                    Background="{ThemeResource SystemFillColorSolidNeutralBrush}"
+                                    ToolTipService.ToolTip="Reinicializuje s Blue individual colors"/>
 
                             <Button x:Name="ApplyCustomThemeButton"
-                                    Content="✨ Custom Theme"
+                                    Content="✨ Custom Orange Colors"
                                     Click="OnApplyCustomThemeClick"
                                     Width="180"
                                     Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                    Foreground="White"/>
+                                    Foreground="White"
+                                    ToolTipService.ToolTip="Reinicializuje s custom Orange individual colors"/>
 
                             <Button x:Name="ResetThemeButton"
                                     Content="🔄 Reset to Default"
                                     Click="OnResetThemeClick"
-                                    Width="180"/>
+                                    Width="180"
+                                    ToolTipService.ToolTip="Resetuje na default Light individual colors"/>
                         </StackPanel>
                     </Border>
 
@@ -150,18 +155,53 @@
                                     Click="OnDeleteByCustomValidationClick"
                                     Width="220"
                                     Background="{ThemeResource SystemFillColorAttentionBrush}"
-                                    ToolTipService.ToolTip="Zmaže riadky kde plat > 10000 ALEBO vek > 50"/>
+                                    ToolTipService.ToolTip="Zmaže riadky kde plat > 10000 ALEBO vek > 50 (s AUTO-ADD ochranou)"/>
 
                             <Button x:Name="AdvancedDeleteExamplesButton"
                                     Content="⚡ Pokročilé Delete Príklady"
                                     Click="OnAdvancedDeleteExamplesClick"
                                     Width="220"
                                     Background="{ThemeResource SystemFillColorCautionBrush}"
-                                    ToolTipService.ToolTip="Zmaže riadky: prázdny email, nevalidný email, párne ID"/>
+                                    ToolTipService.ToolTip="Zmaže riadky: prázdny email, párne ID (s AUTO-ADD ochranou)"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Realtime Validation Testing -->
+                    <!-- AUTO-ADD Testing -->
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16,12">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="🔥 AUTO-ADD Testing" 
+                                      FontWeight="SemiBold" 
+                                      FontSize="14"
+                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                      Margin="0,0,0,4"/>
+
+                            <Button x:Name="TestAutoAddFewRowsButton"
+                                    Content="📊 Test: Málo Riadkov"
+                                    Click="OnTestAutoAddFewRowsClick"
+                                    Width="180"
+                                    Background="{ThemeResource SystemFillColorSuccessBrush}"
+                                    ToolTipService.ToolTip="Test načítania 3 riadkov (menej ako minimum 5)"/>
+
+                            <Button x:Name="TestAutoAddManyRowsButton"
+                                    Content="📈 Test: Množstvo Riadkov"
+                                    Click="OnTestAutoAddManyRowsClick"
+                                    Width="180"
+                                    ToolTipService.ToolTip="Test načítania 20 riadkov (viac ako minimum 5)"/>
+
+                            <Button x:Name="TestAutoAddDeleteButton"
+                                    Content="🗑️ Test: Inteligentné Delete"
+                                    Click="OnTestAutoAddDeleteClick"
+                                    Width="180"
+                                    Background="{ThemeResource SystemFillColorCautionBrush}"
+                                    ToolTipService.ToolTip="Test mazania s ochranou minimálneho počtu riadkov"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Realtime Testing -->
                     <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
@@ -210,18 +250,20 @@
                                       Width="200">
                                 <Run Text="1. Načítaj ukážkové dáta"/>
                                 <LineBreak/>
-                                <Run Text="2. Vyskúšaj color themes"/>
+                                <Run Text="2. Vyskúšaj individual colors"/>
                                 <LineBreak/>
-                                <Run Text="3. Test realtime validácie"/>
+                                <Run Text="3. Test AUTO-ADD funkcionalitu"/>
                                 <LineBreak/>
-                                <Run Text="4. Tab/Enter/Esc navigácia"/>
+                                <Run Text="4. Test realtime validácie"/>
                                 <LineBreak/>
-                                <Run Text="5. Ctrl+C/V kopírovanie"/>
+                                <Run Text="5. Tab/Enter/Esc navigácia"/>
                                 <LineBreak/>
-                                <Run Text="6. Custom delete operácie"/>
+                                <Run Text="6. Ctrl+C/V kopírovanie"/>
+                                <LineBreak/>
+                                <Run Text="7. Custom delete operácie"/>
                             </TextBlock>
 
-                            <TextBlock Text="💡 TIP: Písaním do buniek sa spúšťa realtime validácia!"
+                            <TextBlock Text="💡 TIP: Individual colors sa nastavujú pri inicializácii! AUTO-ADD je vždy aktívne!"
                                       FontSize="11"
                                       FontWeight="Medium"
                                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
@@ -255,14 +297,14 @@
                                  Height="48"/>
 
                     <TextBlock x:Name="LoadingDetailText"
-                              Text="Inicializuje sa Advanced DataGrid komponent s Color Theme API..."
+                              Text="Inicializuje sa Advanced DataGrid komponent s Individual Color Config..."
                               FontSize="16"
                               FontWeight="Medium"
                               HorizontalAlignment="Center"
                               TextWrapping="Wrap"
                               MaxWidth="400"/>
 
-                    <TextBlock Text="Prosím počkajte, komponent sa pripravuje s novými funkciami..."
+                    <TextBlock Text="Prosím počkajte, komponent sa pripravuje s AUTO-ADD a Individual Colors..."
                               FontSize="14"
                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                               HorizontalAlignment="Center"
@@ -297,7 +339,7 @@
 
                 <TextBlock x:Name="StatusTextBlock"
                           Grid.Column="0"
-                          Text="Pripravuje sa DataGrid komponent s Color Theme API..."
+                          Text="Pripravuje sa DataGrid komponent s Individual Color Config a AUTO-ADD..."
                           FontSize="14"
                           VerticalAlignment="Center"
                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
@@ -306,7 +348,7 @@
                            Orientation="Horizontal" 
                            Spacing="16">
 
-                    <TextBlock Text="🎨 Color Theme API + ⚡ Realtime Validations DEMO"
+                    <TextBlock Text="🎨 Individual Color Config + 🔥 AUTO-ADD + ⚡ Realtime Validations DEMO"
                               FontSize="12"
                               FontWeight="SemiBold"
                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
