@@ -2,9 +2,9 @@
 <!-- ✅ KOMPLETNE OPRAVENÉ: MSBuild targets s XBF copying fix pre Package Reference -->
 <Project>
 
-  <!-- ✅ Debug informácie (iba v Debug mode) -->
+  <!-- ✅ Debug informácie -->
   <Target Name="DebugAdvancedDataGridPackage" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
-    <Message Text="🔍 AdvancedWinUiDataGrid: Package v1.0.11 loaded via NuGet (XBF loading fixed)" Importance="normal" />
+    <Message Text="🔍 AdvancedWinUiDataGrid: Package v1.0.12 loaded via NuGet (XBF loading FIXED)" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: MSBuildThisFileDirectory = $(MSBuildThisFileDirectory)" Importance="normal" />
     <Message Text="🔍 AdvancedWinUiDataGrid: TargetFramework = $(TargetFramework)" Importance="normal" />
   </Target>
@@ -46,9 +46,9 @@
     </Reference>
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÁ OPRAVA: XBF súbory copying pre WinUI3 Package Reference -->
-  <Target Name="CopyAdvancedDataGridXbfFiles" BeforeTargets="Build" Condition="'$(UseWinUI)' == 'true'">
-    <Message Text="🎨 Copying XBF files from AdvancedDataGrid package..." Importance="normal" />
+  <!-- ✅ KĽÚČOVÁ OPRAVA: XBF súbory copying PRED Build (skorší timing) -->
+  <Target Name="CopyAdvancedDataGridXbfFiles" BeforeTargets="PrepareForBuild" Condition="'$(UseWinUI)' == 'true'">
+    <Message Text="🎨 Copying XBF files from AdvancedDataGrid package ($(Configuration) mode)..." Importance="normal" />
 
     <!-- ✅ Nájdi všetky XBF súbory v package -->
     <ItemGroup>
@@ -59,11 +59,39 @@
     <Copy SourceFiles="@(AdvancedDataGridXbfFiles)"
           DestinationFolder="$(OutputPath)%(RecursiveDir)"
           SkipUnchangedFiles="true"
+          CreateHardLinksIfPossible="false"
+          Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
+
+    <!-- ✅ NOVÉ: Skopíruj aj do intermediate directory -->
+    <Copy SourceFiles="@(AdvancedDataGridXbfFiles)"
+          DestinationFolder="$(IntermediateOutputPath)%(RecursiveDir)"
+          SkipUnchangedFiles="true"
+          CreateHardLinksIfPossible="false"
           Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
 
     <!-- ✅ Log info -->
-    <Message Text="✅ Copied @(AdvancedDataGridXbfFiles->Count()) XBF files to output directory" Importance="normal" Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
-    <Warning Text="⚠️ No XBF files found in package - XAML loading may fail" Condition="'@(AdvancedDataGridXbfFiles)' == ''" />
+    <Message Text="✅ Copied @(AdvancedDataGridXbfFiles->Count()) XBF files to output and intermediate directories" Importance="normal" Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
+    <Warning Text="⚠️ No XBF files found in package at: $(AdvancedDataGridLibPath)" Condition="'@(AdvancedDataGridXbfFiles)' == ''" />
+  </Target>
+
+  <!-- ✅ NOVÉ: Explicit XBF files registration ako Content -->
+  <Target Name="RegisterXbfFilesAsContent" AfterTargets="CopyAdvancedDataGridXbfFiles" Condition="'$(UseWinUI)' == 'true'">
+    <Message Text="📝 Registering XBF files as content..." Importance="low" />
+
+    <!-- ✅ Find copied XBF files -->
+    <ItemGroup>
+      <CopiedXbfFiles Include="$(OutputPath)**/*.xbf" />
+    </ItemGroup>
+
+    <!-- ✅ Register as content -->
+    <ItemGroup Condition="'@(CopiedXbfFiles)' != ''">
+      <Content Include="@(CopiedXbfFiles)">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Pack>false</Pack>
+      </Content>
+    </ItemGroup>
+
+    <Message Text="📝 Registered @(CopiedXbfFiles->Count()) XBF files as content" Importance="low" Condition="'@(CopiedXbfFiles)' != ''" />
   </Target>
 
   <!-- ✅ NOVÉ: XAML content files ako fallback -->
@@ -98,35 +126,20 @@
   <Target Name="ResolveAdvancedDataGridXamlResources" BeforeTargets="PrepareForBuild" Condition="'$(UseWinUI)' == 'true'">
     <Message Text="🎨 Resolving XAML resources for AdvancedDataGrid package..." Importance="low" />
 
+    <!-- ✅ Check for XBF files existence -->
+    <ItemGroup>
+      <ExistingXbfFiles Include="$(AdvancedDataGridLibPath)**/*.xbf" Condition="Exists('$(AdvancedDataGridLibPath)')" />
+    </ItemGroup>
+
     <PropertyGroup>
-      <XbfFilesExist Condition="Exists('$(AdvancedDataGridLibPath)') AND '$([System.IO.Directory]::GetFiles($(AdvancedDataGridLibPath), *.xbf, System.IO.SearchOption.AllDirectories).Length)' &gt; '0'">true</XbfFilesExist>
+      <XbfFilesExist Condition="'@(ExistingXbfFiles)' != ''">true</XbfFilesExist>
     </PropertyGroup>
 
-    <Message Text="✅ Found XBF files in package" Importance="normal" Condition="'$(XbfFilesExist)' == 'true'" />
+    <Message Text="✅ Found @(ExistingXbfFiles->Count()) XBF files in package" Importance="normal" Condition="'$(XbfFilesExist)' == 'true'" />
     <Message Text="ℹ️ No XBF files found - using XAML fallback" Importance="normal" Condition="'$(XbfFilesExist)' != 'true'" />
   </Target>
 
-  <!-- ✅ NOVÉ: XBF files registration -->
-  <Target Name="RegisterAdvancedDataGridXbfFiles" AfterTargets="CopyAdvancedDataGridXbfFiles" Condition="'$(UseWinUI)' == 'true'">
-    <Message Text="📝 Registering XBF files for consuming application..." Importance="low" />
-
-    <!-- ✅ Add XBF files to project's resource tracking -->
-    <ItemGroup>
-      <AdvancedDataGridXbfFiles Include="$(OutputPath)**/*AdvancedWinUiDataGrid*.xbf" />
-    </ItemGroup>
-
-    <!-- ✅ Register XBF files as content -->
-    <ItemGroup Condition="'@(AdvancedDataGridXbfFiles)' != ''">
-      <Content Include="@(AdvancedDataGridXbfFiles)">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <Link>%(Filename)%(Extension)</Link>
-      </Content>
-    </ItemGroup>
-
-    <Message Text="📝 Registered @(AdvancedDataGridXbfFiles->Count()) XBF files" Importance="low" Condition="'@(AdvancedDataGridXbfFiles)' != ''" />
-  </Target>
-
-  <!-- ✅ OPRAVENÉ: Verification target s XBF checking -->
+  <!-- ✅ OPRAVENÉ: Verification target s podrobným XBF checking -->
   <Target Name="VerifyAdvancedDataGridPackage" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
 
     <PropertyGroup>
@@ -148,6 +161,12 @@
              Importance="normal"
              Condition="'$(XamlContentExists)' == 'true'" />
 
+    <!-- ✅ List all files in lib directory for debugging -->
+    <ItemGroup Condition="'$(PackageDllExists)' == 'true'">
+      <LibraryFiles Include="$(AdvancedDataGridLibPath)*.*" />
+    </ItemGroup>
+    <Message Text="📁 Files in lib directory: @(LibraryFiles)" Importance="low" Condition="'$(Configuration)' == 'Debug' AND '@(LibraryFiles)' != ''" />
+
     <!-- ✅ Warning iba ak DLL skutočne neexistuje -->
     <Warning Text="⚠️ AdvancedWinUiDataGrid: DLL not found at expected path. Trying fallback locations..."
              Condition="'$(PackageDllExists)' != 'true' AND '$(DesignTimeBuild)' != 'true'" />
@@ -162,7 +181,7 @@
              Condition="'$(PackageDllExists)' != 'true' AND '$(DesignTimeBuild)' != 'true'" />
 
     <!-- ✅ Success message -->
-    <Message Text="🎉 AdvancedWinUiDataGrid package successfully loaded with XAML fix and Auto-Add functionality!"
+    <Message Text="🎉 AdvancedWinUiDataGrid package successfully loaded with XAML fix and AUTO-ADD functionality!"
              Importance="high"
              Condition="'$(PackageDllExists)' == 'true' AND '$(XamlContentExists)' == 'true'" />
   </Target>

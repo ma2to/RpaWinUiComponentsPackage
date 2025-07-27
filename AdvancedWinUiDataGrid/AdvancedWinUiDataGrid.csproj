@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ KOMPLETNE OPRAVENÝ XBF packaging pre Package Reference -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ KOMPLETNE OPRAVENÝ XBF packaging -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -9,12 +9,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: Správne nastavenia pre XBF generation a packaging -->
+    <!-- ✅ KĽÚČOVÁ OPRAVA: XBF generation pre Package Reference -->
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <BuildOutputTargetFolder>lib</BuildOutputTargetFolder>
     <ContentTargetFolders>content</ContentTargetFolders>
 
-    <!-- ✅ NOVÉ: Forced XBF generation -->
+    <!-- ✅ OPRAVENÉ: XBF generation aj pre DEBUG mode -->
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
@@ -32,28 +32,28 @@
 
     <!-- ✅ Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.11</Version>
+    <Version>1.0.12</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
-    <Description>Profesionálny WinUI3 DataGrid komponent s Auto-Add funkcionalitou a OPRAVENÝMI XAML resources</Description>
+    <Description>Profesionálny WinUI3 DataGrid komponent s AUTO-ADD funkcionalitou a OPRAVENÝM XAML loading</Description>
     <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel;Auto-Add;ColorThemes;RealTime;XAML</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.11: OPRAVENÉ XAML loading pre Package Reference + Auto-Add funkcionalita + inicializačné nastavenia</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.12: OPRAVENÉ XAML loading pre Package Reference + AUTO-ADD funkcionalita + XBF súbory fix</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
     <AssemblyTitle>Advanced WinUI DataGrid Component with FIXED XAML loading</AssemblyTitle>
     <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 s opraveným XAML loading pre Package Reference</AssemblyDescription>
 
-    <!-- ✅ NOVÉ: Potlač všetky packaging warnings -->
+    <!-- ✅ Potlač packaging warnings -->
     <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271</NoWarn>
   </PropertyGroup>
 
-  <!-- ✅ KĽÚČOVÉ: EXPLICITNÉ XAML súbory s forced compilation -->
+  <!-- ✅ KĽÚČOVÉ: EXPLICITNÉ XAML súbory s forced compilation PRE OBA MODES -->
   <ItemGroup>
     <Page Include="Controls\AdvancedDataGrid.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -101,13 +101,13 @@
     <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÁ OPRAVA: XBF súbory packaging pre Package Reference -->
-  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+  <!-- ✅ KĽÚČOVÁ OPRAVA: XBF súbory packaging PRE OBA MODES (Debug aj Release) -->
+  <ItemGroup>
     <!-- ✅ Zabaľ všetky XBF súbory z output directory -->
-    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" />
+    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)')" />
     
     <!-- ✅ Zabaľ main assembly -->
-    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" />
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
     <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
     
     <!-- ✅ Zabaľ XamlTypeInfo ak existuje -->
@@ -123,9 +123,9 @@
     <None Include="Themes\*.xaml" Pack="true" PackagePath="content/Themes/" />
   </ItemGroup>
 
-  <!-- ✅ NOVÉ: XBF generation targets -->
-  <Target Name="GenerateXbfFiles" BeforeTargets="Pack" Condition="'$(Configuration)' == 'Release'">
-    <Message Text="🎨 Generating XBF files for Package Reference..." Importance="normal" />
+  <!-- ✅ OPRAVENÉ: Forced XBF generation pre OBA MODES -->
+  <Target Name="GenerateXbfFiles" BeforeTargets="Pack;Build">
+    <Message Text="🎨 Generating XBF files for Package Reference ($(Configuration) mode)..." Importance="normal" />
     
     <!-- ✅ Force XAML compilation -->
     <ItemGroup>
@@ -136,8 +136,8 @@
   </Target>
 
   <!-- ✅ NOVÉ: Post-build XBF verification -->
-  <Target Name="VerifyXbfGeneration" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-    <Message Text="🔍 Verifying XBF generation..." Importance="normal" />
+  <Target Name="VerifyXbfGeneration" AfterTargets="Build">
+    <Message Text="🔍 Verifying XBF generation ($(Configuration) mode)..." Importance="normal" />
     
     <ItemGroup>
       <GeneratedXbfFiles Include="$(OutputPath)**/*.xbf" />
@@ -150,12 +150,12 @@
     <Message Text="📁 XBF: %(GeneratedXbfFiles.Identity)" Importance="low" Condition="'@(GeneratedXbfFiles)' != ''" />
   </Target>
 
-  <!-- ✅ WinUI3 specific build settings -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+  <!-- ✅ WinUI3 specific build settings PRE OBA MODES -->
+  <PropertyGroup>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
     <UseCompiledXaml>true</UseCompiledXaml>
-    <Optimize>true</Optimize>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
+    <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
     <DebugType>portable</DebugType>
   </PropertyGroup>
 
@@ -187,7 +187,7 @@
   <!-- ✅ Custom targets pre post-build -->
   <Target Name="LogPackageInfo" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
-    <Message Text="📦 ✨ OPRAVENÉ XAML loading pre Package Reference" Importance="high" />
+    <Message Text="📦 ✨ OPRAVENÉ XAML loading pre Package Reference ($(Configuration) mode)" Importance="high" />
     <Message Text="📦 ✅ AUTO-ADD riadkov funkcionalita implementovaná" Importance="high" />
     <Message Text="📦 🔒 Clean PUBLIC API (AdvancedDataGrid, ColumnDefinition, ValidationRule, ThrottlingConfig, DataGridColorTheme)" Importance="high" />
     <Message Text="📦 Target framework: $(TargetFramework)" Importance="high" />
@@ -198,18 +198,16 @@
     <Message Text="🧹 Cleaning up before package creation (XBF packaging fix)..." Importance="normal" />
   </Target>
 
-  <!-- ✅ NOVÉ: Alternative XAML loading approach -->
-  <Target Name="CopyXamlAsEmbeddedResource" BeforeTargets="Build" Condition="'$(UseEmbeddedXaml)' == 'true'">
-    <Message Text="📦 Including XAML as embedded resources for fallback..." Importance="normal" />
+  <!-- ✅ NOVÉ: Force XBF compilation aj pre Debug builds -->
+  <Target Name="ForceXamlCompilation" BeforeTargets="XamlPreCompile">
+    <Message Text="🎨 Forcing XAML compilation for $(Configuration) mode..." Importance="normal" />
     
-    <ItemGroup>
-      <EmbeddedResource Include="Controls\**\*.xaml">
-        <LogicalName>%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
-      </EmbeddedResource>
-      <EmbeddedResource Include="Themes\*.xaml">
-        <LogicalName>Themes\%(Filename)%(Extension)</LogicalName>
-      </EmbeddedResource>
-    </ItemGroup>
+    <PropertyGroup>
+      <!-- ✅ Ensure XAML compilation is always enabled -->
+      <XamlCompilationEnabled>true</XamlCompilationEnabled>
+      <UseCompiledXaml>true</UseCompiledXaml>
+      <XamlRequiredFileExt>.xbf</XamlRequiredFileExt>
+    </PropertyGroup>
   </Target>
 
 </Project>
