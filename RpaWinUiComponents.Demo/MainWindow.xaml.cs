@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s Auto-Add testovaním
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - všetky warnings vyriešené
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -23,8 +23,8 @@ namespace RpaWinUiComponents.Demo
 {
     public sealed partial class MainWindow : Window
     {
+        // ✅ OPRAVENÉ CS0169: Odstránený nepoužitý field _dataGridControl
         private bool _isInitialized = false;
-        private AdvancedDataGrid? _dataGridControl; // ✅ NOVÉ: Programmaticky vytvorený DataGrid
 
         public MainWindow()
         {
@@ -47,7 +47,7 @@ namespace RpaWinUiComponents.Demo
             {
                 System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD funkcionalitou...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.8...", "Načítava sa z Package Reference s KOMPLETNOU AUTO-ADD funkciou...");
+                UpdateLoadingState("Inicializuje sa balík v1.0.11...", "Načítava sa z Package Reference s KOMPLETNOU AUTO-ADD funkciou...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
