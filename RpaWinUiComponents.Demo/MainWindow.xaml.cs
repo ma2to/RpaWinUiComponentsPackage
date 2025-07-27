@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ pre DataGridColorConfig API + Search/Sort
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÉ pre DataGridColorConfig + Search/Sort/Zebra
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -14,7 +14,6 @@ using PublicColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDe
 using PublicValidationRule = RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationRule;
 using PublicThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.ThrottlingConfig;
 using PublicDataGridColorConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorConfig;
-using PublicSortDirection = RpaWinUiComponents.AdvancedWinUiDataGrid.SortDirection;
 
 // ✅ Windows.UI.Color pre farby
 using Windows.UI;
@@ -25,7 +24,7 @@ namespace RpaWinUiComponents.Demo
     {
         private bool _isInitialized = false;
 
-        // ✅ NOVÉ: Store pre základnú konfiguráciu (pre reinicializáciu s inými farbami)
+        // ✅ Store pre základnú konfiguráciu (pre reinicializáciu s inými farbami)
         private List<PublicColumnDefinition> _baseColumns = new();
         private List<PublicValidationRule> _baseValidationRules = new();
         private PublicThrottlingConfig _baseThrottlingConfig = PublicThrottlingConfig.Default;
@@ -50,9 +49,9 @@ namespace RpaWinUiComponents.Demo
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("🚀 ŠTART inicializácie Demo aplikácie s AUTO-ADD, DataGridColorConfig a Search/Sort...");
+                System.Diagnostics.Debug.WriteLine("🚀 ŠTART Demo s Individual Colors + Search/Sort/Zebra...");
 
-                UpdateLoadingState("Inicializuje sa balík v1.0.16...", "Načítava sa z Package Reference s AUTO-ADD, DataGridColorConfig a Search/Sort...");
+                UpdateLoadingState("Inicializuje se balík s Search/Sort/Zebra...", "Načítava sa Package Reference s Individual Colors...");
                 await Task.Delay(300);
 
                 // ✅ OVERENIE dostupnosti komponentu
@@ -63,9 +62,9 @@ namespace RpaWinUiComponents.Demo
                     return;
                 }
 
-                System.Diagnostics.Debug.WriteLine("✅ DataGridControl komponent je dostupný");
+                System.Diagnostics.Debug.WriteLine("✅ DataGridControl komponent s Search/Sort/Zebra je dostupný");
 
-                // ✅ KROK 1: Definícia základnej konfigurácie (store pre reinicializáciu)
+                // ✅ KROK 1: Definícia základnej konfigurácie
                 _baseColumns = new List<PublicColumnDefinition>
                 {
                     new("ID", typeof(int)) { MinWidth = 60, Width = 80, Header = "🔢 ID" },
@@ -87,28 +86,30 @@ namespace RpaWinUiComponents.Demo
                 _baseThrottlingConfig = PublicThrottlingConfig.Default;
                 _baseRowCount = 5;
 
-                // ✅ KROK 2: Inicializácia s default colors
-                await InitializeDataGridWithColorConfig(null, "default colors");
+                // ✅ KROK 2: Inicializácia s default Individual Colors (s Zebra)
+                await InitializeDataGridWithColorConfig(PublicDataGridColorConfig.Light, "Light s Zebra");
 
-                // ✅ KROK 3: Načítanie testových dát s AUTO-ADD demonstráciou
-                UpdateLoadingState("Načítavajú sa AUTO-ADD demo dáta...", "Pripravujú sa záznamy pre auto-add test...");
+                // ✅ KROK 3: Načítanie demo dát
+                UpdateLoadingState("Načítavajú sa Search/Sort/Zebra demo dáta...", "Pripravujú sa záznamy pre testovanie...");
                 await Task.Delay(200);
 
                 var initialData = new List<Dictionary<string, object?>>
                 {
                     new() { ["ID"] = 1, ["Meno"] = "Ján Novák", ["Email"] = "jan@example.com", ["Vek"] = 30, ["Plat"] = 2500.00m },
                     new() { ["ID"] = 2, ["Meno"] = "Mária Svoboda", ["Email"] = "maria@company.sk", ["Vek"] = 28, ["Plat"] = 3200.00m },
-                    new() { ["ID"] = 3, ["Meno"] = "Peter Kováč", ["Email"] = "peter@firma.sk", ["Vek"] = 35, ["Plat"] = 4500.00m }
+                    new() { ["ID"] = 3, ["Meno"] = "Peter Kováč", ["Email"] = "peter@firma.sk", ["Vek"] = 35, ["Plat"] = 4500.00m },
+                    new() { ["ID"] = 4, ["Meno"] = "Eva Zelená", ["Email"] = "eva@test.sk", ["Vek"] = 26, ["Plat"] = 2800.00m },
+                    new() { ["ID"] = 5, ["Meno"] = "Tomáš Veľký", ["Email"] = "tomas@firma.sk", ["Vek"] = 40, ["Plat"] = 5500.00m }
                 };
 
-                System.Diagnostics.Debug.WriteLine("📊 Načítavam 3 riadky štartovacích dát cez PUBLIC API (AUTO-ADD test)...");
+                System.Diagnostics.Debug.WriteLine("📊 Načítavam 5 demo riadkov s Zebra effect...");
                 await DataGridControl.LoadDataAsync(initialData);
-                System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD test dáta načítané - mal by byť 6 riadkov celkom (5 minimum + 1 prázdny)");
+                System.Diagnostics.Debug.WriteLine("✅ Demo dáta načítané - viditeľný Zebra effect");
 
                 // ✅ KROK 4: Dokončenie inicializácie
                 CompleteInitialization();
 
-                System.Diagnostics.Debug.WriteLine("🎉 Demo aplikácia ÚSPEŠNE inicializovaná s AUTO-ADD, DataGridColorConfig a Search/Sort!");
+                System.Diagnostics.Debug.WriteLine("🎉 Demo s Individual Colors + Search/Sort/Zebra ÚSPEŠNE inicializovaná!");
 
             }
             catch (Exception ex)
@@ -120,16 +121,16 @@ namespace RpaWinUiComponents.Demo
             }
         }
 
-        #region ✅ OPRAVENÉ: DataGridColorConfig Helper Metódy
+        #region ✅ Individual Colors + Search/Sort/Zebra Helper Metódy
 
         /// <summary>
-        /// Inicializuje DataGrid s určitými farbami
+        /// Inicializuje DataGrid s Individual Color Config
         /// </summary>
-        private async Task InitializeDataGridWithColorConfig(PublicDataGridColorConfig? colorConfig, string colorDescription)
+        private async Task InitializeDataGridWithColorConfig(PublicDataGridColorConfig colorConfig, string colorDescription)
         {
             try
             {
-                UpdateLoadingState($"Inicializuje sa DataGrid s {colorDescription}...", "Volám InitializeAsync s DataGridColorConfig...");
+                UpdateLoadingState($"Inicializuje sa DataGrid s {colorDescription}...", "Volám InitializeAsync s Individual Colors...");
                 await Task.Delay(200);
 
                 System.Diagnostics.Debug.WriteLine($"🔧 Volám InitializeAsync s {colorDescription}...");
@@ -171,13 +172,13 @@ namespace RpaWinUiComponents.Demo
 
                 if (InitStatusText != null)
                 {
-                    InitStatusText.Text = "✅ AUTO-ADD + DataGridColorConfig + Search/Sort Pripravené!";
+                    InitStatusText.Text = "✅ Individual Colors + Search/Sort/Zebra Pripravené!";
                     InitStatusText.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 128, 0)); // Green
                 }
 
                 if (StatusTextBlock != null)
                 {
-                    StatusTextBlock.Text = "🔥 AUTO-ADD je aktívne! DataGridColorConfig nastavené! Search/Sort ready! Vyplň posledný riadok → automaticky sa pridá nový! 🎉";
+                    StatusTextBlock.Text = "🎨 Individual Colors nastavené! 🔍 Search v headeroch! ⬆️⬇️ Sort kliknutím na header! 🦓 Zebra rows aktívne!";
                 }
             });
         }
@@ -202,25 +203,24 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ OPRAVENÉ: DataGridColorConfig Button Handlers (cez reinicializáciu)
+        #region ✅ Individual Color Config Button Handlers
 
         private async void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Light DataGridColorConfig...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Light Individual Colors + Zebra...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Light DataGridColorConfig...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Light Individual Colors...";
 
-                // ✅ Light colors pomocou DataGridColorConfig.Light
                 var lightConfig = PublicDataGridColorConfig.Light;
-                await InitializeDataGridWithColorConfig(lightConfig, "Light DataGridColorConfig");
+                await InitializeDataGridWithColorConfig(lightConfig, "Light s jemným Zebra");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Light DataGridColorConfig aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Light Individual Colors + Zebra aplikované!";
 
-                System.Diagnostics.Debug.WriteLine("✅ Light DataGridColorConfig úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Light Individual Colors s Zebra úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -234,19 +234,18 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Dark DataGridColorConfig...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Dark Individual Colors + Zebra...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Dark DataGridColorConfig...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Dark Individual Colors...";
 
-                // ✅ Dark colors pomocou DataGridColorConfig.Dark
                 var darkConfig = PublicDataGridColorConfig.Dark;
-                await InitializeDataGridWithColorConfig(darkConfig, "Dark DataGridColorConfig");
+                await InitializeDataGridWithColorConfig(darkConfig, "Dark s jemným Zebra");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Dark DataGridColorConfig aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Dark Individual Colors + Zebra aplikované!";
 
-                System.Diagnostics.Debug.WriteLine("✅ Dark DataGridColorConfig úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Dark Individual Colors s Zebra úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -260,19 +259,18 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Blue DataGridColorConfig...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Blue Individual Colors + Zebra...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Blue DataGridColorConfig...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Blue Individual Colors...";
 
-                // ✅ Blue colors pomocou DataGridColorConfig.Blue
                 var blueConfig = PublicDataGridColorConfig.Blue;
-                await InitializeDataGridWithColorConfig(blueConfig, "Blue DataGridColorConfig");
+                await InitializeDataGridWithColorConfig(blueConfig, "Blue s jemným Zebra");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Blue DataGridColorConfig aplikované cez reinicializáciu";
+                    StatusTextBlock.Text = "🎨 Blue Individual Colors + Zebra aplikované!";
 
-                System.Diagnostics.Debug.WriteLine("✅ Blue DataGridColorConfig úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Blue Individual Colors s Zebra úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -286,12 +284,12 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Custom DataGridColorConfig...");
+                System.Diagnostics.Debug.WriteLine("🎨 Reinicializujem s Custom Individual Colors + Strong Zebra...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Reinicializuje sa s Custom DataGridColorConfig...";
+                    StatusTextBlock.Text = "Reinicializuje sa s Custom Individual Colors...";
 
-                // ✅ Custom colors pomocou DataGridColorConfig (vytvor custom inštanciu)
+                // ✅ Custom Individual Colors s výrazným Zebra effect
                 var customConfig = new PublicDataGridColorConfig
                 {
                     CellBackgroundColor = Color.FromArgb(255, 255, 255, 224), // LightYellow
@@ -302,15 +300,15 @@ namespace RpaWinUiComponents.Demo
                     ValidationErrorColor = Color.FromArgb(255, 139, 0, 0),    // DarkRed
                     SelectionColor = Color.FromArgb(100, 255, 165, 0),        // Orange alpha
                     EditingCellColor = Color.FromArgb(50, 255, 215, 0),       // Gold alpha
-                    AlternateRowColor = Color.FromArgb(30, 255, 200, 0)       // ✅ NOVÉ: Zebra effect
+                    AlternateRowColor = Color.FromArgb(40, 255, 140, 0)       // Výrazný Orange Zebra
                 };
 
-                await InitializeDataGridWithColorConfig(customConfig, "Custom Orange DataGridColorConfig s Zebra");
+                await InitializeDataGridWithColorConfig(customConfig, "Custom Orange s výrazným Zebra");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Custom Orange DataGridColorConfig s Zebra aplikované!";
+                    StatusTextBlock.Text = "🎨 Custom Orange Individual Colors + výrazný Zebra aplikované!";
 
-                System.Diagnostics.Debug.WriteLine("✅ Custom DataGridColorConfig s Zebra úspešne aplikované");
+                System.Diagnostics.Debug.WriteLine("✅ Custom Individual Colors s výrazným Zebra úspešne aplikované");
             }
             catch (Exception ex)
             {
@@ -324,18 +322,19 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na default DataGridColorConfig...");
+                System.Diagnostics.Debug.WriteLine("🔄 Resetujem na default Individual Colors bez Zebra...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Resetuje sa na default DataGridColorConfig...";
+                    StatusTextBlock.Text = "Resetuje sa na default Individual Colors...";
 
-                // ✅ Reset na default (null = použije default colors)
-                await InitializeDataGridWithColorConfig(null, "default DataGridColorConfig");
+                // ✅ Reset na config bez Zebra effect
+                var defaultConfig = PublicDataGridColorConfig.WithoutZebra;
+                await InitializeDataGridWithColorConfig(defaultConfig, "Default bez Zebra");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔄 Reset na default DataGridColorConfig cez reinicializáciu";
+                    StatusTextBlock.Text = "🔄 Reset na default Individual Colors (bez Zebra) dokončený!";
 
-                System.Diagnostics.Debug.WriteLine("✅ DataGridColorConfig úspešne resetované");
+                System.Diagnostics.Debug.WriteLine("✅ Individual Colors úspešne resetované (bez Zebra)");
             }
             catch (Exception ex)
             {
@@ -347,29 +346,24 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ NOVÉ: Search & Sort Button Handlers
+        #region ✅ NOVÉ: Search/Sort/Zebra Test Button Handlers
 
         private async void OnTestSearchClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔍 SEARCH TEST: Testuje sa search funkcionalita...");
+                System.Diagnostics.Debug.WriteLine("🔍 SEARCH TEST: Aplikujem search filter na 'Meno' stĺpec...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔍 Search Test: Nastavujú sa filtre...";
+                    StatusTextBlock.Text = "🔍 Search Test: Hľadám 'Novák' v Meno stĺpci...";
 
-                // Demo search filters
-                DataGridControl.SetColumnSearchFilter("Meno", "Test");
-                DataGridControl.SetColumnSearchFilter("Email", "@test");
-
-                var hasActiveFilters = DataGridControl.HasActiveSearchFilters;
-                var searchStatus = DataGridControl.GetSearchSortStatus();
+                // Test search funkcionalita
+                await DataGridControl.SetColumnSearchAsync("Meno", "Novák");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"🔍 Search filtre nastavené! Active: {hasActiveFilters}, Status: {searchStatus}";
+                    StatusTextBlock.Text = "🔍 Search aplikovaný! Vidíš iba riadky s 'Novák' v mene. Klikni Clear Search pre reset.";
 
-                System.Diagnostics.Debug.WriteLine($"✅ Search Test dokončený - Active filters: {hasActiveFilters}");
-                await Task.CompletedTask;
+                System.Diagnostics.Debug.WriteLine("✅ SEARCH TEST dokončený - filter na 'Novák' aplikovaný");
             }
             catch (Exception ex)
             {
@@ -383,27 +377,18 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("📊 SORT TEST: Testuje sa sort funkcionalita...");
+                System.Diagnostics.Debug.WriteLine("⬆️⬇️ SORT TEST: Toggle sort na 'Plat' stĺpec...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "📊 Sort Test: Toggleuje sa sort na 'Meno'...";
+                    StatusTextBlock.Text = "⬆️⬇️ Sort Test: Sortujem podľa Plat stĺpca...";
 
-                // Demo sort operations
-                var direction1 = DataGridControl.ToggleColumnSort("Meno"); // None → Ascending
-                await Task.Delay(500);
-
-                var direction2 = DataGridControl.ToggleColumnSort("Meno"); // Ascending → Descending
-                await Task.Delay(500);
-
-                var direction3 = DataGridControl.ToggleColumnSort("Meno"); // Descending → None
-
-                var hasActiveSort = DataGridControl.HasActiveSort;
-                var sortStatus = DataGridControl.GetSearchSortStatus();
+                // Test sort funkcionalita
+                await DataGridControl.ToggleColumnSortAsync("Plat");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"📊 Sort Test: {direction1} → {direction2} → {direction3}, Active: {hasActiveSort}";
+                    StatusTextBlock.Text = "⬆️⬇️ Sort aplikovaný! Plat stĺpec je sortovaný vzostupne. Klikni znova pre zostupne.";
 
-                System.Diagnostics.Debug.WriteLine($"✅ Sort Test dokončený - Directions: {direction1} → {direction2} → {direction3}");
+                System.Diagnostics.Debug.WriteLine("✅ SORT TEST dokončený - Plat stĺpec sortovaný");
             }
             catch (Exception ex)
             {
@@ -413,39 +398,65 @@ namespace RpaWinUiComponents.Demo
             }
         }
 
-        private async void OnClearSearchSortClick(object sender, RoutedEventArgs e)
+        private async void OnTestZebraToggleClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🧹 CLEAR SEARCH/SORT: Čistia sa všetky filtre a sort...");
+                System.Diagnostics.Debug.WriteLine("🦓 ZEBRA TEST: Toggle zebra rows effect...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🧹 Čistia sa search filtre a sort stavy...";
+                    StatusTextBlock.Text = "🦓 Zebra Test: Prepínam zebra rows effect...";
 
-                DataGridControl.ClearAllSearchFilters();
-                DataGridControl.ClearAllSorts();
+                // Test zebra toggle - použijem config s/bez zebra
+                var currentConfig = DataGridControl.ColorConfig;
+                var newConfig = currentConfig?.IsZebraRowsEnabled == true
+                    ? PublicDataGridColorConfig.WithoutZebra
+                    : PublicDataGridColorConfig.WithStrongZebra;
 
-                var hasActiveFilters = DataGridControl.HasActiveSearchFilters;
-                var hasActiveSort = DataGridControl.HasActiveSort;
-                var status = DataGridControl.GetSearchSortStatus();
+                await InitializeDataGridWithColorConfig(newConfig,
+                    newConfig == PublicDataGridColorConfig.WithoutZebra ? "bez Zebra" : "s výrazným Zebra");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"🧹 Všetko vyčistené! Filters: {hasActiveFilters}, Sort: {hasActiveSort}, Status: {status}";
+                    StatusTextBlock.Text = "🦓 Zebra rows effect prepnutý! Pozri zmenu v pozadí riadkov.";
 
-                System.Diagnostics.Debug.WriteLine("✅ Search/Sort vyčistené");
-                await Task.CompletedTask;
+                System.Diagnostics.Debug.WriteLine("✅ ZEBRA TEST dokončený - effect prepnutý");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Clear search/sort failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Zebra test failed: {ex.Message}");
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"Chyba pri clear search/sort: {ex.Message}";
+                    StatusTextBlock.Text = $"Chyba pri zebra teste: {ex.Message}";
+            }
+        }
+
+        private async void OnClearSearchClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("🧹 CLEAR SEARCH: Vyčisťujem všetky search filtre...");
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🧹 Vyčisťujú sa search filtre...";
+
+                // Vyčistenie search filtrov
+                await DataGridControl.ClearAllSearchAsync();
+
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = "🧹 Search filtre vyčistené! Všetky riadky sú opäť viditeľné.";
+
+                System.Diagnostics.Debug.WriteLine("✅ CLEAR SEARCH dokončené");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Clear search failed: {ex.Message}");
+                if (StatusTextBlock != null)
+                    StatusTextBlock.Text = $"Chyba pri clear search: {ex.Message}";
             }
         }
 
         #endregion
 
-        #region ✅ AUTO-ADD Demo Button Handlers
+        #region ✅ AUTO-ADD Demo Button Handlers (unchanged)
 
         private async void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e)
         {
@@ -454,12 +465,12 @@ namespace RpaWinUiComponents.Demo
                 System.Diagnostics.Debug.WriteLine("🔥 AUTO-ADD TEST: Volám TestAutoAddFewRowsAsync...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "AUTO-ADD Test: Načítavajú sa 3 riadky (menej ako minimum 5)...";
+                    StatusTextBlock.Text = "AUTO-ADD Test: Načítavajú sa 2 riadky (menej ako minimum 5)...";
 
                 await DataGridControl.TestAutoAddFewRowsAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔥 AUTO-ADD: Test niekoľkých riadkov dokončený!";
+                    StatusTextBlock.Text = "🔥 AUTO-ADD: Test niekoľkých riadkov dokončený s Zebra effect!";
 
                 System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD TEST 'few rows' dokončený");
             }
@@ -483,7 +494,7 @@ namespace RpaWinUiComponents.Demo
                 await DataGridControl.TestAutoAddManyRowsAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔥 AUTO-ADD: Test množstva riadkov dokončený → vytvorených 21 riadkov (20 + 1 prázdny)";
+                    StatusTextBlock.Text = "🔥 AUTO-ADD: Test množstva riadkov dokončený → viditeľný Zebra effect na 20+ riadkoch!";
 
                 System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD TEST 'many rows' dokončený");
             }
@@ -521,7 +532,7 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region ✅ Test Button Handlers
+        #region ✅ Ostatné Test Button Handlers (unchanged)
 
         private async void OnTestRealtimeValidationClick(object sender, RoutedEventArgs e)
         {
@@ -591,16 +602,16 @@ namespace RpaWinUiComponents.Demo
 
         #endregion
 
-        #region Standard Button Event Handlers - PUBLIC API
+        #region Standard Button Event Handlers - PUBLIC API (unchanged ale s Individual Colors support)
 
         private async void OnLoadSampleDataClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("📊 Načítavam ukážkové dáta cez PUBLIC API s AUTO-ADD...");
+                System.Diagnostics.Debug.WriteLine("📊 Načítavam ukážkové dáta s Individual Colors + Zebra...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Načítavajú sa ukážkové dáta s AUTO-ADD...";
+                    StatusTextBlock.Text = "Načítavajú sa ukážkové dáta s Zebra effect...";
 
                 var sampleData = new List<Dictionary<string, object?>>
                 {
@@ -609,15 +620,17 @@ namespace RpaWinUiComponents.Demo
                     new() { ["ID"] = 103, ["Meno"] = "Eva Krásna", ["Email"] = "eva@firma.sk", ["Vek"] = 28, ["Plat"] = 3800m },
                     new() { ["ID"] = 104, ["Meno"] = "Tomáš Novák", ["Email"] = "tomas@example.sk", ["Vek"] = 35, ["Plat"] = 5200m },
                     new() { ["ID"] = 105, ["Meno"] = "Lenka Malá", ["Email"] = "lenka@test.sk", ["Vek"] = 29, ["Plat"] = 3600m },
-                    new() { ["ID"] = 106, ["Meno"] = "Michal Veľký", ["Email"] = "michal@firma.sk", ["Vek"] = 31, ["Plat"] = 4100m }
+                    new() { ["ID"] = 106, ["Meno"] = "Michal Veľký", ["Email"] = "michal@firma.sk", ["Vek"] = 31, ["Plat"] = 4100m },
+                    new() { ["ID"] = 107, ["Meno"] = "Zuzana Modrá", ["Email"] = "zuzana@test.sk", ["Vek"] = 27, ["Plat"] = 3300m },
+                    new() { ["ID"] = 108, ["Meno"] = "Štefan Čierny", ["Email"] = "stefan@company.sk", ["Vek"] = 45, ["Plat"] = 6200m }
                 };
 
                 await DataGridControl.LoadDataAsync(sampleData);
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "✨ AUTO-ADD: 6 riadkov ukážkových dát načítané → celkom 7 riadkov (6 + 1 prázdny)";
+                    StatusTextBlock.Text = "✨ 8 riadkov ukážkových dát načítané s Individual Colors + Zebra effect!";
 
-                System.Diagnostics.Debug.WriteLine("✅ AUTO-ADD ukážkové dáta úspešne načítané");
+                System.Diagnostics.Debug.WriteLine("✅ Ukážkové dáta s Individual Colors + Zebra úspešne načítané");
             }
             catch (Exception ex)
             {
@@ -634,14 +647,14 @@ namespace RpaWinUiComponents.Demo
                 System.Diagnostics.Debug.WriteLine("✅ Validujem všetky dáta cez PUBLIC API...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Validujú sa dáta s AUTO-ADD...";
+                    StatusTextBlock.Text = "Validujú sa dáta...";
 
                 var isValid = await DataGridControl.ValidateAllRowsAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = isValid ? "✅ Všetky dáta sú validné (AUTO-ADD)" : "❌ Nájdené validačné chyby - pozri červené orámovanie";
+                    StatusTextBlock.Text = isValid ? "✅ Všetky dáta sú validné" : "❌ Nájdené validačné chyby - pozri červené orámovanie";
 
-                System.Diagnostics.Debug.WriteLine($"✅ Validácia dokončená s AUTO-ADD: Všetky validné = {isValid}");
+                System.Diagnostics.Debug.WriteLine($"✅ Validácia dokončená: Všetky validné = {isValid}");
             }
             catch (Exception ex)
             {
@@ -655,7 +668,7 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🗑️ Vymazávam všetky dáta cez PUBLIC API s AUTO-ADD ochranou...");
+                System.Diagnostics.Debug.WriteLine("🗑️ Vymazávam všetky dáta s AUTO-ADD ochranou...");
 
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "Vymazávajú sa dáta s AUTO-ADD ochranou...";
@@ -663,7 +676,7 @@ namespace RpaWinUiComponents.Demo
                 await DataGridControl.ClearAllDataAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "✨ AUTO-ADD: Všetky dáta vymazané, zostalo minimum 5 prázdnych riadkov";
+                    StatusTextBlock.Text = "✨ Všetky dáta vymazané, zostalo minimum 5 prázdnych riadkov";
 
                 System.Diagnostics.Debug.WriteLine("✅ Dáta úspešne vymazané s AUTO-ADD ochranou");
             }
@@ -682,14 +695,14 @@ namespace RpaWinUiComponents.Demo
                 System.Diagnostics.Debug.WriteLine("📤 Exportujem dáta cez PUBLIC API...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Exportujú sa dáta z AUTO-ADD...";
+                    StatusTextBlock.Text = "Exportujú sa dáta...";
 
                 var exportedData = await DataGridControl.ExportToDataTableAsync();
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = $"📤 Export dokončený: {exportedData.Rows.Count} riadkov (vrátane prázdnych z AUTO-ADD)";
+                    StatusTextBlock.Text = $"📤 Export dokončený: {exportedData.Rows.Count} riadkov (vrátane prázdnych)";
 
-                System.Diagnostics.Debug.WriteLine($"✅ Export úspešný s AUTO-ADD: {exportedData.Rows.Count} riadkov");
+                System.Diagnostics.Debug.WriteLine($"✅ Export úspešný: {exportedData.Rows.Count} riadkov");
             }
             catch (Exception ex)
             {
@@ -703,14 +716,13 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🎯 Custom delete validation s AUTO-ADD ochranou cez PUBLIC API...");
+                System.Diagnostics.Debug.WriteLine("🎯 Custom delete validation s AUTO-ADD ochranou...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Aplikujú sa custom delete pravidlá s AUTO-ADD ochranou...";
+                    StatusTextBlock.Text = "Aplikujú sa custom delete pravidlá...";
 
                 var deleteValidationRules = new List<PublicValidationRule>
                 {
-                    // Zmaž riadky kde plat > 10000
                     PublicValidationRule.Custom("Plat", value =>
                     {
                         if (value == null) return false;
@@ -721,7 +733,6 @@ namespace RpaWinUiComponents.Demo
                         return false;
                     }, "Vysoký plat - riadok zmazaný s AUTO-ADD ochranou"),
 
-                    // Zmaž riadky kde vek > 50
                     PublicValidationRule.Custom("Vek", value =>
                     {
                         if (value == null) return false;
@@ -736,7 +747,7 @@ namespace RpaWinUiComponents.Demo
                 await DataGridControl.DeleteRowsByCustomValidationAsync(deleteValidationRules);
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "✨ AUTO-ADD delete: Custom pravidlá aplikované, minimum riadkov zachované";
+                    StatusTextBlock.Text = "✨ Custom delete pravidlá aplikované, minimum riadkov zachované";
 
                 System.Diagnostics.Debug.WriteLine("✅ Custom delete s AUTO-ADD ochranou úspešne dokončené");
             }
@@ -752,21 +763,19 @@ namespace RpaWinUiComponents.Demo
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("⚡ Pokročilé delete príklady s AUTO-ADD ochranou cez PUBLIC API...");
+                System.Diagnostics.Debug.WriteLine("⚡ Pokročilé delete príklady s AUTO-ADD ochranou...");
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "Spúšťajú sa pokročilé delete pravidlá s AUTO-ADD ochranou...";
+                    StatusTextBlock.Text = "Spúšťajú sa pokročilé delete pravidlá...";
 
                 var advancedDeleteRules = new List<PublicValidationRule>
                 {
-                    // Zmaž riadky s prázdnym emailom
                     PublicValidationRule.Custom("Email", value =>
                     {
                         var email = value?.ToString() ?? "";
                         return string.IsNullOrWhiteSpace(email);
                     }, "Prázdny email - riadok zmazaný s AUTO-ADD ochranou"),
 
-                    // Zmaž riadky kde ID je párne
                     PublicValidationRule.Custom("ID", value =>
                     {
                         if (value == null) return false;
@@ -781,7 +790,7 @@ namespace RpaWinUiComponents.Demo
                 await DataGridControl.DeleteRowsByCustomValidationAsync(advancedDeleteRules);
 
                 if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "✨ AUTO-ADD: Pokročilé delete pravidlá aplikované, minimum zachované";
+                    StatusTextBlock.Text = "✨ Pokročilé delete pravidlá aplikované, minimum zachované";
 
                 System.Diagnostics.Debug.WriteLine("✅ Pokročilé delete s AUTO-ADD ochranou úspešne dokončené");
             }

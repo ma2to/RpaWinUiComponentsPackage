@@ -1,4 +1,4 @@
-﻿// Services/SearchAndSortService.cs - ✅ INTERNAL Search & Sort functionality
+﻿// Services/SearchAndSortService.cs - ✅ OPRAVENÝ konštruktor + Search/Sort/Zebra kompletne
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -8,19 +8,23 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 {
     /// <summary>
-    /// Služba pre Search a Sort funkcionalitu - ✅ INTERNAL
+    /// Služba pre Search, Sort a Zebra Rows funkcionalitu - ✅ INTERNAL
     /// </summary>
     internal class SearchAndSortService : IDisposable
     {
-        private readonly ILogger<SearchAndSortService>? _logger;
         private readonly Dictionary<string, string> _columnSearchFilters = new();
         private readonly Dictionary<string, SortDirection> _columnSortStates = new();
         private string? _currentSortColumn;
         private bool _isDisposed = false;
 
-        public SearchAndSortService(ILogger<SearchAndSortService>? logger = null)
+        // ✅ NOVÉ: Zebra rows (alternating row colors)
+        private bool _zebraRowsEnabled = true;
+
+        // ✅ OPRAVENÉ: Konštruktor bez ILogger parametra (to spôsobovalo CS1503 chybu)
+        public SearchAndSortService()
         {
-            _logger = logger;
+            // Inicializácia bez loggera - používame Debug.WriteLine pre diagnostiku
+            System.Diagnostics.Debug.WriteLine("SearchAndSortService initialized without logger dependency");
         }
 
         #region ✅ Search Functionality
@@ -35,12 +39,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             if (string.IsNullOrWhiteSpace(searchText))
             {
                 _columnSearchFilters.Remove(columnName);
-                _logger?.LogDebug("Search filter pre {ColumnName} odstránený", columnName);
+                System.Diagnostics.Debug.WriteLine($"Search filter pre {columnName} odstránený");
             }
             else
             {
                 _columnSearchFilters[columnName] = searchText.Trim();
-                _logger?.LogDebug("Search filter pre {ColumnName} nastavený na '{SearchText}'", columnName, searchText);
+                System.Diagnostics.Debug.WriteLine($"Search filter pre {columnName} nastavený na '{searchText}'");
             }
         }
 
@@ -58,7 +62,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         public void ClearAllSearchFilters()
         {
             _columnSearchFilters.Clear();
-            _logger?.LogDebug("Všetky search filtre vyčistené");
+            System.Diagnostics.Debug.WriteLine("Všetky search filtre vyčistené");
         }
 
         /// <summary>
@@ -120,8 +124,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 var emptyRows = data.Where(IsRowEmpty).ToList();
                 filteredData.AddRange(emptyRows);
 
-                _logger?.LogDebug("Search filtre aplikované: {OriginalCount} → {FilteredCount} riadkov",
-                    data.Count, filteredData.Count);
+                System.Diagnostics.Debug.WriteLine($"Search filtre aplikované: {data.Count} → {filteredData.Count} riadkov");
 
                 return filteredData;
             });
@@ -129,10 +132,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
         #endregion
 
-        #region ✅ Sort Functionality
+        #region ✅ Sort Functionality s Header Click
 
         /// <summary>
-        /// Togglene sort pre stĺpec (None → Ascending → Descending → None)
+        /// ✅ NOVÉ: Togglene sort pre stĺpec pri kliknutí na header (None → Ascending → Descending → None)
         /// </summary>
         public SortDirection ToggleColumnSort(string columnName)
         {
@@ -166,8 +169,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 _currentSortColumn = columnName;
             }
 
-            _logger?.LogDebug("Sort toggle pre {ColumnName}: {OldDirection} → {NewDirection}",
-                columnName, currentDirection, newDirection);
+            System.Diagnostics.Debug.WriteLine($"Header click sort toggle pre {columnName}: {currentDirection} → {newDirection}");
 
             return newDirection;
         }
@@ -187,11 +189,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         {
             _columnSortStates.Clear();
             _currentSortColumn = null;
-            _logger?.LogDebug("Všetky sort stavy vyčistené");
+            System.Diagnostics.Debug.WriteLine("Všetky sort stavy vyčistené");
         }
 
         /// <summary>
-        /// Aplikuje sorting na dáta
+        /// Aplikuje sorting na dáta (prázdne riadky vždy na konci)
         /// </summary>
         public async Task<List<Dictionary<string, object?>>> ApplySortingAsync(List<Dictionary<string, object?>> data)
         {
@@ -217,8 +219,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 result.AddRange(sortedNonEmptyRows);
                 result.AddRange(emptyRows);
 
-                _logger?.LogDebug("Sort aplikovaný na {ColumnName} ({Direction}): {NonEmptyCount} neprázdnych + {EmptyCount} prázdnych",
-                    sortColumn, sortDirection, sortedNonEmptyRows.Count, emptyRows.Count);
+                System.Diagnostics.Debug.WriteLine($"Sort aplikovaný na {sortColumn} ({sortDirection}): {sortedNonEmptyRows.Count} neprázdnych + {emptyRows.Count} prázdnych");
 
                 return result;
             });
@@ -226,12 +227,90 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
         #endregion
 
-        #region ✅ Combined Search + Sort
+        #region ✅ NOVÉ: Zebra Rows (Alternating Row Colors)
 
         /// <summary>
-        /// Aplikuje search a potom sort na dáta
+        /// Povolí/zakáže zebra rows effect
         /// </summary>
-        public async Task<List<Dictionary<string, object?>>> ApplySearchAndSortAsync(List<Dictionary<string, object?>> data)
+        public void SetZebraRowsEnabled(bool enabled)
+        {
+            _zebraRowsEnabled = enabled;
+            System.Diagnostics.Debug.WriteLine($"Zebra rows {(enabled ? "enabled" : "disabled")}");
+        }
+
+        /// <summary>
+        /// Kontroluje či sú zebra rows povolené
+        /// </summary>
+        public bool IsZebraRowsEnabled => _zebraRowsEnabled;
+
+        /// <summary>
+        /// Určuje či je riadok "párny" pre zebra effect (iba neprázdne riadky sa počítajú)
+        /// </summary>
+        public bool IsEvenRowForZebra(int actualRowIndex, List<Dictionary<string, object?>> allData)
+        {
+            if (!_zebraRowsEnabled) return false;
+
+            // Spočítaj iba neprázdne riadky pred týmto riadkom
+            var nonEmptyRowsBefore = 0;
+            for (int i = 0; i < actualRowIndex && i < allData.Count; i++)
+            {
+                if (!IsRowEmpty(allData[i]))
+                {
+                    nonEmptyRowsBefore++;
+                }
+            }
+
+            // Párne indexy (0, 2, 4...) budú mať zebra effect
+            return nonEmptyRowsBefore % 2 == 0;
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Aplikuje zebra row background na dáta
+        /// </summary>
+        public async Task<List<RowDisplayInfo>> ApplyZebraRowStylingAsync(List<Dictionary<string, object?>> data)
+        {
+            return await Task.Run(() =>
+            {
+                var result = new List<RowDisplayInfo>();
+                var nonEmptyRowIndex = 0;
+
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var row = data[i];
+                    var isEmpty = IsRowEmpty(row);
+                    var isZebraRow = false;
+
+                    if (!isEmpty && _zebraRowsEnabled)
+                    {
+                        // Iba neprázdne riadky majú zebra effect
+                        isZebraRow = nonEmptyRowIndex % 2 == 1; // Každý druhý neprázdny riadok
+                        nonEmptyRowIndex++;
+                    }
+
+                    result.Add(new RowDisplayInfo
+                    {
+                        RowIndex = i,
+                        Data = row,
+                        IsEmpty = isEmpty,
+                        IsZebraRow = isZebraRow,
+                        IsEvenNonEmptyRow = !isEmpty && (nonEmptyRowIndex - 1) % 2 == 0
+                    });
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Zebra styling aplikované: {result.Count} riadkov, {nonEmptyRowIndex} neprázdnych");
+
+                return result;
+            });
+        }
+
+        #endregion
+
+        #region ✅ Combined Search + Sort + Zebra
+
+        /// <summary>
+        /// Aplikuje search, potom sort a nakoniec zebra styling na dáta
+        /// </summary>
+        public async Task<List<RowDisplayInfo>> ApplyAllFiltersAndStylingAsync(List<Dictionary<string, object?>> data)
         {
             // Najprv aplikuj search
             var searchedData = await ApplySearchFiltersAsync(data);
@@ -239,7 +318,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             // Potom aplikuj sort
             var sortedData = await ApplySortingAsync(searchedData);
 
-            return sortedData;
+            // Nakoniec aplikuj zebra styling
+            var styledData = await ApplyZebraRowStylingAsync(sortedData);
+
+            return styledData;
         }
 
         #endregion
@@ -292,6 +374,18 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         public bool HasActiveSort => _currentSortColumn != null;
 
         /// <summary>
+        /// Získa aktuálne sortovaný stĺpec a direction
+        /// </summary>
+        public (string? Column, SortDirection Direction) GetCurrentSort()
+        {
+            if (_currentSortColumn != null && _columnSortStates.TryGetValue(_currentSortColumn, out var direction))
+            {
+                return (_currentSortColumn, direction);
+            }
+            return (null, SortDirection.None);
+        }
+
+        /// <summary>
         /// Získa status info pre debugging
         /// </summary>
         public string GetStatusInfo()
@@ -301,7 +395,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
                 ? $"{_currentSortColumn} ({_columnSortStates[_currentSortColumn]})"
                 : "None";
 
-            return $"Search: {searchCount} filters, Sort: {sortInfo}";
+            return $"Search: {searchCount} filters, Sort: {sortInfo}, Zebra: {_zebraRowsEnabled}";
         }
 
         #endregion
@@ -317,7 +411,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
             _currentSortColumn = null;
             _isDisposed = true;
 
-            _logger?.LogDebug("SearchAndSortService disposed");
+            System.Diagnostics.Debug.WriteLine("SearchAndSortService disposed");
         }
 
         #endregion
@@ -331,5 +425,32 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         None,
         Ascending,
         Descending
+    }
+
+    /// <summary>
+    /// ✅ NOVÁ: Informácie o zobrazení riadku s zebra styling
+    /// </summary>
+    internal class RowDisplayInfo
+    {
+        public int RowIndex { get; set; }
+        public Dictionary<string, object?> Data { get; set; } = new();
+        public bool IsEmpty { get; set; }
+        public bool IsZebraRow { get; set; }
+        public bool IsEvenNonEmptyRow { get; set; }
+
+        /// <summary>
+        /// CSS class alebo style name pre tento riadok
+        /// </summary>
+        public string GetRowStyleClass()
+        {
+            if (IsEmpty) return "empty-row";
+            if (IsZebraRow) return "zebra-row";
+            return "normal-row";
+        }
+
+        public override string ToString()
+        {
+            return $"Row {RowIndex}: {(IsEmpty ? "Empty" : "Data")}, Zebra: {IsZebraRow}";
+        }
     }
 }

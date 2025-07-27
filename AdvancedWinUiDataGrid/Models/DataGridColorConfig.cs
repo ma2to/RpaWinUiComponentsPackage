@@ -1,4 +1,4 @@
-﻿// Models/DataGridColorConfig.cs - ✅ NOVÝ PUBLIC API pre individual colors
+﻿// Models/DataGridColorConfig.cs - ✅ AKTUALIZOVANÉ s Zebra Row colors
 using Microsoft.UI;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -7,11 +7,8 @@ using Windows.UI;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Individual color konfigurácia pre DataGrid - nastavuje sa iba pri inicializácii
+    /// Individual color konfigurácia pre DataGrid s Zebra Rows - nastavuje sa iba pri inicializácii
     /// ✅ PUBLIC API - umožňuje nastaviť jednotlivé farby namiesto celých themes
-    /// 
-    /// POZNÁMKA: DataGridColorTheme a DataGridColorThemeBuilder sú teraz INTERNAL.
-    /// Táto trieda je nový PRIMARY PUBLIC API pre farby.
     /// </summary>
     public class DataGridColorConfig : INotifyPropertyChanged
     {
@@ -24,7 +21,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         private Color? _headerTextColor;
         private Color? _validationErrorColor;
         private Color? _selectionColor;
-        private Color? _alternateRowColor;  // ✅ NOVÉ: Pre zebra effect
+        private Color? _alternateRowColor;  // ✅ Zebra rows effect
         private Color? _hoverColor;
         private Color? _editingCellColor;
 
@@ -96,7 +93,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Farba alternatívnych riadkov - zebra effect (null = žiadny effect)
+        /// ✅ AKTUALIZOVANÉ: Farba alternatívnych riadkov - zebra effect (null = žiadny effect)
+        /// Každý druhý neprázdny riadok bude mať túto farbu pozadia
         /// </summary>
         public Color? AlternateRowColor
         {
@@ -162,7 +160,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         public Color ResolvedSelectionColor => SelectionColor ?? Color.FromArgb(100, 0, 120, 215);
 
         /// <summary>
-        /// ✅ NOVÉ: Vráti skutočnú farbu pre AlternateRow (custom alebo default)
+        /// ✅ AKTUALIZOVANÉ: Vráti skutočnú farbu pre AlternateRow/Zebra (custom alebo default)
         /// </summary>
         public Color ResolvedAlternateRowColor => AlternateRowColor ?? Color.FromArgb(20, 0, 0, 0);
 
@@ -195,6 +193,11 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             (CellBackgroundColor.HasValue ? 1 : 0) + (CellBorderColor.HasValue ? 1 : 0) + (CellTextColor.HasValue ? 1 : 0) +
             (HeaderBackgroundColor.HasValue ? 1 : 0) + (HeaderTextColor.HasValue ? 1 : 0) + (ValidationErrorColor.HasValue ? 1 : 0) +
             (SelectionColor.HasValue ? 1 : 0) + (AlternateRowColor.HasValue ? 1 : 0) + (HoverColor.HasValue ? 1 : 0) + (EditingCellColor.HasValue ? 1 : 0);
+
+        /// <summary>
+        /// ✅ NOVÉ: Kontroluje či je zebra rows effect povolený
+        /// </summary>
+        public bool IsZebraRowsEnabled => AlternateRowColor.HasValue;
 
         /// <summary>
         /// Vytvorí kópiu color config
@@ -235,7 +238,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Static Factory Methods
+        #region ✅ Static Factory Methods s Zebra Support
 
         /// <summary>
         /// Vytvorí config iba s default farbami (všetky null)
@@ -243,7 +246,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         public static DataGridColorConfig Default => new DataGridColorConfig();
 
         /// <summary>
-        /// Vytvorí light color scheme
+        /// Vytvorí light color scheme s jemným zebra effect
         /// </summary>
         public static DataGridColorConfig Light => new DataGridColorConfig
         {
@@ -257,7 +260,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         };
 
         /// <summary>
-        /// Vytvorí dark color scheme
+        /// Vytvorí dark color scheme s jemným zebra effect
         /// </summary>
         public static DataGridColorConfig Dark => new DataGridColorConfig
         {
@@ -271,7 +274,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         };
 
         /// <summary>
-        /// Vytvorí blue color scheme
+        /// Vytvorí blue color scheme s jemným zebra effect
         /// </summary>
         public static DataGridColorConfig Blue => new DataGridColorConfig
         {
@@ -281,6 +284,34 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             HeaderBackgroundColor = Color.FromArgb(255, 230, 240, 255),
             HeaderTextColor = Color.FromArgb(255, 20, 40, 80),
             AlternateRowColor = Color.FromArgb(15, 0, 100, 200) // Jemný zebra effect
+        };
+
+        /// <summary>
+        /// ✅ NOVÉ: Vytvorí config s výrazným zebra effect (pre demonstráciu)
+        /// </summary>
+        public static DataGridColorConfig WithStrongZebra => new DataGridColorConfig
+        {
+            CellBackgroundColor = Colors.White,
+            CellBorderColor = Colors.LightGray,
+            CellTextColor = Colors.Black,
+            HeaderBackgroundColor = Color.FromArgb(255, 240, 240, 240),
+            HeaderTextColor = Colors.Black,
+            ValidationErrorColor = Colors.Red,
+            AlternateRowColor = Color.FromArgb(50, 0, 120, 215) // Výrazný zebra effect
+        };
+
+        /// <summary>
+        /// ✅ NOVÉ: Vytvorí config bez zebra effect (iba jednotné farby)
+        /// </summary>
+        public static DataGridColorConfig WithoutZebra => new DataGridColorConfig
+        {
+            CellBackgroundColor = Colors.White,
+            CellBorderColor = Colors.LightGray,
+            CellTextColor = Colors.Black,
+            HeaderBackgroundColor = Color.FromArgb(255, 240, 240, 240),
+            HeaderTextColor = Colors.Black,
+            ValidationErrorColor = Colors.Red
+            // AlternateRowColor = null (žiadny zebra effect)
         };
 
         #endregion
@@ -306,7 +337,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         public override string ToString()
         {
-            return $"DataGridColorConfig: {CustomColorsCount}/10 custom colors, Zebra: {AlternateRowColor.HasValue}";
+            return $"DataGridColorConfig: {CustomColorsCount}/10 custom colors, Zebra: {IsZebraRowsEnabled}";
         }
     }
 }
