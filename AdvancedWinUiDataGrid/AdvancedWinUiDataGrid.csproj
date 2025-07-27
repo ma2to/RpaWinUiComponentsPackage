@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÝ s Auto-Add funkcionalitou -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ OPRAVENÉ XAML packaging pre Package Reference -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -9,9 +9,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: Konzistentný TargetFramework -->
+    <!-- ✅ KĽÚČOVÁ OPRAVA: Správne nastavenia pre XAML packaging -->
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <BuildOutputTargetFolder>lib</BuildOutputTargetFolder>
+    <ContentTargetFolders>content</ContentTargetFolders>
 
     <!-- ✅ OPRAVA NETSDK1152: Zakáž automatické duplikáty -->
     <IncludeSymbols>true</IncludeSymbols>
@@ -22,52 +23,56 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <NoWarn>$(NoWarn);CA1416</NoWarn>
 
-    <!-- ✅ WinUI3 XAML compilation -->
+    <!-- ✅ KĽÚČOVÉ: WinUI3 XAML compilation pre NuGet balík -->
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
-    <UseWPF>false</UseWPF>
-    <UseWindowsForms>false</UseWindowsForms>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
+    <UseCompiledXaml>true</UseCompiledXaml>
 
     <!-- ✅ Package generation -->
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
-    <!-- ✅ Package Information - Auto-Add verzio -->
+    <!-- ✅ Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.9</Version>
+    <Version>1.0.10</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
-    <Description>Profesionálny WinUI3 DataGrid komponent s kompletnou Auto-Add riadkov funkciou a realtime validáciami</Description>
+    <Description>Profesionálny WinUI3 DataGrid komponent s Auto-Add riadkov funkcionalitou a realtime validáciami</Description>
     <PackageTags>WinUI3;DataGrid;Components;Table;Validation;Excel;Auto-Add;ColorThemes;RealTime</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.9: KOMPLETNÁ Auto-Add riadkov funkcionalita + opravené XAML parsing errors + clean PUBLIC API</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.10: OPRAVENÉ XAML packaging pre Package Reference + Auto-Add riadkov funkcionalita</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
-    <AssemblyTitle>Advanced WinUI DataGrid Component with Auto-Add</AssemblyTitle>
-    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 s Auto-Add funkcionalitou a realtime validáciami</AssemblyDescription>
+    <AssemblyTitle>Advanced WinUI DataGrid Component with Auto-Add and XAML fix</AssemblyTitle>
+    <AssemblyDescription>Pokročilý DataGrid komponent pre WinUI3 s Auto-Add funkcionalitou a opraveným XAML packaging</AssemblyDescription>
   </PropertyGroup>
 
-  <!-- ✅ EXPLICITNÉ XAML súbory kvôli správnemu baleniu -->
+  <!-- ✅ KĽÚČOVÉ: EXPLICITNÉ XAML súbory pre správne packaging -->
   <ItemGroup>
     <Page Include="Controls\AdvancedDataGrid.xaml">
       <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\DataGridCell.xaml">
       <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\SpecialColumns\DeleteRowColumn.xaml">
       <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\SpecialColumns\ValidationAlertsColumn.xaml">
       <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Themes\Generic.xaml">
       <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
 
@@ -95,26 +100,34 @@
     <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: Zjednodušené packaging - SDK spracuje automaticky hlavné súbory -->
+  <!-- ✅ KĽÚČOVÁ OPRAVA: Správne zabalenie XAML/XBF súborov pre Package Reference -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
-    <!-- ✅ Iba XBF súbory manuálne ak existujú -->
-    <None Include="$(OutputPath)$(AssemblyName)/**/*.xbf"
-          Pack="true"
-          PackagePath="lib/$(TargetFramework)/$(AssemblyName)/"
-          Condition="Exists('$(OutputPath)$(AssemblyName)/')" />
-
-    <!-- ✅ XR.xml súbor ak existuje -->
-    <None Include="$(OutputPath)$(AssemblyName).xr.xml"
-          Pack="true"
-          PackagePath="lib/$(TargetFramework)/"
-          Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
+    <!-- ✅ Zabaľ všetky XBF súbory -->
+    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" />
+    
+    <!-- ✅ Zabaľ XamlTypeInfo assembly ak existuje -->
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" />
+    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+    
+    <!-- ✅ Zabaľ XR.xml súbor ak existuje -->
+    <None Include="$(OutputPath)$(AssemblyName).xr.xml" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
+    
+    <!-- ✅ Zabaľ WinMD súbory ak existujú -->
+    <None Include="$(OutputPath)**/*.winmd" Pack="true" PackagePath="lib/$(TargetFramework)/" />
   </ItemGroup>
 
-  <!-- ✅ WinUI3 special build settings -->
+  <!-- ✅ NOVÉ: Zabaľ XAML súbory ako content pre runtime -->
+  <ItemGroup>
+    <None Include="Controls\**\*.xaml" Pack="true" PackagePath="content/Controls/" />
+    <None Include="Themes\*.xaml" Pack="true" PackagePath="content/Themes/" />
+  </ItemGroup>
+
+  <!-- ✅ WinUI3 specific build settings -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
     <UseCompiledXaml>true</UseCompiledXaml>
     <Optimize>true</Optimize>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!-- ✅ Public API Surface - len TIETO triedy sú PUBLIC -->
@@ -133,32 +146,43 @@
     <DisableMsixProjectCapabilityAddition>true</DisableMsixProjectCapabilityAddition>
 
     <!-- ✅ KĽÚČOVÁ OPRAVA: Potlač duplicitné warnings -->
-    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022</NoWarn>
+    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048</NoWarn>
   </PropertyGroup>
 
-  <!-- ✅ Custom targets pre post-build s Auto-Add info -->
+  <!-- ✅ NOVÝ: Pre-build target na kontrolu XAML súborov -->
+  <Target Name="ValidateXamlFiles" BeforeTargets="PrepareForBuild">
+    <Message Text="🔍 Validating XAML files for packaging..." Importance="normal" />
+    
+    <Error Text="❌ AdvancedDataGrid.xaml not found!" Condition="!Exists('Controls/AdvancedDataGrid.xaml')" />
+    <Error Text="❌ Generic.xaml not found!" Condition="!Exists('Themes/Generic.xaml')" />
+    
+    <Message Text="✅ All XAML files found for packaging" Importance="normal" />
+  </Target>
+
+  <!-- ✅ Custom targets pre post-build -->
   <Target Name="LogPackageInfo" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
-    <Message Text="📦 ✨ KOMPLETNÁ Auto-Add riadkov funkcionalita implementovaná" Importance="high" />
-    <Message Text="📦 ✅ XAML parsing errors opravené" Importance="high" />
+    <Message Text="📦 ✨ OPRAVENÉ XAML packaging pre Package Reference" Importance="high" />
+    <Message Text="📦 ✅ AUTO-ADD riadkov funkcionalita implementovaná" Importance="high" />
     <Message Text="📦 🔒 Clean PUBLIC API (AdvancedDataGrid, ColumnDefinition, ValidationRule, ThrottlingConfig, DataGridColorTheme)" Importance="high" />
     <Message Text="📦 Target framework: $(TargetFramework)" Importance="high" />
   </Target>
 
-  <!-- ✅ Ensure clean package structure -->
-  <Target Name="CleanupBeforePack" BeforeTargets="Pack">
-    <Message Text="🧹 Cleaning up before package creation (fix NETSDK1152)..." Importance="normal" />
+  <!-- ✅ NOVÝ: Post-build kopírovanie XBF súborov -->
+  <Target Name="CopyXbfFiles" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Message Text="📂 Copying XBF files for packaging..." Importance="normal" />
+    
+    <ItemGroup>
+      <XbfFiles Include="$(OutputPath)**/*.xbf" />
+    </ItemGroup>
+    
+    <Message Text="📂 Found @(XbfFiles->Count()) XBF files for packaging" Importance="normal" Condition="'@(XbfFiles)' != ''" />
+    <Warning Text="⚠️ No XBF files found - XAML compilation may have failed" Condition="'@(XbfFiles)' == ''" />
   </Target>
 
-  <!-- ✅ NOVÉ: Auto-Add validation target -->
-  <Target Name="ValidateAutoAddFunctionality" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🔍 Validating Auto-Add functionality implementation..." Importance="normal" />
-
-    <!-- ✅ Check that essential Auto-Add files exist -->
-    <Error Text="❌ AdvancedDataGrid.xaml.cs missing - required for Auto-Add functionality"
-           Condition="!Exists('Controls/AdvancedDataGrid.xaml.cs')" />
-
-    <Message Text="✅ Auto-Add validation passed" Importance="normal" />
+  <!-- ✅ Ensure clean package structure -->
+  <Target Name="CleanupBeforePack" BeforeTargets="Pack">
+    <Message Text="🧹 Cleaning up before package creation (XAML packaging fix)..." Importance="normal" />
   </Target>
 
 </Project>
