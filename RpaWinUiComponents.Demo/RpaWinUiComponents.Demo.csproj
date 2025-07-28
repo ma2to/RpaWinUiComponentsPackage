@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - UPDATED to v1.0.20 -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - UPDATED to v1.0.21 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -30,9 +30,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
-    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.20" />
+    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.21" />
 
-    <!-- ✅ UPDATED: New version 1.0.20 with NETSDK1152 fix -->
+    <!-- ✅ UPDATED: New version 1.0.21 with NETSDK1152 COMPLETE FIX -->
   </ItemGroup>
 
   <ItemGroup Condition="Exists('Assets')">

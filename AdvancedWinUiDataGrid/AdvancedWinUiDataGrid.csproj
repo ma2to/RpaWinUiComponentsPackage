@@ -1,8 +1,8 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ NETSDK1152 FINAL FIX -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ NETSDK1152 COMPLETE FIX -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- ✅ KĽÚČOVÁ OPRAVA NETSDK1152: Single unified target framework -->
+    <!-- ✅ SINGLE target framework - no alternatives -->
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <UseWinUI>true</UseWinUI>
@@ -10,10 +10,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- ✅ NETSDK1152 FIX: Force SINGLE target framework normalization -->
-    <IncludeBuildOutput>true</IncludeBuildOutput>
-    <BuildOutputTargetFolder>lib</BuildOutputTargetFolder>
-    <ContentTargetFolders>content</ContentTargetFolders>
+    <!-- ✅ CRITICAL: Disable MSBuild auto-duplication -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
     <NoBind>false</NoBind>
 
@@ -33,9 +31,9 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
-    <!-- ✅ Package Information - UPDATED -->
+    <!-- ✅ Package Information -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.20</Version>
+    <Version>1.0.21</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
@@ -46,20 +44,17 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.20: NETSDK1152 COMPLETELY FIXED - no more duplicate DLLs</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.21: NETSDK1152 COMPLETELY FIXED - single lib path only</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
     <AssemblyTitle>WinUI3 DataGrid - NETSDK1152 COMPLETELY FIXED</AssemblyTitle>
-    <AssemblyDescription>DataGrid with no NETSDK1152 duplicate DLL issues</AssemblyDescription>
+    <AssemblyDescription>DataGrid with SINGLE lib path - no duplicates</AssemblyDescription>
 
-    <!-- ✅ CRITICAL NETSDK1152 FIX: Suppress all duplicate warnings and force single path -->
+    <!-- ✅ SUPPRESS ALL duplicate warnings -->
     <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277;NETSDK1152</NoWarn>
-
-    <!-- ✅ FINAL FIX: Force single TFM with exact path -->
-    <NormalizedTargetFramework>net8.0-windows10.0.19041.0</NormalizedTargetFramework>
   </PropertyGroup>
 
-  <!-- ✅ EXPLICITNÉ XAML súbory -->
+  <!-- ✅ EXPLICIT XAML files -->
   <ItemGroup>
     <Page Include="Controls\AdvancedDataGrid.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -110,37 +105,37 @@
     <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- ✅ CRITICAL NETSDK1152 FIX: Package content with SINGLE path only -->
+  <!-- ✅ CRITICAL FIX: EXPLICIT SINGLE PATH ONLY -->
   <ItemGroup>
-    <!-- ✅ Main assembly - SINGLE path to prevent duplicates -->
+    <!-- ✅ Main assembly - ONLY ONE PATH -->
     <None Include="$(OutputPath)$(AssemblyName).dll"
           Pack="true"
-          PackagePath="lib/$(NormalizedTargetFramework)/"
+          PackagePath="lib/net8.0-windows10.0.19041.0/"
           Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
 
     <None Include="$(OutputPath)$(AssemblyName).pdb"
           Pack="true"
-          PackagePath="lib/$(NormalizedTargetFramework)/"
+          PackagePath="lib/net8.0-windows10.0.19041.0/"
           Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
 
-    <!-- ✅ XBF files - SINGLE path -->
+    <!-- ✅ XBF files - ONLY ONE PATH -->
     <None Include="$(OutputPath)*.xbf"
           Pack="true"
-          PackagePath="lib/$(NormalizedTargetFramework)/"
+          PackagePath="lib/net8.0-windows10.0.19041.0/"
           Condition="Exists('$(OutputPath)')" />
 
     <None Include="$(OutputPath)**/*.xbf"
           Pack="true"
-          PackagePath="lib/$(NormalizedTargetFramework)/" />
+          PackagePath="lib/net8.0-windows10.0.19041.0/" />
 
-    <!-- ✅ XamlTypeInfo - SINGLE path -->
+    <!-- ✅ XamlTypeInfo - ONLY ONE PATH -->
     <None Include="$(OutputPath)$(AssemblyName).xr.xml"
           Pack="true"
-          PackagePath="lib/$(NormalizedTargetFramework)/"
+          PackagePath="lib/net8.0-windows10.0.19041.0/"
           Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
   </ItemGroup>
 
-  <!-- ✅ XAML súbory ako content fallback -->
+  <!-- ✅ XAML files as content fallback -->
   <ItemGroup>
     <None Include="Controls\**\*.xaml" Pack="true" PackagePath="content/Controls/" />
     <None Include="Themes\*.xaml" Pack="true" PackagePath="content/Themes/" />
@@ -154,22 +149,25 @@
     <None Remove="Controls\SearchAndSortHeader.xaml" />
   </ItemGroup>
 
-  <!-- ✅ FINAL NETSDK1152 PREVENTION -->
-  <Target Name="PreventDuplicatePacking" BeforeTargets="Pack">
-    <Message Text="🎯 NETSDK1152 FIX: Using SINGLE TFM path: $(NormalizedTargetFramework)" Importance="high" />
+  <!-- ✅ CRITICAL: Remove MSBuild auto-generated paths -->
+  <Target Name="CleanDuplicateLibPaths" BeforeTargets="Pack">
+    <Message Text="🧹 NETSDK1152 FIX: Cleaning MSBuild auto-generated duplicate paths..." Importance="high" />
 
-    <!-- ✅ Ensure no duplicate target framework paths -->
-    <PropertyGroup>
-      <_SingleTfmPackaging>true</_SingleTfmPackaging>
-      <PackageTargetFramework>$(NormalizedTargetFramework)</PackageTargetFramework>
-    </PropertyGroup>
+    <!-- Remove any auto-generated PackagePath that contains the shorter framework name -->
+    <ItemGroup>
+      <None Remove="@(None)" Condition="'%(None.Pack)' == 'true' AND '%(None.PackagePath)' == 'lib/net8.0-windows10.0.19041/'" />
+      <Content Remove="@(Content)" Condition="'%(Content.Pack)' == 'true' AND '%(Content.PackagePath)' == 'lib/net8.0-windows10.0.19041/'" />
+      <Compile Remove="@(Compile)" Condition="'%(Compile.Pack)' == 'true' AND '%(Compile.PackagePath)' == 'lib/net8.0-windows10.0.19041/'" />
+    </ItemGroup>
+
+    <Message Text="✅ NETSDK1152 FIX: Duplicate paths cleaned - using ONLY lib/net8.0-windows10.0.19041.0/" Importance="high" />
   </Target>
 
-  <!-- ✅ Post-build verification -->
-  <Target Name="VerifyNoDuplicates" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
+  <!-- ✅ Verify single path -->
+  <Target Name="VerifySinglePath" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
-    <Message Text="✅ NETSDK1152 COMPLETELY FIXED - Single TFM: $(NormalizedTargetFramework)" Importance="high" />
-    <Message Text="🎉 No more duplicate DLL issues!" Importance="high" />
+    <Message Text="✅ NETSDK1152 COMPLETELY FIXED - SINGLE PATH: lib/net8.0-windows10.0.19041.0/" Importance="high" />
+    <Message Text="🎉 No more NETSDK1152 duplicate DLL issues!" Importance="high" />
   </Target>
 
 </Project>

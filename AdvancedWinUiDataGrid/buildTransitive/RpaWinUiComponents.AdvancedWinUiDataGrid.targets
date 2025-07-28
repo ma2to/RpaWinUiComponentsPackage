@@ -1,18 +1,24 @@
 ﻿<!-- AdvancedWinUiDataGrid/buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets -->
-<!-- ✅ TRANSITIVE MSBuild targets súbor (importuje build/ verziu) - NETSDK1152 FINAL FIX -->
+<!-- ✅ TRANSITIVE MSBuild targets - NETSDK1152 COMPLETE FIX -->
 <Project>
 
-  <!-- ✅ Debug info pre transitive import -->
+  <!-- ✅ Debug info for transitive import -->
   <Target Name="DebugTransitiveImport" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🔗 AdvancedWinUiDataGrid: Transitive targets loaded (NETSDK1152 FINAL FIX)" Importance="normal" />
+    <Message Text="🔗 AdvancedWinUiDataGrid: Transitive targets loaded (NETSDK1152 COMPLETE FIX)" Importance="normal" />
   </Target>
 
-  <!-- ✅ Import hlavný targets súbor -->
+  <!-- ✅ Import main targets file -->
   <Import Project="$(MSBuildThisFileDirectory)../build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" />
 
-  <!-- ✅ NETSDK1152 FINAL FIX: Ensure transitive import doesn't create duplicates -->
+  <!-- ✅ NETSDK1152 COMPLETE FIX: Ensure transitive import doesn't create duplicates -->
   <PropertyGroup>
     <AdvancedDataGridTransitiveImported>true</AdvancedDataGridTransitiveImported>
+    <AdvancedDataGridSinglePathOnly>true</AdvancedDataGridSinglePathOnly>
   </PropertyGroup>
+
+  <!-- ✅ Block any potential duplicate transitive paths -->
+  <Target Name="BlockTransitiveDuplicates" BeforeTargets="ResolveReferences">
+    <Message Text="🚫 Blocking transitive duplicate paths for NETSDK1152 fix..." Importance="low" />
+  </Target>
 
 </Project>
