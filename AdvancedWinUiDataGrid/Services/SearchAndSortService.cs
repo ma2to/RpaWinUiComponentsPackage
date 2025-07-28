@@ -275,4 +275,180 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// ✅ NOVÉ: Aplikuje zebra row background na dáta
         /// </summary>
-        public async Task<List<RowDisplayInfo>> ApplyZebraRowStylingAsync(List<Dictionary<string, object?>> da
+        public async Task<List<RowDisplayInfo>> ApplyZebraRowStylingAsync(List<Dictionary<string, object?>> data)
+        {
+            return await Task.Run(() =>
+            {
+                var result = new List<RowDisplayInfo>();
+                var nonEmptyRowIndex = 0;
+
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var row = data[i];
+                    var isEmpty = IsRowEmpty(row);
+                    var isZebraRow = false;
+
+                    if (!isEmpty && _zebraRowsEnabled)
+                    {
+                        // Iba neprázdne riadky majú zebra effect
+                        isZebraRow = nonEmptyRowIndex % 2 == 1; // Každý druhý neprázdny riadok
+                        nonEmptyRowIndex++;
+                    }
+
+                    result.Add(new RowDisplayInfo
+                    {
+                        RowIndex = i,
+                        Data = row,
+                        IsEmpty = isEmpty,
+                        IsZebraRow = isZebraRow,
+                        IsEvenNonEmptyRow = !isEmpty && (nonEmptyRowIndex - 1) % 2 == 0
+                    });
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Zebra styling aplikované: {result.Count} riadkov, {nonEmptyRowIndex} neprázdnych");
+
+                return result;
+            });
+        }
+
+        #endregion
+
+        #region ✅ Combined Search + Sort + Zebra
+
+        /// <summary>
+        /// Aplikuje search, potom sort a nakoniec zebra styling na dáta
+        /// </summary>
+        public async Task<List<RowDisplayInfo>> ApplyAllFiltersAndStylingAsync(List<Dictionary<string, object?>> data)
+        {
+            // Najprv aplikuj search
+            var searchedData = await ApplySearchFiltersAsync(data);
+
+            // Potom aplikuj sort
+            var sortedData = await ApplySortingAsync(searchedData);
+
+            // Nakoniec aplikuj zebra styling
+            var styledData = await ApplyZebraRowStylingAsync(sortedData);
+
+            return styledData;
+        }
+
+        #endregion
+
+        #region Private Helper Methods
+
+        private bool IsRowEmpty(Dictionary<string, object?> row)
+        {
+            foreach (var kvp in row)
+            {
+                var columnName = kvp.Key;
+                var value = kvp.Value;
+
+                // Ignoruj špeciálne stĺpce
+                if (columnName == "DeleteRows" || columnName == "ValidAlerts")
+                    continue;
+
+                // Ak má nejakú hodnotu, riadok nie je prázdny
+                if (value != null && !string.IsNullOrWhiteSpace(value.ToString()))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private object GetSortValue(Dictionary<string, object?> row, string columnName)
+        {
+            if (!row.TryGetValue(columnName, out var value) || value == null)
+                return string.Empty;
+
+            // Pre string porovnanie case-insensitive
+            if (value is string str)
+                return str.ToLowerInvariant();
+
+            return value;
+        }
+
+        #endregion
+
+        #region ✅ Status Properties
+
+        /// <summary>
+        /// Má aktívne search filtre
+        /// </summary>
+        public bool HasActiveSearchFilters => _columnSearchFilters.Any();
+
+        /// <summary>
+        /// Má aktívny sort
+        /// </summary>
+        public bool HasActiveSort => _currentSortColumn != null;
+
+        /// <summary>
+        /// Získa aktuálne sortovaný stĺpec a direction
+        /// </summary>
+        public (string? Column, SortDirection Direction) GetCurrentSort()
+        {
+            if (_currentSortColumn != null && _columnSortStates.TryGetValue(_currentSortColumn, out var direction))
+            {
+                return (_currentSortColumn, direction);
+            }
+            return (null, SortDirection.None);
+        }
+
+        /// <summary>
+        /// Získa status info pre debugging
+        /// </summary>
+        public string GetStatusInfo()
+        {
+            var searchCount = _columnSearchFilters.Count;
+            var sortInfo = _currentSortColumn != null
+                ? $"{_currentSortColumn} ({_columnSortStates[_currentSortColumn]})"
+                : "None";
+
+            return $"Search: {searchCount} filters, Sort: {sortInfo}, Zebra: {_zebraRowsEnabled}";
+        }
+
+        #endregion
+
+        #region IDisposable
+
+        public void Dispose()
+        {
+            if (_isDisposed) return;
+
+            _columnSearchFilters.Clear();
+            _columnSortStates.Clear();
+            _currentSortColumn = null;
+            _isDisposed = true;
+
+            System.Diagnostics.Debug.WriteLine("SearchAndSortService disposed");
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// ✅ NOVÁ: Informácie o zobrazení riadku s zebra styling
+    /// </summary>
+    internal class RowDisplayInfo
+    {
+        public int RowIndex { get; set; }
+        public Dictionary<string, object?> Data { get; set; } = new();
+        public bool IsEmpty { get; set; }
+        public bool IsZebraRow { get; set; }
+        public bool IsEvenNonEmptyRow { get; set; }
+
+        /// <summary>
+        /// CSS class alebo style name pre tento riadok
+        /// </summary>
+        public string GetRowStyleClass()
+        {
+            if (IsEmpty) return "empty-row";
+            if (IsZebraRow) return "zebra-row";
+            return "normal-row";
+        }
+
+        public override string ToString()
+        {
+            return $"Row {RowIndex}: {(IsEmpty ? "Empty" : "Data")}, Zebra: {IsZebraRow}";
+        }
+    }
+}
