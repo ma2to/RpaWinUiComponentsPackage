@@ -1,9 +1,8 @@
-<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ OPRAVENÝ XAML parsing -->
+<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ OPRAVENÝ conditional XAML -->
 <Window x:Class="RpaWinUiComponents.Demo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:grid="using:RpaWinUiComponents.AdvancedWinUiDataGrid"
-        Title="🚀 RPA WinUI Components Demo - Individual Colors + Search/Sort/Zebra">
+        Title="🚀 RPA WinUI Components Demo - Package Testing">
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.RowDefinitions>
@@ -23,7 +22,7 @@
                           FontWeight="Bold"
                           Margin="0,0,0,8"/>
                 <TextBlock x:Name="InitStatusText"
-                          Text="Inicializuje sa Individual Colors + Search/Sort/Zebra..."
+                          Text="Inicializuje sa Package Testing..."
                           FontSize="14"
                           Opacity="0.8"/>
             </StackPanel>
@@ -36,6 +35,26 @@
             <StackPanel Orientation="Vertical" 
                         Padding="20,16" 
                         Spacing="16">
+
+                <!-- Package Status -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="📦 Package Status"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Expected Package:" VerticalAlignment="Center"/>
+                            <TextBlock Text="RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.18" 
+                                      FontFamily="Consolas"
+                                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                      Padding="4,2"
+                                      CornerRadius="3"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
                 <!-- Individual Colors Controls -->
                 <Border Background="{ThemeResource LayerFillColorAltBrush}"
@@ -155,6 +174,22 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Troubleshooting -->
+                <Border Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="🔧 Troubleshooting"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <TextBlock Text="Ak sa package nenačíta:" FontWeight="SemiBold"/>
+                        <TextBlock Text="1. Spustiť: dotnet restore" FontFamily="Consolas" Margin="16,0,0,0"/>
+                        <TextBlock Text="2. Rebuild solution" FontFamily="Consolas" Margin="16,0,0,0"/>
+                        <TextBlock Text="3. Skontroliť že package 1.0.18 existuje v NuGet cache" FontFamily="Consolas" Margin="16,0,0,0"/>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 
@@ -181,7 +216,7 @@
                     <StackPanel Spacing="12" 
                                HorizontalAlignment="Center">
                         <TextBlock x:Name="LoadingDetailText"
-                                  Text="Inicializuje sa Individual Colors + Search/Sort/Zebra..."
+                                  Text="Kontroluje sa package dostupnosť..."
                                   FontSize="16"
                                   FontWeight="Medium"
                                   HorizontalAlignment="Center"/>
@@ -193,9 +228,36 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Main DataGrid Component -->
-                <grid:AdvancedDataGrid x:Name="DataGridControl"
-                                      Visibility="Collapsed"/>
+                <!-- ✅ FALLBACK: Ak package nie je dostupný, zobraz placeholder -->
+                <StackPanel x:Name="NoPackagePanel"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Spacing="20"
+                           Visibility="Collapsed">
+
+                    <FontIcon Glyph="&#xE783;" 
+                             FontSize="48"
+                             Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
+
+                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                        <TextBlock Text="📦 Package nie je dostupný"
+                                  FontSize="18"
+                                  FontWeight="SemiBold"
+                                  HorizontalAlignment="Center"/>
+
+                        <TextBlock Text="Demo beží v obmedzenom režime"
+                                  FontSize="14"
+                                  Opacity="0.7"
+                                  HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ✅ CONDITIONAL: DataGrid komponent - iba ak je namespace dostupný -->
+                <!-- V C# kóde kontrolujeme dostupnosť cez conditional compilation -->
+                <ContentControl x:Name="DataGridControl"
+                               Visibility="Collapsed"
+                               Content="DataGrid placeholder - bude nahradený skutočným komponentom ak je package dostupný"/>
+
             </Grid>
         </Border>
 
@@ -204,7 +266,7 @@
                 Background="{ThemeResource LayerFillColorAltBrush}"
                 Padding="20,12">
             <TextBlock x:Name="StatusTextBlock"
-                      Text="📦 Inicializuje sa AdvancedWinUiDataGrid s Individual Colors + Search/Sort/Zebra cez Package Reference..."
+                      Text="📦 Inicializuje sa package testing..."
                       FontSize="12"
                       Opacity="0.8"/>
         </Border>

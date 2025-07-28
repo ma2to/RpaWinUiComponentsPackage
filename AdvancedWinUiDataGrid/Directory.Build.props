@@ -1,0 +1,54 @@
+﻿<!-- Directory.Build.props - Solution-level nastavenia pre NETSDK1004 fix -->
+<Project>
+
+  <PropertyGroup>
+    <!-- ✅ Global nastavenia pre všetky projekty -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    
+    <!-- ✅ NETSDK1004 Fix: Force proper restore behavior -->
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <RestoreForceEvaluate>false</RestoreForceEvaluate>
+    
+    <!-- ✅ Suppress known warnings -->
+    <NoWarn>$(NoWarn);CS0414;NETSDK1022;CA1416</NoWarn>
+    
+    <!-- ✅ Build performance -->
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+  </PropertyGroup>
+
+  <!-- ✅ Global package versions -->
+  <PropertyGroup>
+    <WindowsAppSDKVersion>1.7.250606001</WindowsAppSDKVersion>
+    <WindowsSDKBuildToolsVersion>10.0.26100.4654</WindowsSDKBuildToolsVersion>
+    <NetCoreTargetFramework>net8.0</NetCoreTargetFramework>
+    <WindowsTargetFramework>net8.0-windows10.0.19041.0</WindowsTargetFramework>
+    <WindowsMinTargetFramework>10.0.17763.0</WindowsMinTargetFramework>
+  </PropertyGroup>
+
+  <!-- ✅ Debug informácie -->
+  <Target Name="ShowGlobalBuildInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="🌍 Directory.Build.props active - Global settings applied" Importance="normal" />
+    <Message Text="📦 RestoreProjectStyle: $(RestoreProjectStyle)" Importance="normal" />
+  </Target>
+
+  <!-- ✅ Pre-build cleanup -->
+  <Target Name="EnsureAssetsFileExists" BeforeTargets="Build">
+    <PropertyGroup>
+      <AssetsFile>$(MSBuildProjectDirectory)\obj\project.assets.json</AssetsFile>
+      <AssetsFileExists Condition="Exists('$(AssetsFile)')">true</AssetsFileExists>
+    </PropertyGroup>
+    
+    <Message Text="🔍 Checking assets file: $(AssetsFile)" Importance="low" />
+    
+    <!-- ✅ Ak assets file neexistuje, pokús sa o restore -->
+    <Exec Command="dotnet restore &quot;$(MSBuildProjectFile)&quot; --verbosity quiet" 
+          Condition="'$(AssetsFileExists)' != 'true'"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+  </Target>
+
+</Project>

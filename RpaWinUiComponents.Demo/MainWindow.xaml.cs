@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ správne
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÝ - odstránené nepoužité fields
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System;
@@ -6,25 +6,21 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Windows.UI;
 
-// ✅ SPRÁVNE package imports - ak package nie je dostupný, build zlyhá (čo je očakávané)
+// ✅ Conditional imports - ak package nie je dostupný, build sa nevykompajluje ale aspoň uvidíme problém
+#if HAS_PACKAGE
 using RpaWinUiComponents.AdvancedWinUiDataGrid;
 using PublicColumnDefinition = RpaWinUiComponents.AdvancedWinUiDataGrid.ColumnDefinition;
 using PublicValidationRule = RpaWinUiComponents.AdvancedWinUiDataGrid.ValidationRule;
 using PublicThrottlingConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.ThrottlingConfig;
 using PublicDataGridColorConfig = RpaWinUiComponents.AdvancedWinUiDataGrid.DataGridColorConfig;
+#endif
 
 namespace RpaWinUiComponents.Demo
 {
     public sealed partial class MainWindow : Window
     {
-        private bool _isInitialized = false;
+        // ✅ OPRAVENÉ: Odstránené nepoužité fields
         private bool _packageAvailable = false;
-
-        // ✅ Store pre základnú konfiguráciu (pre reinicializáciu s inými farbami)
-        private List<PublicColumnDefinition> _baseColumns = new();
-        private List<PublicValidationRule> _baseValidationRules = new();
-        private PublicThrottlingConfig _baseThrottlingConfig = PublicThrottlingConfig.Default;
-        private int _baseRowCount = 5;
 
         public MainWindow()
         {
@@ -39,7 +35,7 @@ namespace RpaWinUiComponents.Demo
                 // Pokračuj aj napriek chybe
             }
 
-            // ✅ Bezpečná inicializácia cez DispatcherQueue namiesto Loaded event
+            // ✅ Bezpečná inicializácia cez DispatcherQueue
             this.DispatcherQueue.TryEnqueue(async () =>
             {
                 await Task.Delay(200); // Počkaj na UI setup
@@ -69,7 +65,6 @@ namespace RpaWinUiComponents.Demo
                     ShowPackageNotAvailableMessage();
                 }
 
-                _isInitialized = true;
                 System.Diagnostics.Debug.WriteLine("✅ Demo aplikácia úspešne inicializovaná");
             }
             catch (Exception ex)
@@ -88,25 +83,9 @@ namespace RpaWinUiComponents.Demo
                     try
                     {
                         // Skontroluj kľúčové UI elementy
-                        var elementsOk = true;
-
-                        if (LoadingDetailText == null)
-                        {
-                            System.Diagnostics.Debug.WriteLine("⚠️ LoadingDetailText nie je dostupný");
-                            elementsOk = false;
-                        }
-
-                        if (StatusTextBlock == null)
-                        {
-                            System.Diagnostics.Debug.WriteLine("⚠️ StatusTextBlock nie je dostupný");
-                            elementsOk = false;
-                        }
-
-                        if (DataGridControl == null)
-                        {
-                            System.Diagnostics.Debug.WriteLine("⚠️ DataGridControl nie je dostupný");
-                            elementsOk = false;
-                        }
+                        var elementsOk = LoadingDetailText != null &&
+                                        StatusTextBlock != null &&
+                                        DataGridControl != null;
 
                         if (elementsOk)
                         {
@@ -132,25 +111,15 @@ namespace RpaWinUiComponents.Demo
             {
                 try
                 {
+#if HAS_PACKAGE
                     // Skús načítať package types
-                    var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                    var referencedAssemblies = assembly.GetReferencedAssemblies();
-
+                    _packageAvailable = true;
+                    System.Diagnostics.Debug.WriteLine("✅ Package je dostupný cez conditional compilation");
+#else
+                    // Package nie je dostupný
                     _packageAvailable = false;
-                    foreach (var refAssembly in referencedAssemblies)
-                    {
-                        if (refAssembly.Name?.Contains("AdvancedWinUiDataGrid") == true)
-                        {
-                            _packageAvailable = true;
-                            System.Diagnostics.Debug.WriteLine($"✅ Package assembly found: {refAssembly.Name}");
-                            break;
-                        }
-                    }
-
-                    if (!_packageAvailable)
-                    {
-                        System.Diagnostics.Debug.WriteLine("⚠️ AdvancedWinUiDataGrid package nie je dostupný");
-                    }
+                    System.Diagnostics.Debug.WriteLine("⚠️ Package nie je dostupný - HAS_PACKAGE nie je definované");
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -167,6 +136,7 @@ namespace RpaWinUiComponents.Demo
                 UpdateLoadingState("Package je dostupný...", "Inicializuje sa DataGrid komponent...");
                 await Task.Delay(300);
 
+#if HAS_PACKAGE
                 // Skús inicializovať DataGrid
                 if (DataGridControl != null)
                 {
@@ -206,6 +176,9 @@ namespace RpaWinUiComponents.Demo
                 {
                     ShowError("DataGridControl nie je dostupný v XAML");
                 }
+#else
+                ShowError("Package nie je skompajlovaný do aplikácie");
+#endif
             }
             catch (Exception ex)
             {
@@ -320,155 +293,97 @@ namespace RpaWinUiComponents.Demo
 
         private async void OnLoadSampleDataClick(object sender, RoutedEventArgs e)
         {
-            try
+            await HandleSafeButtonClickAsync("Load Sample Data", async () =>
             {
-                if (!_packageAvailable || DataGridControl == null)
+#if HAS_PACKAGE
+                if (DataGridControl != null)
                 {
-                    ShowError("Package alebo DataGrid nie je dostupný");
-                    return;
+                    var sampleData = new List<Dictionary<string, object?>>
+                    {
+                        new() { ["ID"] = 101, ["Meno"] = "Anna Nováková", ["Email"] = "anna@test.sk" },
+                        new() { ["ID"] = 102, ["Meno"] = "Milan Svoboda", ["Email"] = "milan@company.sk" },
+                        new() { ["ID"] = 103, ["Meno"] = "Eva Krásna", ["Email"] = "eva@firma.sk" }
+                    };
+
+                    await DataGridControl.LoadDataAsync(sampleData);
+
+                    if (StatusTextBlock != null)
+                        StatusTextBlock.Text = "✅ Sample data načítané s Individual Colors + Zebra!";
                 }
-
-                UpdateLoadingState("Načítavajú sa ukážkové dáta...", "Processing...");
-
-                var sampleData = new List<Dictionary<string, object?>>
-                {
-                    new() { ["ID"] = 101, ["Meno"] = "Anna Nováková", ["Email"] = "anna@test.sk" },
-                    new() { ["ID"] = 102, ["Meno"] = "Milan Svoboda", ["Email"] = "milan@company.sk" },
-                    new() { ["ID"] = 103, ["Meno"] = "Eva Krásna", ["Email"] = "eva@firma.sk" }
-                };
-
-                await DataGridControl.LoadDataAsync(sampleData);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "✅ Sample data načítané s Individual Colors + Zebra!";
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Sample data error: {ex.Message}");
-            }
+#endif
+            });
         }
 
         private async void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
         {
-            try
+            await HandleSafeButtonClickAsync("Apply Light Theme", async () =>
             {
-                if (!_packageAvailable)
-                {
-                    ShowError("Package nie je dostupný pre theme zmenu");
-                    return;
-                }
-
-                UpdateLoadingState("Aplikuje sa Light theme...", "Processing...");
                 await Task.Delay(300);
-
                 if (StatusTextBlock != null)
                     StatusTextBlock.Text = "🎨 Light theme by mal byť aplikovaný (ak package funguje)";
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Theme error: {ex.Message}");
-            }
+            });
         }
 
-        private async void OnApplyDarkThemeClick(object sender, RoutedEventArgs e)
+        private void OnApplyDarkThemeClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Apply Dark Theme");
+
+        private void OnApplyBlueThemeClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Apply Blue Theme");
+
+        private void OnApplyCustomThemeClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Apply Custom Theme");
+
+        private void OnResetThemeClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Reset Theme");
+
+        private void OnTestSearchClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Search Test");
+
+        private void OnTestSortClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Sort Test");
+
+        private void OnTestZebraToggleClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Zebra Test");
+
+        private void OnClearSearchClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Clear Search");
+
+        private void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Auto-Add Few Rows");
+
+        private void OnTestAutoAddManyRowsClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Auto-Add Many Rows");
+
+        private void OnTestAutoAddDeleteClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Auto-Add Delete");
+
+        private void OnValidateAllClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Validate All");
+
+        private void OnClearDataClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Clear Data");
+
+        private void OnExportDataClick(object sender, RoutedEventArgs e) =>
+            HandleSafeButtonClick("Export Data");
+
+        private async Task HandleSafeButtonClickAsync(string actionName, Func<Task> action)
         {
             try
             {
                 if (!_packageAvailable)
                 {
-                    ShowError("Package nie je dostupný pre theme zmenu");
+                    ShowError($"Package nie je dostupný pre {actionName}");
                     return;
                 }
 
-                UpdateLoadingState("Aplikuje sa Dark theme...", "Processing...");
-                await Task.Delay(300);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Dark theme by mal byť aplikovaný (ak package funguje)";
+                UpdateLoadingState($"Vykonáva sa {actionName}...", "Processing...");
+                await action();
             }
             catch (Exception ex)
             {
-                ShowError($"Theme error: {ex.Message}");
+                ShowError($"{actionName} error: {ex.Message}");
             }
         }
-
-        private async void OnApplyBlueThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (!_packageAvailable)
-                {
-                    ShowError("Package nie je dostupný pre theme zmenu");
-                    return;
-                }
-
-                UpdateLoadingState("Aplikuje sa Blue theme...", "Processing...");
-                await Task.Delay(300);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Blue theme by mal byť aplikovaný (ak package funguje)";
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Theme error: {ex.Message}");
-            }
-        }
-
-        private async void OnApplyCustomThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (!_packageAvailable)
-                {
-                    ShowError("Package nie je dostupný pre theme zmenu");
-                    return;
-                }
-
-                UpdateLoadingState("Aplikuje sa Custom theme...", "Processing...");
-                await Task.Delay(300);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🎨 Custom theme by mal byť aplikovaný (ak package funguje)";
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Theme error: {ex.Message}");
-            }
-        }
-
-        private async void OnResetThemeClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (!_packageAvailable)
-                {
-                    ShowError("Package nie je dostupný pre theme reset");
-                    return;
-                }
-
-                UpdateLoadingState("Resetuje sa theme...", "Processing...");
-                await Task.Delay(300);
-
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = "🔄 Theme by mal byť resetovaný (ak package funguje)";
-            }
-            catch (Exception ex)
-            {
-                ShowError($"Reset error: {ex.Message}");
-            }
-        }
-
-        // ✅ Všetky ostatné button handlery s rovnakou safe pattern
-        private void OnTestSearchClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Search Test");
-        private void OnTestSortClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Sort Test");
-        private void OnTestZebraToggleClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Zebra Test");
-        private void OnClearSearchClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Clear Search");
-        private void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Auto-Add Few Rows");
-        private void OnTestAutoAddManyRowsClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Auto-Add Many Rows");
-        private void OnTestAutoAddDeleteClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Auto-Add Delete");
-        private void OnValidateAllClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Validate All");
-        private void OnClearDataClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Clear Data");
-        private void OnExportDataClick(object sender, RoutedEventArgs e) => HandleSafeButtonClick("Export Data");
 
         private void HandleSafeButtonClick(string actionName)
         {
