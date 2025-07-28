@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ Package Reference -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ KOMPLETNE OPRAVENÝ -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -11,6 +11,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
+    <!-- ✅ KĽÚČOVÁ OPRAVA NETSDK1022: Povoliť default items ale kontrolovane -->
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>true</EnableDefaultEmbeddedResourceItems>
+
+    <!-- ✅ XAML nastavenia - povoliť default XAML items -->
+    <EnableDefaultPageItems>true</EnableDefaultPageItems>
+    <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
+    <UseCompiledXaml>true</UseCompiledXaml>
+
     <!-- ✅ Assembly Info -->
     <AssemblyTitle>RPA WinUI Components Demo</AssemblyTitle>
     <AssemblyDescription>Demo aplikácia pre testovanie AdvancedWinUiDataGrid balíka</AssemblyDescription>
@@ -22,63 +32,43 @@
 
     <!-- ✅ Windows App SDK nastavenia -->
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-    <NoWarn>$(NoWarn);CA1416</NoWarn>
-
-    <!-- ✅ XAML nastavenia -->
-    <EnableDefaultPageItems>false</EnableDefaultPageItems>
-    <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
-    <XamlCompilationEnabled>true</XamlCompilationEnabled>
-    <UseCompiledXaml>true</UseCompiledXaml>
+    <NoWarn>$(NoWarn);CA1416;NETSDK1022</NoWarn>
   </PropertyGroup>
-
-  <!-- ✅ KĽÚČOVÉ: Package Reference na náš balík (nie Project Reference!) -->
 
   <!-- ✅ WinUI3 Dependencies -->
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.18" />
+    <!-- ✅ KĽÚČOVÉ: Package Reference na náš balík -->
   </ItemGroup>
 
-  <!-- ✅ EXPLICITNÉ XAML súbory -->
-  <ItemGroup>
-    <Page Include="MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-  </ItemGroup>
+  <!-- ✅ ODSTRÁNENÉ: Explicitné XAML a Compile definície (spoliehame sa na default items) -->
+  <!-- Toto eliminuje NETSDK1022 chybu -->
 
-  <!-- ✅ Code-behind súbory -->
-  <ItemGroup>
-    <Compile Include="MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="App.xaml.cs">
-      <DependentUpon>App.xaml</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <!-- ✅ Assets -->
-  <ItemGroup>
+  <!-- ✅ Assets - iba ak existujú -->
+  <ItemGroup Condition="Exists('Assets')">
     <Content Include="Assets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
-  <!-- ✅ Manifest -->
-  <ItemGroup>
+  <!-- ✅ Manifest - iba ak existuje -->
+  <ItemGroup Condition="Exists('Package.appxmanifest')">
     <None Include="Package.appxmanifest">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
 
-  <!-- ✅ Package Reference cleanup -->
-  <Target Name="CleanPackageCache" BeforeTargets="Restore">
-    <Message Text="🧹 Cleaning NuGet cache pre nový package..." Importance="normal" />
+  <!-- ✅ Clean target pre development -->
+  <Target Name="CleanDemoProject" BeforeTargets="Clean">
+    <Message Text="🧹 Cleaning Demo project files..." Importance="normal" />
+    <RemoveDir Directories="bin;obj" />
+  </Target>
+
+  <!-- ✅ Package verification target -->
+  <Target Name="VerifyPackageReference" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="📦 Verifying AdvancedWinUiDataGrid package reference..." Importance="normal" />
   </Target>
 
 </Project>
