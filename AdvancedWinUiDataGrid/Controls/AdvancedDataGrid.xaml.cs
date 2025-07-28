@@ -45,17 +45,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         // ✅ Individual colors namiesto themes
         private DataGridColorConfig? _individualColorConfig;
 
-        // ✅ OPRAVENÉ: SearchAndSortService s správnym logger typom
+        // ✅ OPRAVENÉ: SearchAndSortService s správnym SortDirection typom
         private SearchAndSortService? _searchAndSortService;
 
         // ✅ Interné dáta pre AUTO-ADD
         private readonly List<Dictionary<string, object?>> _gridData = new();
         private readonly List<GridColumnDefinition> _columns = new();
 
-        // ✅ NOVÉ: Search & Sort state tracking
+        // ✅ NOVÉ: Search & Sort state tracking s EXPLICITNÝM typom
         private readonly Dictionary<string, string> _columnSearchFilters = new();
         private string? _currentSortColumn;
-        private SortDirection _currentSortDirection = SortDirection.None; // ✅ OPRAVENÉ: nie nullable
+        private SearchAndSortService.SortDirection _currentSortDirection = SearchAndSortService.SortDirection.None; // ✅ OPRAVENÉ: Nested enum
 
         #endregion
 
@@ -125,7 +125,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 _validationService = _serviceProvider.GetService<IValidationService>();
                 _exportService = _serviceProvider.GetService<IExportService>();
 
-                // ✅ OPRAVENÉ CS1503: Vytvor SearchAndSortService bez špecifického logger typu
+                // ✅ OPRAVENÉ CS1503: Vytvor SearchAndSortService bez logger parametra
                 _searchAndSortService = new SearchAndSortService();
 
                 _logger?.LogInformation("AdvancedDataGrid s Search/Sort/Zebra inicializovaný");
@@ -445,7 +445,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: Search/Sort/Zebra PUBLIC API
+        #region ✅ NOVÉ: Search/Sort/Zebra PUBLIC API s EXPLICITNÝM typom
 
         /// <summary>
         /// ✅ NOVÉ: Nastaví search filter pre stĺpec
@@ -470,7 +470,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Toggle sort pre stĺpec (None → Asc → Desc → None)
+        /// ✅ NOVÉ: Toggle sort pre stĺpec (None → Asc → Desc → None) - OPRAVENÝ typ
         /// </summary>
         public async Task ToggleColumnSortAsync(string columnName)
         {
@@ -481,7 +481,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 if (_searchAndSortService == null) return;
 
                 var newDirection = _searchAndSortService.ToggleColumnSort(columnName);
-                _currentSortColumn = newDirection == SortDirection.None ? null : columnName;
+                _currentSortColumn = newDirection == SearchAndSortService.SortDirection.None ? null : columnName; // ✅ OPRAVENÉ nested enum
                 _currentSortDirection = newDirection;
 
                 await ApplySearchSortZebraAsync();
@@ -914,18 +914,4 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
     }
-
-    #region ✅ NOVÉ: SortDirection enum (INTERNAL)
-
-    /// <summary>
-    /// Smer sortovania - ✅ INTERNAL enum
-    /// </summary>
-    internal enum SortDirection
-    {
-        None,
-        Ascending,
-        Descending
-    }
-
-    #endregion
 }

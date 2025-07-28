@@ -417,15 +417,20 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         #endregion
     }
 
+    #region ✅ NOVÉ: SortDirection enum (NESTED v triede)
+
     /// <summary>
-    /// Sort direction enum - ✅ INTERNAL
+    /// Sort direction enum - ✅ INTERNAL nested enum
     /// </summary>
-    internal enum SortDirection
+    public enum SortDirection
     {
         None,
         Ascending,
         Descending
     }
+
+    #endregion
+
 
     /// <summary>
     /// ✅ NOVÁ: Informácie o zobrazení riadku s zebra styling
