@@ -35,7 +35,7 @@
 
     <!-- ✅ Package Information - UPDATED -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.18</Version>
+    <Version>1.0.19</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
@@ -46,7 +46,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.18: NETSDK1152 FINAL FIX + Individual Colors + Search/Sort/Zebra</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.18´9: NETSDK1152 FINAL FIX + Individual Colors + Search/Sort/Zebra</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
     <AssemblyTitle>WinUI3 DataGrid with Search, Sort, Colors - NETSDK1152 FINAL FIX</AssemblyTitle>
