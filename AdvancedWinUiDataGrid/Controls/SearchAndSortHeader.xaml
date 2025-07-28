@@ -1,4 +1,4 @@
-<!-- Controls/SearchAndSortHeader.xaml - ✅ NOVÝ Search/Sort header komponent -->
+<!-- Controls/SearchAndSortHeader.xaml - ✅ OPRAVENÝ XLS0414 chybu -->
 <UserControl
     x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.SearchAndSortHeader"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"

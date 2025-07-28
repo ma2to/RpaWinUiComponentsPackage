@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ NETSDK1004 -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ conditional compilation -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -10,10 +10,6 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-
-    <!-- ✅ OPRAVA NETSDK1004: Force restore before build -->
-    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
-    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
 
     <!-- ✅ XAML nastavenia -->
     <EnableDefaultPageItems>true</EnableDefaultPageItems>
@@ -32,10 +28,7 @@
 
     <!-- ✅ Suppress warnings -->
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-    <NoWarn>$(NoWarn);CA1416;NETSDK1022;CS0414</NoWarn>
-
-    <!-- ✅ CONDITIONAL: Ak package existuje, definuj HAS_PACKAGE -->
-    <DefineConstants Condition="Exists('$(NuGetPackageRoot)rpawinuicomponents.advancedwinuidatagrid\1.0.18\')">$(DefineConstants);HAS_PACKAGE</DefineConstants>
+    <NoWarn>$(NoWarn);CA1416;NETSDK1022;CS0414;NETSDK1152</NoWarn>
   </PropertyGroup>
 
   <!-- ✅ WinUI3 Dependencies - VŽDY POTREBNÉ -->
@@ -45,11 +38,16 @@
     <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.18" />
   </ItemGroup>
 
-  <!-- ✅ CONDITIONAL: Package reference iba ak lokálne existuje package alebo je force enabled -->
+  <!-- ✅ CONDITIONAL: Package reference s error handling -->
 
-  <!-- ✅ FALLBACK: Pre testovanie bez package -->
-  <PropertyGroup Condition="'$(ForcePackageReference)' != 'true'">
-    <PackageAvailable>false</PackageAvailable>
+  <!-- ✅ CONDITIONAL COMPILATION: Nastav NO_PACKAGE ak package neexistuje -->
+  <PropertyGroup>
+    <!-- Skús zistiť či package existuje -->
+    <PackageExists Condition="'$(PkgRpaWinUiComponents_AdvancedWinUiDataGrid)' != ''">true</PackageExists>
+    <PackageExists Condition="'$(PackageExists)' != 'true' AND Exists('$(NuGetPackageRoot)rpawinuicomponents.advancedwinuidatagrid\1.0.18\')">true</PackageExists>
+    
+    <!-- Ak package neexistuje, definuj NO_PACKAGE -->
+    <DefineConstants Condition="'$(PackageExists)' != 'true'">$(DefineConstants);NO_PACKAGE</DefineConstants>
   </PropertyGroup>
 
   <!-- ✅ Assets - iba ak existujú -->
@@ -66,41 +64,28 @@
     </None>
   </ItemGroup>
 
-  <!-- ✅ Pre testovanie v development - ak package neexistuje, vytvor fake implementáciu -->
+  <!-- ✅ Debug informácie -->
   <Target Name="CheckPackageAvailability" BeforeTargets="Build">
-    <PropertyGroup>
-      <LocalPackageExists Condition="Exists('$(MSBuildProjectDirectory)\..\AdvancedWinUiDataGrid\bin\Debug\RpaWinUiComponents.AdvancedWinUiDataGrid.1.0.18.nupkg')">true</LocalPackageExists>
-    </PropertyGroup>
-    
-    <Message Text="📦 Checking package availability..." Importance="normal" />
-    <Message Text="✅ Local package found" Importance="normal" Condition="'$(LocalPackageExists)' == 'true'" />
-    <Message Text="⚠️ Local package not found - demo will run in limited mode" Importance="normal" Condition="'$(LocalPackageExists)' != 'true'" />
+    <Message Text="📦 Checking AdvancedWinUiDataGrid package availability..." Importance="normal" />
+    <Message Text="📦 Package found: $(PackageExists)" Importance="normal" />
+    <Message Text="📦 Package path: $(PkgRpaWinUiComponents_AdvancedWinUiDataGrid)" Importance="normal" Condition="'$(PkgRpaWinUiComponents_AdvancedWinUiDataGrid)' != ''" />
+    <Message Text="📦 DefineConstants: $(DefineConstants)" Importance="normal" />
+    <Message Text="✅ Package is available - full functionality enabled" Importance="high" Condition="'$(PackageExists)' == 'true'" />
+    <Message Text="⚠️ Package not found - demo will run in limited mode (NO_PACKAGE defined)" Importance="high" Condition="'$(PackageExists)' != 'true'" />
   </Target>
 
-  <!-- ✅ Force restore target pre NETSDK1004 -->
-  <Target Name="EnsureNuGetRestore" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <AssetsFileExists Condition="Exists('$(MSBuildProjectDirectory)\obj\project.assets.json')">true</AssetsFileExists>
-    </PropertyGroup>
-    
-    <Message Text="🔍 Checking assets file..." Importance="normal" />
-    
-    <Exec Command="dotnet restore &quot;$(MSBuildProjectFile)&quot; --verbosity quiet" Condition="'$(AssetsFileExists)' != 'true'" ContinueOnError="true" />
-    
-    <Message Text="✅ NuGet restore completed" Importance="normal" Condition="'$(AssetsFileExists)' != 'true'" />
+  <!-- ✅ Pre development build info -->
+  <Target Name="ShowBuildInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="🚀 Building Demo with conditional package support..." Importance="normal" />
+    <Message Text="📦 Target: $(TargetFramework)" Importance="normal" />
+    <Message Text="🎯 Platform: $(Platform)" Importance="normal" />
+    <Message Text="🔧 Build Mode: $(Configuration)" Importance="normal" />
   </Target>
 
   <!-- ✅ Clean target -->
   <Target Name="CleanDemoProject" BeforeTargets="Clean">
-    <Message Text="🧹 Cleaning Demo project files..." Importance="normal" />
+    <Message Text="🧹 Cleaning Demo project..." Importance="normal" />
     <RemoveDir Directories="bin;obj" ContinueOnError="true" />
-  </Target>
-
-  <!-- ✅ Pre development - show build info -->
-  <Target Name="ShowBuildInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🚀 Building Demo with package availability check..." Importance="normal" />
-    <Message Text="📦 Target: $(TargetFramework)" Importance="normal" />
-    <Message Text="🎯 Platform: $(Platform)" Importance="normal" />
   </Target>
 
 </Project>
