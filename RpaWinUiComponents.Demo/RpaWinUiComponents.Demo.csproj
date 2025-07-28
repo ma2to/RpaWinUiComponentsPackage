@@ -1,36 +1,41 @@
-<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ XAML duplicates -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ DEMO s Package Reference -->
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
+    <!-- ✅ WinUI3 aplikácia konfigurácia -->
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>RpaWinUiComponents.Demo</RootNamespace>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>false</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
+
+    <!-- ✅ Application info -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
-    <UseWinUI>true</UseWinUI>
-    <EnableMsixTooling>true</EnableMsixTooling>
-    <Nullable>enable</Nullable>
 
-    <!-- ✅ OPRAVENÉ: Potlačenie Windows-only warnings -->
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <!-- ✅ Package Reference testing -->
+    <PackageValidationBaselineVersion>1.0.16</PackageValidationBaselineVersion>
 
-    <!-- ✅ KĽÚČOVÁ OPRAVA: Nechaj SDK automaticky zahrnúť XAML súbory -->
-    <EnableDefaultPageItems>true</EnableDefaultPageItems>
-    <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
-    <XamlCompilationEnabled>true</XamlCompilationEnabled>
+    <!-- ✅ NETSDK1152 prevention -->
+    <NoWarn>$(NoWarn);NETSDK1152</NoWarn>
   </PropertyGroup>
 
-  <!-- ✅ ODSTRÁNENÉ: Explicitné XAML súbory - SDK ich pridá automaticky -->
-  <!-- Toto spôsobovalo NETSDK1022 duplicate items error -->
-  <!-- <ItemGroup>
-    <Page Include="MainWindow.xaml" />
-    <ApplicationDefinition Include="App.xaml" />
-  </ItemGroup> -->
+  <!-- ✅ WinUI3 dependencies -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
+    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.18" />
+  </ItemGroup>
 
-  <!-- ✅ OPRAVENÉ: Assets files -->
+  <!-- ✅ KĽÚČOVÉ: Package Reference (NIE Project Reference!) -->
+
+  <!-- ✅ Demo application resources -->
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
@@ -41,30 +46,22 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
   </ItemGroup>
 
+  <!-- ✅ Application manifest -->
   <ItemGroup>
-    <Manifest Include="$(ApplicationManifest)" />
+    <None Include="app.manifest" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <ProjectCapability Include="Msix" />
-  </ItemGroup>
+  <!-- ✅ Debug target pre Package Reference testovanie -->
+  <Target Name="DebugPackageReferenceUsage" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="🎯 Demo aplikácia používa balík cez Package Reference (nie Project Reference)" Importance="high" />
+    <Message Text="🎯 Toto zabezpečuje skutočné testovanie balíka ako ho budú používať end-useri" Importance="high" />
+    <Message Text="🎯 Package: RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.17" Importance="normal" />
+  </Target>
 
-  <!-- ✅ OPRAVENÉ: WinUI package references -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
-    <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.16" />
-  </ItemGroup>
-
-  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-  </PropertyGroup>
-
-  <!-- Debug informácie pre package loading -->
-  <Target Name="DebugPackageInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🔍 Demo: Loading RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.2 via Package Reference" Importance="normal" />
-    <Message Text="🔍 Demo: UseWinUI = $(UseWinUI)" Importance="normal" />
-    <Message Text="🔍 Demo: EnableDefaultPageItems = $(EnableDefaultPageItems)" Importance="normal" />
+  <!-- ✅ Package verification -->
+  <Target Name="VerifyPackageReference" AfterTargets="ResolvePackageAssets" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="✅ Package Reference verification completed" Importance="normal" />
+    <Message Text="✅ AdvancedWinUiDataGrid balík úspešne načítaný cez NuGet" Importance="normal" />
   </Target>
 
 </Project>

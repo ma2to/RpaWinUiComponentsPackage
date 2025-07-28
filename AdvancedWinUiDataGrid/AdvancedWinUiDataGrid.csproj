@@ -1,4 +1,4 @@
-﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ NETSDK1152 FIX + Individual Color Config -->
+﻿<!-- AdvancedWinUiDataGrid/AdvancedWinUiDataGrid.csproj - ✅ NETSDK1152 KOMPLETNE OPRAVENÉ -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -35,25 +35,28 @@
 
     <!-- ✅ Package Information - UPDATED -->
     <PackageId>RpaWinUiComponents.AdvancedWinUiDataGrid</PackageId>
-    <Version>1.0.16</Version>
+    <Version>1.0.18</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components</Product>
-    <Description>WinUI3 DataGrid s AUTO-ADD, Individual Colors, Search, Sorting - NETSDK1152 FIXED</Description>
-    <PackageTags>WinUI3;DataGrid;Auto-Add;Search;Sort;Colors;Validation;Excel;RealTime</PackageTags>
+    <Description>WinUI3 DataGrid s AUTO-ADD, Individual Colors, Search, Sorting, Zebra Rows - NETSDK1152 FINAL FIX</Description>
+    <PackageTags>WinUI3;DataGrid;Auto-Add;Search;Sort;Colors;Validation;Excel;RealTime;Zebra</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <RepositoryUrl>https://github.com/company/rpa-winui-components</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright © 2025 RPA Company</Copyright>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.16: NETSDK1152 FIXED + Individual Colors + Search/Sort + Zebra Rows</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.18: NETSDK1152 FINAL FIX + Individual Colors + Search/Sort/Zebra</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
-    <AssemblyTitle>WinUI3 DataGrid with Search, Sort, Colors - NETSDK1152 FIXED</AssemblyTitle>
+    <AssemblyTitle>WinUI3 DataGrid with Search, Sort, Colors - NETSDK1152 FINAL FIX</AssemblyTitle>
     <AssemblyDescription>DataGrid s AUTO-ADD, individual colors, search, sorting, zebra rows</AssemblyDescription>
 
     <!-- ✅ NETSDK1152 FIX: Suppress all packaging conflicts -->
     <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277;NETSDK1152</NoWarn>
+    
+    <!-- ✅ KĽÚČOVÁ OPRAVA: Force normalized TFM path pre packaging -->
+    <PackageTargetFramework>net8.0-windows10.0.19041.0</PackageTargetFramework>
   </PropertyGroup>
 
   <!-- ✅ EXPLICITNÉ XAML súbory -->
@@ -107,18 +110,23 @@
     <None Include="buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÁ OPRAVA: Packaging - iba jeden TFM adresár -->
+  <!-- ✅ KĽÚČOVÁ OPRAVA NETSDK1152: Packaging do JEDINEJ normalized cesty -->
+  <PropertyGroup>
+    <!-- ✅ Force normalized TFM path pre packaging -->
+    <PackageTargetFramework>net8.0-windows10.0.19041.0</PackageTargetFramework>
+  </PropertyGroup>
+  
   <ItemGroup>
-    <!-- ✅ Main assembly - FORCE single target framework -->
-    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
-    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+    <!-- ✅ JEDINÁ assembly reference - bez duplicitných ciest -->
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(PackageTargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
+    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(PackageTargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
 
-    <!-- ✅ XBF súbory - iba z jednej cesty -->
-    <None Include="$(OutputPath)*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)')" />
-    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" />
+    <!-- ✅ XBF súbory - iba do jednej cesty -->
+    <None Include="$(OutputPath)*.xbf" Pack="true" PackagePath="lib/$(PackageTargetFramework)/" Condition="Exists('$(OutputPath)')" />
+    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(PackageTargetFramework)/" />
 
     <!-- ✅ XamlTypeInfo -->
-    <None Include="$(OutputPath)$(AssemblyName).xr.xml" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
+    <None Include="$(OutputPath)$(AssemblyName).xr.xml" Pack="true" PackagePath="lib/$(PackageTargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
   </ItemGroup>
 
   <!-- ✅ XAML súbory ako content fallback -->
@@ -126,16 +134,18 @@
     <None Include="Controls\**\*.xaml" Pack="true" PackagePath="content/Controls/" />
     <None Include="Themes\*.xaml" Pack="true" PackagePath="content/Themes/" />
   </ItemGroup>
+  
   <ItemGroup>
     <Compile Remove="Models\DataGridColorTheme.cs" />
   </ItemGroup>
+  
   <ItemGroup>
     <None Remove="Controls\SearchAndSortHeader.xaml" />
   </ItemGroup>
 
   <!-- ✅ Force single TFM generation -->
   <Target Name="PreventMultipleTfmGeneration" BeforeTargets="Pack">
-    <Message Text="🎯 Generating package for SINGLE TFM: $(TargetFramework)" Importance="normal" />
+    <Message Text="🎯 Generating package for SINGLE TFM: $(PackageTargetFramework)" Importance="normal" />
 
     <!-- ✅ Zabezpeč že sa generuje iba jeden TFM adresár -->
     <PropertyGroup>
@@ -146,10 +156,9 @@
   <!-- ✅ Post-build info -->
   <Target Name="LogPackageInfo" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="📦 Package created: $(PackageId) v$(Version)" Importance="high" />
-    <Message Text="📦 ✅ NETSDK1152 FIXED - single TFM: $(TargetFramework)" Importance="high" />
+    <Message Text="📦 ✅ NETSDK1152 FINAL FIX - single TFM: $(PackageTargetFramework)" Importance="high" />
     <Message Text="📦 ✨ Individual Color Config implementovaná" Importance="high" />
-    <Message Text="📦 🔍 Search/Sort funkcionalita pridaná" Importance="high" />
-    <Message Text="📦 🦓 Zebra rows support pridaný" Importance="high" />
+    <Message Text="📦 🔍 Search/Sort/Zebra funkcionalita pridaná" Importance="high" />
     <Message Text="📦 🔒 Clean PUBLIC API (AdvancedDataGrid, ColumnDefinition, ValidationRule, ThrottlingConfig, DataGridColorConfig)" Importance="high" />
   </Target>
 

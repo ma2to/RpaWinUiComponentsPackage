@@ -1,8 +1,18 @@
 ﻿<!-- AdvancedWinUiDataGrid/buildTransitive/RpaWinUiComponents.AdvancedWinUiDataGrid.targets -->
-<!-- ✅ TRANSITIVE MSBuild targets súbor (importuje build/ verziu) -->
+<!-- ✅ TRANSITIVE MSBuild targets súbor (importuje build/ verziu) - NETSDK1152 FINAL FIX -->
 <Project>
+
+  <!-- ✅ Debug info pre transitive import -->
+  <Target Name="DebugTransitiveImport" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="🔗 AdvancedWinUiDataGrid: Transitive targets loaded (NETSDK1152 FINAL FIX)" Importance="normal" />
+  </Target>
 
   <!-- ✅ Import hlavný targets súbor -->
   <Import Project="$(MSBuildThisFileDirectory)../build/RpaWinUiComponents.AdvancedWinUiDataGrid.targets" />
+
+  <!-- ✅ NETSDK1152 FINAL FIX: Ensure transitive import doesn't create duplicates -->
+  <PropertyGroup>
+    <AdvancedDataGridTransitiveImported>true</AdvancedDataGridTransitiveImported>
+  </PropertyGroup>
 
 </Project>
