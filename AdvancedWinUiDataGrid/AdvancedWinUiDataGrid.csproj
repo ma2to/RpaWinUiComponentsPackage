@@ -66,6 +66,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Controls\SearchAndSortHeader.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Controls\SpecialColumns\DeleteRowColumn.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -122,6 +125,12 @@
   <ItemGroup>
     <None Include="Controls\**\*.xaml" Pack="true" PackagePath="content/Controls/" />
     <None Include="Themes\*.xaml" Pack="true" PackagePath="content/Themes/" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Models\DataGridColorTheme.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Controls\SearchAndSortHeader.xaml" />
   </ItemGroup>
 
   <!-- ✅ Force single TFM generation -->

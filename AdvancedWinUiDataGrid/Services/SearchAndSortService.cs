@@ -1,4 +1,4 @@
-﻿// Services/SearchAndSortService.cs - ✅ OPRAVENÝ konštruktor + Search/Sort/Zebra kompletne
+﻿// Services/SearchAndSortService.cs - ✅ KOMPLETNÝ s nested enum + Search/Sort/Zebra
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -12,6 +12,22 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
     /// </summary>
     internal class SearchAndSortService : IDisposable
     {
+        #region ✅ NOVÉ: SortDirection enum (NESTED v triede)
+
+        /// <summary>
+        /// Sort direction enum - ✅ INTERNAL nested enum
+        /// </summary>
+        public enum SortDirection
+        {
+            None,
+            Ascending,
+            Descending
+        }
+
+        #endregion
+
+        #region Private Fields
+
         private readonly Dictionary<string, string> _columnSearchFilters = new();
         private readonly Dictionary<string, SortDirection> _columnSortStates = new();
         private string? _currentSortColumn;
@@ -20,12 +36,18 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
         // ✅ NOVÉ: Zebra rows (alternating row colors)
         private bool _zebraRowsEnabled = true;
 
+        #endregion
+
+        #region Constructor
+
         // ✅ OPRAVENÉ: Konštruktor bez ILogger parametra (to spôsobovalo CS1503 chybu)
         public SearchAndSortService()
         {
             // Inicializácia bez loggera - používame Debug.WriteLine pre diagnostiku
             System.Diagnostics.Debug.WriteLine("SearchAndSortService initialized without logger dependency");
         }
+
+        #endregion
 
         #region ✅ Search Functionality
 
@@ -416,21 +438,6 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid.Services
 
         #endregion
     }
-
-    #region ✅ NOVÉ: SortDirection enum (NESTED v triede)
-
-    /// <summary>
-    /// Sort direction enum - ✅ INTERNAL nested enum
-    /// </summary>
-    public enum SortDirection
-    {
-        None,
-        Ascending,
-        Descending
-    }
-
-    #endregion
-
 
     /// <summary>
     /// ✅ NOVÁ: Informácie o zobrazení riadku s zebra styling

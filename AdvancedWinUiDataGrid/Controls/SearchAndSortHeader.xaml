@@ -1,0 +1,73 @@
+<!-- Controls/SearchAndSortHeader.xaml - ✅ NOVÝ Search/Sort header komponent -->
+<UserControl
+    x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.SearchAndSortHeader"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border x:Name="HeaderBorder"
+            Background="{ThemeResource LayerFillColorAltBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,0,1,1"
+            MinHeight="60">
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ✅ Header Row s Sort indikátorom -->
+            <Grid Grid.Row="0" 
+                  Background="Transparent"
+                  Height="30">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Header text -->
+                <Button x:Name="HeaderButton"
+                        Grid.Column="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Padding="8,4"
+                        Click="OnHeaderClick">
+
+                    <TextBlock x:Name="HeaderText" 
+                               Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=HeaderTitle}"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- ✅ Sort indikátor (▲▼) -->
+                <TextBlock x:Name="SortIndicator"
+                          Grid.Column="1"
+                          Text=""
+                          FontFamily="Segoe MDL2 Assets"
+                          FontSize="10"
+                          VerticalAlignment="Center"
+                          Margin="0,0,8,0"
+                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+            </Grid>
+
+            <!-- ✅ Search Row -->
+            <Grid Grid.Row="1" Height="30">
+                <TextBox x:Name="SearchTextBox"
+                         PlaceholderText="🔍 Hľadať..."
+                         Background="{ThemeResource LayerFillColorDefaultBrush}"
+                         BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                         BorderThickness="1"
+                         CornerRadius="4"
+                         Padding="8,4"
+                         Margin="4,2"
+                         FontSize="12"
+                         TextChanged="OnSearchTextChanged"
+                         KeyDown="OnSearchKeyDown"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
