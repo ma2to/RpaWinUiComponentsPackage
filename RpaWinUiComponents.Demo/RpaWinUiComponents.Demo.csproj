@@ -1,8 +1,8 @@
-<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ DEMO s Package Reference -->
+<!-- RpaWinUiComponents.Demo/RpaWinUiComponents.Demo.csproj - ✅ OPRAVENÝ Package Reference -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- ✅ WinUI3 aplikácia konfigurácia -->
+    <!-- ✅ WinUI3 Target Framework -->
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
@@ -10,58 +10,75 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>false</UseWPF>
-    <UseWindowsForms>false</UseWindowsForms>
 
-    <!-- ✅ Application info -->
-    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- ✅ Assembly Info -->
+    <AssemblyTitle>RPA WinUI Components Demo</AssemblyTitle>
+    <AssemblyDescription>Demo aplikácia pre testovanie AdvancedWinUiDataGrid balíka</AssemblyDescription>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+
+    <!-- ✅ Platforms -->
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
 
-    <!-- ✅ Package Reference testing -->
-    <PackageValidationBaselineVersion>1.0.16</PackageValidationBaselineVersion>
+    <!-- ✅ Windows App SDK nastavenia -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
 
-    <!-- ✅ NETSDK1152 prevention -->
-    <NoWarn>$(NoWarn);NETSDK1152</NoWarn>
+    <!-- ✅ XAML nastavenia -->
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
+    <UseCompiledXaml>true</UseCompiledXaml>
   </PropertyGroup>
 
-  <!-- ✅ WinUI3 dependencies -->
+  <!-- ✅ KĽÚČOVÉ: Package Reference na náš balík (nie Project Reference!) -->
+
+  <!-- ✅ WinUI3 Dependencies -->
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="RpaWinUiComponents.AdvancedWinUiDataGrid" Version="1.0.18" />
   </ItemGroup>
 
-  <!-- ✅ KĽÚČOVÉ: Package Reference (NIE Project Reference!) -->
-
-  <!-- ✅ Demo application resources -->
+  <!-- ✅ EXPLICITNÉ XAML súbory -->
   <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
   </ItemGroup>
 
-  <!-- ✅ Application manifest -->
+  <!-- ✅ Code-behind súbory -->
   <ItemGroup>
-    <None Include="app.manifest" />
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 
-  <!-- ✅ Debug target pre Package Reference testovanie -->
-  <Target Name="DebugPackageReferenceUsage" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🎯 Demo aplikácia používa balík cez Package Reference (nie Project Reference)" Importance="high" />
-    <Message Text="🎯 Toto zabezpečuje skutočné testovanie balíka ako ho budú používať end-useri" Importance="high" />
-    <Message Text="🎯 Package: RpaWinUiComponents.AdvancedWinUiDataGrid v1.0.17" Importance="normal" />
-  </Target>
+  <!-- ✅ Assets -->
+  <ItemGroup>
+    <Content Include="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
-  <!-- ✅ Package verification -->
-  <Target Name="VerifyPackageReference" AfterTargets="ResolvePackageAssets" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="✅ Package Reference verification completed" Importance="normal" />
-    <Message Text="✅ AdvancedWinUiDataGrid balík úspešne načítaný cez NuGet" Importance="normal" />
+  <!-- ✅ Manifest -->
+  <ItemGroup>
+    <None Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+
+  <!-- ✅ Package Reference cleanup -->
+  <Target Name="CleanPackageCache" BeforeTargets="Restore">
+    <Message Text="🧹 Cleaning NuGet cache pre nový package..." Importance="normal" />
   </Target>
 
 </Project>

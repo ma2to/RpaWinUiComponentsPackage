@@ -1,4 +1,4 @@
-<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ DEMO s Individual Colors + Search/Sort/Zebra -->
+<!-- RpaWinUiComponents.Demo/MainWindow.xaml - ✅ OPRAVENÝ XAML parsing -->
 <Window x:Class="RpaWinUiComponents.Demo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -13,7 +13,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- ✅ Header -->
+        <!-- Header -->
         <Border Grid.Row="0" 
                 Background="{ThemeResource LayerFillColorAltBrush}"
                 Padding="20,16">
@@ -29,7 +29,7 @@
             </StackPanel>
         </Border>
 
-        <!-- ✅ Control Panel -->
+        <!-- Control Panel -->
         <ScrollViewer Grid.Row="1" 
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled">
@@ -37,7 +37,7 @@
                         Padding="20,16" 
                         Spacing="16">
 
-                <!-- ✅ Individual Colors Controls -->
+                <!-- Individual Colors Controls -->
                 <Border Background="{ThemeResource LayerFillColorAltBrush}"
                         CornerRadius="8"
                         Padding="16">
@@ -71,7 +71,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ✅ Search/Sort/Zebra Controls -->
+                <!-- Search/Sort/Zebra Controls -->
                 <Border Background="{ThemeResource LayerFillColorAltBrush}"
                         CornerRadius="8"
                         Padding="16">
@@ -100,7 +100,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ✅ AUTO-ADD Testing -->
+                <!-- AUTO-ADD Testing -->
                 <Border Background="{ThemeResource LayerFillColorAltBrush}"
                         CornerRadius="8"
                         Padding="16">
@@ -111,11 +111,11 @@
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="TestAutoAddFewRowsButton"
-                                    Content="Load 2 Rows (< minimum)"
+                                    Content="Load 2 Rows"
                                     Click="OnTestAutoAddFewRowsClick"/>
 
                             <Button x:Name="TestAutoAddManyRowsButton"
-                                    Content="Load 20 Rows (> minimum)"
+                                    Content="Load 20 Rows"
                                     Click="OnTestAutoAddManyRowsClick"/>
 
                             <Button x:Name="TestAutoAddDeleteButton"
@@ -125,7 +125,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ✅ Standard Functions -->
+                <!-- Standard Functions -->
                 <Border Background="{ThemeResource LayerFillColorAltBrush}"
                         CornerRadius="8"
                         Padding="16">
@@ -151,39 +151,6 @@
                             <Button x:Name="ExportDataButton"
                                     Content="📤 Export Data"
                                     Click="OnExportDataClick"/>
-
-                            <Button x:Name="DeleteByCustomValidationButton"
-                                    Content="🎯 Custom Delete"
-                                    Click="OnDeleteByCustomValidationClick"/>
-
-                            <Button x:Name="AdvancedDeleteExamplesButton"
-                                    Content="⚡ Advanced Delete"
-                                    Click="OnAdvancedDeleteExamplesClick"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- ✅ Testing Functions -->
-                <Border Background="{ThemeResource LayerFillColorAltBrush}"
-                        CornerRadius="8"
-                        Padding="16">
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="🧪 Advanced Testing Functions"
-                                  FontWeight="SemiBold"
-                                  FontSize="16"/>
-
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button x:Name="TestRealtimeValidationButton"
-                                    Content="⚡ Realtime Validation"
-                                    Click="OnTestRealtimeValidationClick"/>
-
-                            <Button x:Name="TestNavigationButton"
-                                    Content="🧭 Navigation (Tab/Enter)"
-                                    Click="OnTestNavigationClick"/>
-
-                            <Button x:Name="TestCopyPasteButton"
-                                    Content="📋 Copy/Paste"
-                                    Click="OnTestCopyPasteClick"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -191,7 +158,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- ✅ Main DataGrid Area -->
+        <!-- Main DataGrid Area -->
         <Border Grid.Row="2"
                 Margin="20,0,20,16"
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
@@ -200,7 +167,7 @@
                 CornerRadius="8">
 
             <Grid>
-                <!-- ✅ Loading Panel -->
+                <!-- Loading Panel -->
                 <StackPanel x:Name="LoadingPanel"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
@@ -226,13 +193,13 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- ✅ Main DataGrid Component -->
+                <!-- Main DataGrid Component -->
                 <grid:AdvancedDataGrid x:Name="DataGridControl"
                                       Visibility="Collapsed"/>
             </Grid>
         </Border>
 
-        <!-- ✅ Status Bar -->
+        <!-- Status Bar -->
         <Border Grid.Row="3"
                 Background="{ThemeResource LayerFillColorAltBrush}"
                 Padding="20,12">

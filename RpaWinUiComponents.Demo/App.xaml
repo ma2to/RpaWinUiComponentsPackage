@@ -1,18 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- RpaWinUiComponents.Demo/App.xaml - ✅ OPRAVENÝ -->
-<Application
-    x:Class="RpaWinUiComponents.Demo.App"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:RpaWinUiComponents.Demo">
-
+<!-- RpaWinUiComponents.Demo/App.xaml -->
+<Application x:Class="RpaWinUiComponents.Demo.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- ✅ WinUI3 Theme Resources -->
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
         </ResourceDictionary>
     </Application.Resources>
 </Application>
