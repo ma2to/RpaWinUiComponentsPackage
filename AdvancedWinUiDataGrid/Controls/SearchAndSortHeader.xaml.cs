@@ -1,4 +1,4 @@
-﻿// Controls/SearchAndSortHeader.xaml.cs - ✅ NOVÝ Search/Sort header komponent
+﻿// Controls/SearchAndSortHeader.xaml.cs - ✅ OPRAVENÉ XLS0414: PUBLIC pre XAML parser
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -10,15 +10,15 @@ using System.Runtime.CompilerServices;
 namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// Header komponent s Search/Sort funkciou - ✅ INTERNAL
+    /// Header komponent s Search/Sort funkciou - ✅ PUBLIC (kvôli XAML parser, ale NIE oficiálne API)
     /// </summary>
-    internal sealed partial class SearchAndSortHeader : UserControl, INotifyPropertyChanged
+    public sealed partial class SearchAndSortHeader : UserControl, INotifyPropertyChanged
     {
         #region Private Fields
 
         private string _headerTitle = string.Empty;
         private string _columnName = string.Empty;
-        private SearchAndSortService.SortDirection _currentSortDirection = SearchAndSortService.SortDirection.None;
+        private SortDirection _currentSortDirection = SortDirection.None;
         private string _searchText = string.Empty;
 
         #endregion
@@ -56,7 +56,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// <summary>
         /// Aktuálny sort direction
         /// </summary>
-        public SearchAndSortService.SortDirection CurrentSortDirection
+        public SortDirection CurrentSortDirection
         {
             get => _currentSortDirection;
             set
@@ -106,10 +106,10 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 var newDirection = CurrentSortDirection switch
                 {
-                    SearchAndSortService.SortDirection.None => SearchAndSortService.SortDirection.Ascending,
-                    SearchAndSortService.SortDirection.Ascending => SearchAndSortService.SortDirection.Descending,
-                    SearchAndSortService.SortDirection.Descending => SearchAndSortService.SortDirection.None,
-                    _ => SearchAndSortService.SortDirection.None
+                    SortDirection.None => SortDirection.Ascending,
+                    SortDirection.Ascending => SortDirection.Descending,
+                    SortDirection.Descending => SortDirection.None,
+                    _ => SortDirection.None
                 };
 
                 CurrentSortDirection = newDirection;
@@ -191,8 +191,8 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 var indicatorText = CurrentSortDirection switch
                 {
-                    SearchAndSortService.SortDirection.Ascending => "▲",
-                    SearchAndSortService.SortDirection.Descending => "▼",
+                    SortDirection.Ascending => "▲",
+                    SortDirection.Descending => "▼",
                     _ => ""
                 };
 
@@ -236,7 +236,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         /// </summary>
         public void ResetSort()
         {
-            CurrentSortDirection = SearchAndSortService.SortDirection.None;
+            CurrentSortDirection = SortDirection.None;
         }
 
         #endregion
@@ -261,17 +261,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         #endregion
     }
 
-    #region Event Args Classes
+    #region Event Args Classes - ✅ PUBLIC kvôli XAML
 
     /// <summary>
-    /// Event args pre sort request - ✅ INTERNAL
+    /// Event args pre sort request - ✅ PUBLIC (kvôli XAML parser)
     /// </summary>
-    internal class SortRequestEventArgs : EventArgs
+    public class SortRequestEventArgs : EventArgs
     {
         public string ColumnName { get; }
-        public SearchAndSortService.SortDirection Direction { get; }
+        public SortDirection Direction { get; }
 
-        public SortRequestEventArgs(string columnName, SearchAndSortService.SortDirection direction)
+        public SortRequestEventArgs(string columnName, SortDirection direction)
         {
             ColumnName = columnName;
             Direction = direction;
@@ -279,9 +279,9 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
     }
 
     /// <summary>
-    /// Event args pre search request - ✅ INTERNAL
+    /// Event args pre search request - ✅ PUBLIC (kvôli XAML parser)
     /// </summary>
-    internal class SearchRequestEventArgs : EventArgs
+    public class SearchRequestEventArgs : EventArgs
     {
         public string ColumnName { get; }
         public string SearchText { get; }

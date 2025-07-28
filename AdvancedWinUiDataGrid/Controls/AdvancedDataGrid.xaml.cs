@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÉ CS1503 + CS0019 chyby + Search/Sort/Zebra
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÉ CS1503 + CS0019 chyby + Search/Sort/Zebra + PUBLIC SortDirection
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -45,17 +45,17 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         // ✅ Individual colors namiesto themes
         private DataGridColorConfig? _individualColorConfig;
 
-        // ✅ OPRAVENÉ: SearchAndSortService s správnym SortDirection typom
+        // ✅ OPRAVENÉ: SearchAndSortService s PUBLIC SortDirection typom
         private SearchAndSortService? _searchAndSortService;
 
         // ✅ Interné dáta pre AUTO-ADD
         private readonly List<Dictionary<string, object?>> _gridData = new();
         private readonly List<GridColumnDefinition> _columns = new();
 
-        // ✅ NOVÉ: Search & Sort state tracking s EXPLICITNÝM typom
+        // ✅ OPRAVENÉ: Search & Sort state tracking s PUBLIC SortDirection typom
         private readonly Dictionary<string, string> _columnSearchFilters = new();
         private string? _currentSortColumn;
-        private SearchAndSortService.SortDirection _currentSortDirection = SearchAndSortService.SortDirection.None; // ✅ OPRAVENÉ: Nested enum
+        private SortDirection _currentSortDirection = SortDirection.None; // ✅ OPRAVENÉ: PUBLIC enum
 
         #endregion
 
@@ -445,7 +445,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: Search/Sort/Zebra PUBLIC API s EXPLICITNÝM typom
+        #region ✅ NOVÉ: Search/Sort/Zebra PUBLIC API s OPRAVENÝ SortDirection typ
 
         /// <summary>
         /// ✅ NOVÉ: Nastaví search filter pre stĺpec
@@ -470,7 +470,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Toggle sort pre stĺpec (None → Asc → Desc → None) - OPRAVENÝ typ
+        /// ✅ OPRAVENÉ: Toggle sort pre stĺpec (None → Asc → Desc → None) - PUBLIC SortDirection typ
         /// </summary>
         public async Task ToggleColumnSortAsync(string columnName)
         {
@@ -481,7 +481,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
                 if (_searchAndSortService == null) return;
 
                 var newDirection = _searchAndSortService.ToggleColumnSort(columnName);
-                _currentSortColumn = newDirection == SearchAndSortService.SortDirection.None ? null : columnName; // ✅ OPRAVENÉ nested enum
+                _currentSortColumn = newDirection == SortDirection.None ? null : columnName; // ✅ OPRAVENÉ: PUBLIC enum
                 _currentSortDirection = newDirection;
 
                 await ApplySearchSortZebraAsync();
