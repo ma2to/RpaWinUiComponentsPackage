@@ -112,11 +112,11 @@
     <!-- ✅ Main assembly - FORCE single target framework -->
     <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
     <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
-    
+
     <!-- ✅ XBF súbory - iba z jednej cesty -->
     <None Include="$(OutputPath)*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)')" />
     <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/$(TargetFramework)/" />
-    
+
     <!-- ✅ XamlTypeInfo -->
     <None Include="$(OutputPath)$(AssemblyName).xr.xml" Pack="true" PackagePath="lib/$(TargetFramework)/" Condition="Exists('$(OutputPath)$(AssemblyName).xr.xml')" />
   </ItemGroup>
@@ -136,7 +136,7 @@
   <!-- ✅ Force single TFM generation -->
   <Target Name="PreventMultipleTfmGeneration" BeforeTargets="Pack">
     <Message Text="🎯 Generating package for SINGLE TFM: $(TargetFramework)" Importance="normal" />
-    
+
     <!-- ✅ Zabezpeč že sa generuje iba jeden TFM adresár -->
     <PropertyGroup>
       <_SingleTfmMode>true</_SingleTfmMode>
