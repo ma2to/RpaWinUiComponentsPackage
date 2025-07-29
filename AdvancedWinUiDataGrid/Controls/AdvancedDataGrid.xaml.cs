@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ XAML loading issue
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÉ CS8604 warnings
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -222,6 +222,12 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 System.Diagnostics.Debug.WriteLine($"🚀 InitializeAsync začína (XAML failed: {_xamlLoadFailed})...");
 
+                // ✅ OPRAVENÉ CS8604: Null check pre columns parameter
+                if (columns == null)
+                {
+                    throw new ArgumentNullException(nameof(columns), "Columns parameter cannot be null");
+                }
+
                 // ✅ KĽÚČOVÁ OPRAVA: Ak XAML zlyhal, pokračuj iba s dátovou inicializáciou
                 if (_xamlLoadFailed)
                 {
@@ -250,7 +256,7 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
 
                 // Ulož columns pre neskoršie použitie
                 _columns.Clear();
-                _columns.AddRange(columns ?? new List<GridColumnDefinition>());
+                _columns.AddRange(columns);
 
                 // ✅ Nastav Search/Sort/Zebra
                 InitializeSearchSortZebra();
@@ -298,12 +304,18 @@ namespace RpaWinUiComponents.AdvancedWinUiDataGrid
             {
                 System.Diagnostics.Debug.WriteLine("🔧 Inicializujem iba dátovú časť bez UI...");
 
+                // ✅ OPRAVENÉ CS8604: Null check pre columns parameter
+                if (columns == null)
+                {
+                    throw new ArgumentNullException(nameof(columns), "Columns parameter cannot be null");
+                }
+
                 _unifiedRowCount = Math.Max(emptyRowsCount, 1);
                 _autoAddEnabled = true;
                 _individualColorConfig = colorConfig?.Clone() ?? DataGridColorConfig.Light;
 
                 _columns.Clear();
-                _columns.AddRange(columns ?? new List<GridColumnDefinition>());
+                _columns.AddRange(columns);
 
                 _searchAndSortService = new SearchAndSortService();
 

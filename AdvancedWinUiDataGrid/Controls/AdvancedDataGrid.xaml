@@ -1,4 +1,4 @@
-<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ SIMPLIFIED WORKING VERSION -->
+<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ OPRAVENÉ XLS0413 chyby -->
 <UserControl x:Class="RpaWinUiComponents.AdvancedWinUiDataGrid.AdvancedDataGrid"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -38,37 +38,43 @@
                                 Spacing="4"
                                 Padding="16">
 
-                        <!-- ✅ Sample data rows -->
-                        <TextBlock Text="📊 Demo Data Row 1: Anna Nováková" 
-                                   Padding="8"
-                                   Background="{ThemeResource LayerFillColorAltBrush}"
-                                   CornerRadius="4"/>
+                        <!-- ✅ OPRAVENÉ: TextBlock obalené v Border pre Background a CornerRadius -->
+                        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="4">
+                            <TextBlock Text="📊 Demo Data Row 1: Anna Nováková" 
+                                       Padding="8"/>
+                        </Border>
 
-                        <TextBlock Text="📊 Demo Data Row 2: Peter Svoboda" 
-                                   Padding="8"
-                                   Background="{ThemeResource LayerFillColorAltBrush}"
-                                   CornerRadius="4"/>
+                        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="4">
+                            <TextBlock Text="📊 Demo Data Row 2: Peter Svoboda" 
+                                       Padding="8"/>
+                        </Border>
 
-                        <TextBlock Text="📊 Demo Data Row 3: Eva Krásna" 
-                                   Padding="8"
-                                   Background="{ThemeResource LayerFillColorAltBrush}"
-                                   CornerRadius="4"/>
+                        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="4">
+                            <TextBlock Text="📊 Demo Data Row 3: Eva Krásna" 
+                                       Padding="8"/>
+                        </Border>
 
-                        <TextBlock Text="🔥 AUTO-ADD: Smart row management active" 
-                                   Padding="8"
-                                   Background="{ThemeResource AccentFillColorSecondaryBrush}"
-                                   CornerRadius="4"
-                                   Foreground="White"/>
+                        <Border Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                                CornerRadius="4">
+                            <TextBlock Text="🔥 AUTO-ADD: Smart row management active" 
+                                       Padding="8"
+                                       Foreground="White"/>
+                        </Border>
 
-                        <TextBlock Text="🎨 Individual Colors: Zebra rows enabled" 
-                                   Padding="8"
-                                   Background="{ThemeResource AccentFillColorTertiaryBrush}"
-                                   CornerRadius="4"/>
+                        <Border Background="{ThemeResource AccentFillColorTertiaryBrush}"
+                                CornerRadius="4">
+                            <TextBlock Text="🎨 Individual Colors: Zebra rows enabled" 
+                                       Padding="8"/>
+                        </Border>
 
-                        <TextBlock Text="🔍 Search/Sort: Advanced filtering ready" 
-                                   Padding="8"
-                                   Background="{ThemeResource SystemFillColorSuccessBrush}"
-                                   CornerRadius="4"/>
+                        <Border Background="{ThemeResource SystemFillColorSuccessBrush}"
+                                CornerRadius="4">
+                            <TextBlock Text="🔍 Search/Sort: Advanced filtering ready" 
+                                       Padding="8"/>
+                        </Border>
 
                     </StackPanel>
 
