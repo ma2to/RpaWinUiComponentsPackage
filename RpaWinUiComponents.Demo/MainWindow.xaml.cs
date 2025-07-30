@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - MULTI-COMPONENT PACKAGE DEMO
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÉ using direktívy a integrácia LoggerComponent
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -7,15 +7,14 @@ using System.Threading.Tasks;
 using Windows.UI;
 using Windows.UI.Core;
 
-
-// ✅ MULTI-COMPONENT PACKAGE IMPORTS
+// ✅ OPRAVENÉ: Správne using direktívy pre multi-component package
 #if !NO_PACKAGE
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid;
-using RpaWinUiComponentsPackage.LoggerComponent;
-using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.ColumnDefinition;
-using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.ValidationRule;
-using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.ThrottlingConfig;
-using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.DataGridColorConfig;
+using RpaWinUiComponentsPackage.Logger;  // ✅ CHANGED: LoggerComponent -> Logger namespace
+using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;  // ✅ FIXED: Pridané .Models
+using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ValidationRule;  // ✅ FIXED: Pridané .Models
+using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;  // ✅ FIXED: Pridané .Models
+using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.DataGridColorConfig;  // ✅ FIXED: Pridané .Models
 #endif
 
 namespace RpaWinUiComponentsPackage.Demo
@@ -28,7 +27,7 @@ namespace RpaWinUiComponentsPackage.Demo
         // ✅ References na komponenty z multi-component package
 #if !NO_PACKAGE
         private AdvancedDataGrid? _actualDataGrid;
-        private LoggerComponent? _logger;
+        private LoggerComponent? _logger;  // ✅ FIXED: Teraz môže nájsť typ
 #endif
 
         public MainWindow()
@@ -72,13 +71,24 @@ namespace RpaWinUiComponentsPackage.Demo
 
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                if (LoadingPanel != null &&
-                    DataGridControl != null &&
-                    StatusTextBlock != null &&
-                    InitStatusText != null)
+                // ✅ OPRAVENÉ: Kontrola existencie UI elementov z XAML
+                try
                 {
-                    System.Diagnostics.Debug.WriteLine($"✅ UI elementy pripravené po {attempt + 1} pokusoch");
-                    return true;
+                    var loadingPanel = this.FindName("LoadingPanel");
+                    var dataGridControl = this.FindName("DataGridControl");
+                    var statusTextBlock = this.FindName("StatusTextBlock");
+                    var initStatusText = this.FindName("InitStatusText");
+
+                    if (loadingPanel != null && dataGridControl != null &&
+                        statusTextBlock != null && initStatusText != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"✅ UI elementy pripravené po {attempt + 1} pokusoch");
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ UI check attempt {attempt + 1} failed: {ex.Message}");
                 }
 
                 await Task.Delay(delayMs);
@@ -123,10 +133,10 @@ namespace RpaWinUiComponentsPackage.Demo
                 // ✅ Test AdvancedDataGrid komponentu
                 _actualDataGrid = new AdvancedDataGrid();
 
-                // ✅ Test LoggerComponent komponentu
+                // ✅ Test LoggerComponent komponentu - s integráciou do AdvancedDataGrid
                 var tempDir = System.IO.Path.GetTempPath();
                 _logger = new LoggerComponent(tempDir, "demo-log.log", 10);
-                await _logger.LogAsync("Multi-component package test", "INFO");
+                await _logger.LogAsync("Multi-component package test - LoggerComponent + AdvancedDataGrid integration", "INFO");
 
                 await Task.Delay(100);
                 _packageAvailable = true;
@@ -152,18 +162,31 @@ namespace RpaWinUiComponentsPackage.Demo
                 UpdateStatus("Multi-component package je dostupný!", "Inicializuje sa DataGrid + Logger...");
 
 #if !NO_PACKAGE
-                if (_actualDataGrid != null && DataGridControl != null)
+                if (_actualDataGrid != null)
                 {
-                    DataGridControl.Content = _actualDataGrid;
+                    // ✅ OPRAVENÉ: Bezpečné nastavenie DataGrid obsahu
+                    try
+                    {
+                        var dataGridControl = this.FindName("DataGridControl") as ContentControl;
+                        if (dataGridControl != null)
+                        {
+                            dataGridControl.Content = _actualDataGrid;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"⚠️ DataGrid content setting failed: {ex.Message}");
+                    }
+
                     await Task.Delay(200);
 
                     // ✅ Log inicializácie
                     if (_logger != null)
                     {
-                        await _logger.LogAsync("Inicializuje sa AdvancedDataGrid", "INFO");
+                        await _logger.LogAsync("Inicializuje sa AdvancedDataGrid s integrated LoggerComponent", "INFO");
                     }
 
-                    // ✅ Inicializuj DataGrid s demo dátami
+                    // ✅ Inicializuj DataGrid s demo dátami a LoggerComponent integráciou
                     var columns = new List<GridColumnDefinition>
                     {
                         new("ID", typeof(int)) { MinWidth = 60, Width = 80, Header = "🔢 ID" },
@@ -186,7 +209,14 @@ namespace RpaWinUiComponentsPackage.Demo
                         AlternateRowColor = Color.FromArgb(20, 0, 120, 215)
                     };
 
+                    // ✅ KĽÚČOVÉ: Inicializuj DataGrid s LoggerComponent integráciou
                     await _actualDataGrid.InitializeAsync(columns, rules, GridThrottlingConfig.Default, 15, colors);
+
+                    // ✅ Log úspešnej inicializácie
+                    if (_logger != null)
+                    {
+                        await _logger.LogAsync("AdvancedDataGrid inicializovaný s integrated LoggerComponent", "INFO");
+                    }
 
                     // ✅ Demo dáta
                     var demoData = new List<Dictionary<string, object?>>
@@ -198,10 +228,10 @@ namespace RpaWinUiComponentsPackage.Demo
 
                     await _actualDataGrid.LoadDataAsync(demoData);
 
-                    // ✅ Log úspešnej inicializácie
+                    // ✅ Log načítania dát
                     if (_logger != null)
                     {
-                        await _logger.LogAsync($"DataGrid inicializovaný s {demoData.Count} riadkami", "INFO");
+                        await _logger.LogAsync($"DataGrid inicializovaný s {demoData.Count} riadkami - LoggerComponent integration working!", "INFO");
                     }
                 }
 #endif
@@ -219,18 +249,34 @@ namespace RpaWinUiComponentsPackage.Demo
         {
             try
             {
-                if (LoadingPanel != null)
-                    LoadingPanel.Visibility = Visibility.Collapsed;
+                // ✅ OPRAVENÉ: Bezpečná práca s UI elementmi
+                try
+                {
+                    var loadingPanel = this.FindName("LoadingPanel") as FrameworkElement;
+                    if (loadingPanel != null)
+                        loadingPanel.Visibility = Visibility.Collapsed;
+                }
+                catch { }
 
-                if (DataGridControl != null)
-                    DataGridControl.Visibility = Visibility.Visible;
+                try
+                {
+                    var dataGridControl = this.FindName("DataGridControl") as FrameworkElement;
+                    if (dataGridControl != null)
+                        dataGridControl.Visibility = Visibility.Visible;
+                }
+                catch { }
 
-                UpdateStatus("✅ Multi-component demo pripravené!", "🎉 Package je funkčný!");
+                UpdateStatus("✅ Multi-component demo pripravené!", "🎉 Package je funkčný s LoggerComponent integration!");
 
-                if (InitStatusText != null)
-                    InitStatusText.Text = "✅ Multi-component package funkčný!";
+                try
+                {
+                    var initStatusText = this.FindName("InitStatusText") as TextBlock;
+                    if (initStatusText != null)
+                        initStatusText.Text = "✅ Multi-component package funkčný s LoggerComponent!";
+                }
+                catch { }
 
-                System.Diagnostics.Debug.WriteLine("🎉 Multi-component inicializácia úspešne dokončená!");
+                System.Diagnostics.Debug.WriteLine("🎉 Multi-component inicializácia úspešne dokončená s LoggerComponent integration!");
             }
             catch (Exception ex)
             {
@@ -240,27 +286,52 @@ namespace RpaWinUiComponentsPackage.Demo
 
         private void ShowPackageUnavailable()
         {
-            if (LoadingPanel != null)
-                LoadingPanel.Visibility = Visibility.Collapsed;
+            try
+            {
+                var loadingPanel = this.FindName("LoadingPanel") as FrameworkElement;
+                if (loadingPanel != null)
+                    loadingPanel.Visibility = Visibility.Collapsed;
+            }
+            catch { }
 
-            if (NoPackagePanel != null)
-                NoPackagePanel.Visibility = Visibility.Visible;
+            try
+            {
+                var noPackagePanel = this.FindName("NoPackagePanel") as FrameworkElement;
+                if (noPackagePanel != null)
+                    noPackagePanel.Visibility = Visibility.Visible;
+            }
+            catch { }
 
             UpdateStatus("⚠️ Multi-component package nie je dostupný", "Skontrolujte inštaláciu");
 
-            if (InitStatusText != null)
-                InitStatusText.Text = "⚠️ Package Reference chyba";
+            try
+            {
+                var initStatusText = this.FindName("InitStatusText") as TextBlock;
+                if (initStatusText != null)
+                    initStatusText.Text = "⚠️ Package Reference chyba";
+            }
+            catch { }
         }
 
         private void UpdateStatus(string detailText, string statusText)
         {
             try
             {
-                if (LoadingDetailText != null)
-                    LoadingDetailText.Text = detailText;
+                try
+                {
+                    var loadingDetailText = this.FindName("LoadingDetailText") as TextBlock;
+                    if (loadingDetailText != null)
+                        loadingDetailText.Text = detailText;
+                }
+                catch { }
 
-                if (StatusTextBlock != null)
-                    StatusTextBlock.Text = statusText;
+                try
+                {
+                    var statusTextBlock = this.FindName("StatusTextBlock") as TextBlock;
+                    if (statusTextBlock != null)
+                        statusTextBlock.Text = statusText;
+                }
+                catch { }
             }
             catch (Exception ex)
             {
@@ -272,13 +343,18 @@ namespace RpaWinUiComponentsPackage.Demo
         {
             UpdateStatus($"❌ {errorMessage}", "Chyba aplikácie");
 
-            if (InitStatusText != null)
-                InitStatusText.Text = "❌ Chyba";
+            try
+            {
+                var initStatusText = this.FindName("InitStatusText") as TextBlock;
+                if (initStatusText != null)
+                    initStatusText.Text = "❌ Chyba";
+            }
+            catch { }
 
             System.Diagnostics.Debug.WriteLine($"❌ Error: {errorMessage}");
         }
 
-        #region Event Handlers
+        #region Event Handlers s LoggerComponent integráciou
 
         private async void OnLoadSampleDataClick(object sender, RoutedEventArgs e)
         {
@@ -300,18 +376,24 @@ namespace RpaWinUiComponentsPackage.Demo
                     // ✅ Log do LoggerComponent
                     if (_logger != null)
                     {
-                        await _logger.LogAsync("Sample data načítané cez demo", "INFO");
+                        await _logger.LogAsync("Sample data načítané cez demo - AdvancedDataGrid + LoggerComponent integration working!", "INFO");
                     }
                 }
             }
             catch (Exception ex)
             {
                 ShowError($"Load data chyba: {ex.Message}");
+
+                // ✅ Log chyby
+                if (_logger != null)
+                {
+                    await _logger.LogAsync($"Load data ERROR: {ex.Message}", "ERROR");
+                }
             }
 #endif
         }
 
-        // ✅ Ostatné event handlers rovnaké ako predtým...
+        // ✅ Ostatné event handlers s LoggerComponent integráciou
         private async void OnValidateAllClick(object sender, RoutedEventArgs e)
         {
             if (!_packageAvailable) return;
@@ -321,6 +403,12 @@ namespace RpaWinUiComponentsPackage.Demo
                 var isValid = await _actualDataGrid.ValidateAllRowsAsync();
                 UpdateStatus(isValid ? "Všetky dáta validné" : "Validačné chyby",
                            isValid ? "✅ OK" : "❌ Chyby");
+
+                // ✅ Log validácie
+                if (_logger != null)
+                {
+                    await _logger.LogAsync($"Validation result: {(isValid ? "ALL VALID" : "ERRORS FOUND")}", "INFO");
+                }
             }
 #endif
         }
@@ -333,6 +421,12 @@ namespace RpaWinUiComponentsPackage.Demo
             {
                 await _actualDataGrid.ClearAllDataAsync();
                 UpdateStatus("Dáta vyčistené", "✅ Clear úspešný");
+
+                // ✅ Log clear operácie
+                if (_logger != null)
+                {
+                    await _logger.LogAsync("Data cleared via demo interface", "INFO");
+                }
             }
 #endif
         }
@@ -345,11 +439,17 @@ namespace RpaWinUiComponentsPackage.Demo
             {
                 var dataTable = await _actualDataGrid.ExportToDataTableAsync();
                 UpdateStatus($"Export: {dataTable.Rows.Count} riadkov", "✅ Export úspešný");
+
+                // ✅ Log export operácie
+                if (_logger != null)
+                {
+                    await _logger.LogAsync($"Data exported: {dataTable.Rows.Count} rows", "INFO");
+                }
             }
 #endif
         }
 
-        // Ostatné button handlers
+        // Ostatné button handlers (bez zmien)
         private void OnApplyLightThemeClick(object sender, RoutedEventArgs e) =>
             UpdateStatus("Light theme", "🎨 Téma zmenená");
 

@@ -1,10 +1,12 @@
-﻿using System;
+﻿// LoggerComponent/FileManagement/LogFileManager.cs - ✅ OPRAVENÝ namespace
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponentsPackage.LoggerComponent
+namespace RpaWinUiComponentsPackage.Logger  // ✅ CHANGED: LoggerComponent -> Logger
 {
     /// <summary>
     /// Správca log súborov s rotáciou - INTERNAL

@@ -1,10 +1,10 @@
-﻿// LoggerComponent.cs - ✅ NOVÝ komponent pre logovanie v balíku
+﻿// LoggerComponent/Core/LoggerComponent.cs - ✅ OPRAVENÝ namespace konflikt
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponentsPackage.LoggerComponent
+namespace RpaWinUiComponentsPackage.Logger  // ✅ CHANGED: LoggerComponent -> Logger
 {
     /// <summary>
     /// LoggerComponent pre logovanie do súborov s automatickou rotáciou - ✅ PUBLIC API
@@ -154,15 +154,4 @@ namespace RpaWinUiComponentsPackage.LoggerComponent
 
         #endregion
     }
-
-    #region Internal Support Classes
-
-    /// <summary>
-    /// Konfigurácia pre logger - INTERNAL
-    /// </summary>
-    
-
-    
-
-    #endregion
 }
