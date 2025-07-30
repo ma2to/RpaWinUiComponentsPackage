@@ -23,8 +23,8 @@ using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Model
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// AdvancedDataGrid s NEZÁVISLÝM LOGOVANÍM cez ILogger abstractions - ✅ PUBLIC API
-    /// Komponenty balíka sú nezávislé - AdvancedDataGrid nepoužíva LoggerComponent priamo
+    /// AdvancedDataGrid - NEZÁVISLÝ KOMPONENT s ILogger abstractions
+    /// ✅ ÚPLNE NEZÁVISLÝ na LoggerComponent - používa iba ILogger abstractions
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
@@ -71,10 +71,10 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: Constructors s ILogger podporou
+        #region ✅ NEZÁVISLÉ Constructors s ILogger podporou
 
         /// <summary>
-        /// Vytvorí AdvancedDataGrid bez loggingu (NullLogger)
+        /// Vytvorí AdvancedDataGrid bez loggingu (NullLogger) - DEFAULT konštruktor
         /// </summary>
         public AdvancedDataGrid() : this(null)
         {
@@ -82,6 +82,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         /// <summary>
         /// Vytvorí AdvancedDataGrid s voliteľným loggerom
+        /// ✅ HLAVNÝ KONŠTRUKTOR - podporuje externe logovanie
         /// </summary>
         /// <param name="logger">ILogger pre logovanie (null = žiadne logovanie)</param>
         public AdvancedDataGrid(ILogger? logger)
@@ -128,7 +129,272 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Realtime Validation Implementation
+        #region ✅ PUBLIC API Methods s kompletným logovaním
+
+        /// <summary>
+        /// InitializeAsync s realtime validáciou - PUBLIC API
+        /// </summary>
+        public async Task InitializeAsync(
+            List<GridColumnDefinition> columns,
+            List<GridValidationRule>? validationRules,
+            GridThrottlingConfig throttlingConfig,
+            int emptyRowsCount = 15,
+            DataGridColorConfig? colorConfig = null)
+        {
+            try
+            {
+                _logger.LogInformation("🚀 InitializeAsync START - Columns: {ColumnCount}, Rules: {RuleCount}, EmptyRows: {EmptyRows}",
+                    columns?.Count ?? 0, validationRules?.Count ?? 0, emptyRowsCount);
+                StartOperation("InitializeAsync");
+
+                if (columns == null || columns.Count == 0)
+                {
+                    _logger.LogError("❌ InitializeAsync: Columns parameter is null or empty");
+                    throw new ArgumentException("Columns parameter cannot be null or empty", nameof(columns));
+                }
+
+                _logger.LogDebug("📋 Column details: {ColumnNames}", string.Join(", ", columns.Select(c => $"{c.Name}({c.DataType.Name})")));
+
+                // Store throttling config pre realtime validáciu
+                _throttlingConfig = throttlingConfig?.Clone() ?? GridThrottlingConfig.Default;
+                _logger.LogDebug("⚙️ Throttling config: {ThrottlingConfig}", _throttlingConfig);
+
+                // Store configuration
+                _columns.Clear();
+                _columns.AddRange(columns);
+                _unifiedRowCount = Math.Max(emptyRowsCount, 1);
+                _autoAddEnabled = true;
+                _individualColorConfig = colorConfig?.Clone();
+
+                _logger.LogDebug("🎨 Color config: {HasColors} custom colors, Zebra: {ZebraEnabled}",
+                    colorConfig?.HasAnyCustomColors ?? false, colorConfig?.IsZebraRowsEnabled ?? false);
+
+                // Initialize services
+                await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), throttlingConfig, emptyRowsCount);
+
+                // UI setup
+                if (!_xamlLoadFailed)
+                {
+                    ApplyIndividualColorsToUI();
+                    InitializeSearchSortZebra();
+                    await CreateInitialEmptyRowsAsync();
+                }
+
+                _isInitialized = true;
+                UpdateUIVisibility();
+
+                var duration = EndOperation("InitializeAsync");
+                _logger.LogInformation("✅ InitializeAsync COMPLETED - Duration: {Duration}ms, Instance: {InstanceId}",
+                    duration, _componentInstanceId);
+            }
+            catch (Exception ex)
+            {
+                EndOperation("InitializeAsync");
+                _logger.LogError(ex, "❌ CRITICAL ERROR during InitializeAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// LoadDataAsync s kompletným logovaním
+        /// </summary>
+        public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
+        {
+            try
+            {
+                _logger.LogInformation("📊 LoadDataAsync START - InputRows: {RowCount}", data?.Count ?? 0);
+                StartOperation("LoadDataAsync");
+
+                if (data == null)
+                {
+                    _logger.LogWarning("⚠️ LoadDataAsync: Null data provided, using empty list");
+                    data = new List<Dictionary<string, object?>>();
+                }
+
+                EnsureInitialized();
+
+                // Log data statistics
+                if (data.Any())
+                {
+                    var firstRow = data.First();
+                    var columnNames = firstRow.Keys.ToList();
+                    _logger.LogDebug("📊 Data columns: {ColumnNames}", string.Join(", ", columnNames));
+                    _logger.LogDebug("📊 Sample data: Row[0] = {SampleData}",
+                        string.Join(", ", firstRow.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}")));
+                }
+
+                if (_dataManagementService != null)
+                {
+                    await _dataManagementService.LoadDataAsync(data);
+                    await UpdateDisplayRowsWithRealtimeValidationAsync();
+                }
+
+                var duration = EndOperation("LoadDataAsync");
+                _logger.LogInformation("✅ LoadDataAsync COMPLETED - Duration: {Duration}ms, FinalRowCount: {FinalCount}",
+                    duration, _displayRows.Count);
+            }
+            catch (Exception ex)
+            {
+                EndOperation("LoadDataAsync");
+                _logger.LogError(ex, "❌ ERROR in LoadDataAsync");
+                throw;
+            }
+        }
+
+        public async Task<bool> ValidateAllRowsAsync()
+        {
+            try
+            {
+                _logger.LogInformation("🔍 ValidateAllRowsAsync START");
+                StartOperation("ValidateAllRows");
+                EnsureInitialized();
+
+                if (_validationService == null)
+                {
+                    _logger.LogWarning("⚠️ ValidateAllRowsAsync: ValidationService is null");
+                    return false;
+                }
+
+                var result = await _validationService.ValidateAllRowsAsync();
+                var duration = EndOperation("ValidateAllRows");
+
+                _logger.LogInformation("✅ ValidateAllRowsAsync COMPLETED - Result: {IsValid}, Duration: {Duration}ms",
+                    result, duration);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                EndOperation("ValidateAllRows");
+                _logger.LogError(ex, "❌ ERROR in ValidateAllRowsAsync");
+                throw;
+            }
+        }
+
+        public async Task<DataTable> ExportToDataTableAsync()
+        {
+            try
+            {
+                _logger.LogInformation("📤 ExportToDataTableAsync START");
+                StartOperation("ExportToDataTable");
+                EnsureInitialized();
+
+                if (_exportService == null)
+                {
+                    _logger.LogWarning("⚠️ ExportToDataTableAsync: ExportService is null");
+                    return new DataTable();
+                }
+
+                var result = await _exportService.ExportToDataTableAsync();
+                var duration = EndOperation("ExportToDataTable");
+
+                _logger.LogInformation("✅ ExportToDataTableAsync COMPLETED - Rows: {RowCount}, Columns: {ColumnCount}, Duration: {Duration}ms",
+                    result.Rows.Count, result.Columns.Count, duration);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                EndOperation("ExportToDataTable");
+                _logger.LogError(ex, "❌ ERROR in ExportToDataTableAsync");
+                throw;
+            }
+        }
+
+        public async Task ClearAllDataAsync()
+        {
+            try
+            {
+                _logger.LogInformation("🗑️ ClearAllDataAsync START - CurrentRows: {CurrentRowCount}", _displayRows.Count);
+                StartOperation("ClearAllData");
+                EnsureInitialized();
+
+                if (_dataManagementService != null)
+                {
+                    await _dataManagementService.ClearAllDataAsync();
+                    await UpdateDisplayRowsWithRealtimeValidationAsync();
+                }
+
+                var duration = EndOperation("ClearAllData");
+                _logger.LogInformation("✅ ClearAllDataAsync COMPLETED - Duration: {Duration}ms, NewRowCount: {NewRowCount}",
+                    duration, _displayRows.Count);
+            }
+            catch (Exception ex)
+            {
+                EndOperation("ClearAllData");
+                _logger.LogError(ex, "❌ ERROR in ClearAllDataAsync");
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region ✅ UI Update Methods s kompletným logovaním
+
+        /// <summary>
+        /// Aktualizuje ObservableCollection s realtime validáciou
+        /// </summary>
+        private async Task UpdateDisplayRowsWithRealtimeValidationAsync()
+        {
+            try
+            {
+                _logger.LogDebug("🎨 UpdateDisplayRowsWithRealtimeValidationAsync START");
+                StartOperation("UpdateDisplayRows");
+
+                if (_dataManagementService == null)
+                {
+                    _logger.LogWarning("⚠️ UpdateDisplayRows: DataManagementService is null");
+                    return;
+                }
+
+                var allData = await _dataManagementService.GetAllDataAsync();
+                _logger.LogDebug("📊 Retrieved {DataCount} rows from DataManagementService", allData.Count);
+
+                this.DispatcherQueue?.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        var oldRowCount = _displayRows.Count;
+                        _displayRows.Clear();
+
+                        for (int i = 0; i < allData.Count; i++)
+                        {
+                            var rowData = allData[i];
+                            var viewModel = new DataRowViewModel
+                            {
+                                RowIndex = i,
+                                Columns = _columns,
+                                Data = rowData
+                            };
+
+                            // ✅ Subscribe na realtime validáciu
+                            foreach (var cell in viewModel.Cells)
+                            {
+                                cell.PropertyChanged += OnCellValueChanged;
+                                cell.OriginalValue = cell.Value; // Set original value
+                            }
+
+                            _displayRows.Add(viewModel);
+                        }
+
+                        var duration = EndOperation("UpdateDisplayRows");
+                        _logger.LogDebug("✅ UpdateDisplayRows UI COMPLETED - {OldCount} → {NewCount} rows, Duration: {Duration}ms",
+                            oldRowCount, _displayRows.Count, duration);
+                    }
+                    catch (Exception uiEx)
+                    {
+                        _logger.LogError(uiEx, "❌ UpdateDisplayRows UI ERROR");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                EndOperation("UpdateDisplayRows");
+                _logger.LogError(ex, "❌ ERROR in UpdateDisplayRowsWithRealtimeValidationAsync");
+            }
+        }
+
+        #endregion
+
+        #region ✅ Realtime Validation Implementation s logovaním
 
         /// <summary>
         /// Spustí realtime validáciu pre bunku s throttling
@@ -136,7 +402,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private async Task ValidateCellRealtimeAsync(CellViewModel cell)
         {
             if (_validationService == null || !_isInitialized)
+            {
+                _logger.LogDebug("🔍 ValidateCellRealtime SKIPPED - Service: {HasService}, Initialized: {IsInit}",
+                    _validationService != null, _isInitialized);
                 return;
+            }
 
             try
             {
@@ -179,17 +449,28 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 if (_validationService == null) return;
 
+                _logger.LogDebug("🔍 PerformCellValidation START - {CellKey}: '{Value}'", cellKey, cell.DisplayValue);
+
                 // Validate cell value
                 var errors = await _validationService.ValidateCellAsync(cell.ColumnName, cell.DisplayValue);
 
                 // Update UI na main thread
                 this.DispatcherQueue?.TryEnqueue(() =>
                 {
+                    var wasValid = cell.IsValid;
                     cell.IsValid = !errors.Any();
                     cell.ValidationErrors = string.Join("; ", errors);
 
-                    _logger.LogDebug("✅ Realtime validácia dokončená pre {CellKey}: {Status} ({ErrorCount} errors)",
-                        cellKey, cell.IsValid ? "VALID" : "INVALID", errors.Count);
+                    if (wasValid != cell.IsValid)
+                    {
+                        _logger.LogDebug("🔍 Validation state changed for {CellKey}: {OldState} → {NewState}",
+                            cellKey, wasValid ? "VALID" : "INVALID", cell.IsValid ? "VALID" : "INVALID");
+                    }
+
+                    if (errors.Any())
+                    {
+                        _logger.LogWarning("⚠️ Validation errors for {CellKey}: {Errors}", cellKey, string.Join("; ", errors));
+                    }
                 });
 
                 // Clean up timer
@@ -215,13 +496,49 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             if (sender is CellViewModel cell && e.PropertyName == nameof(CellViewModel.DisplayValue))
             {
+                _logger.LogDebug("📝 Cell value changed: [{RowIndex}, {ColumnName}] = '{NewValue}' (was: '{OldValue}')",
+                    cell.RowIndex, cell.ColumnName, cell.DisplayValue, cell.OriginalValue);
+
                 // Spusti realtime validáciu
                 await ValidateCellRealtimeAsync(cell);
 
                 // Update data management service
                 if (_dataManagementService != null)
                 {
-                    await _dataManagementService.SetCellValueAsync(cell.RowIndex, cell.ColumnName, cell.DisplayValue);
+                    try
+                    {
+                        await _dataManagementService.SetCellValueAsync(cell.RowIndex, cell.ColumnName, cell.DisplayValue);
+                        _logger.LogDebug("✅ Cell value persisted to DataManagementService");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ Failed to persist cell value to DataManagementService");
+                    }
+                }
+            }
+        }
+
+        #endregion
+
+        #region ✅ XAML Event Handlers s logovaním
+
+        /// <summary>
+        /// Handler pre načítanie TextBox - pripojí KeyDown event
+        /// </summary>
+        public void OnCellTextBoxLoaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBox textBox)
+            {
+                // Pripoj KeyDown event handler (async wrapper)
+                textBox.KeyDown += (s, args) =>
+                {
+                    _ = Task.Run(async () => await OnCellKeyDown(s, args));
+                };
+
+                // Tag obsahuje CellViewModel
+                if (textBox.Tag is CellViewModel cell)
+                {
+                    _logger.LogTrace("🔧 TextBox loaded pre cell [{RowIndex}, {ColumnName}]", cell.RowIndex, cell.ColumnName);
                 }
             }
         }
@@ -238,22 +555,22 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Získaj CellViewModel z Tag
                 if (textBox.Tag is not CellViewModel cell) return;
 
+                _logger.LogDebug("⌨️ KeyDown in cell [{RowIndex}, {ColumnName}]: {Key}",
+                    cell.RowIndex, cell.ColumnName, e.Key);
+
                 switch (e.Key)
                 {
                     case Windows.System.VirtualKey.Escape:
-                        // Zruš zmeny a vráť originálnu hodnotu
                         await HandleEscapeKey(textBox, cell);
                         e.Handled = true;
                         break;
 
                     case Windows.System.VirtualKey.Enter:
-                        // Potvrď zmeny a presun na ďalšiu bunku
                         await HandleEnterKey(textBox, cell, IsShiftPressed());
                         e.Handled = true;
                         break;
 
                     case Windows.System.VirtualKey.Tab:
-                        // Potvrď zmeny a presun na ďalšiu/predchádzajúcu bunku
                         await HandleTabKey(textBox, cell, IsShiftPressed());
                         e.Handled = true;
                         break;
@@ -272,6 +589,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
+                var oldValue = cell.DisplayValue;
                 // Vráť originálnu hodnotu
                 cell.DisplayValue = cell.OriginalValue?.ToString() ?? "";
                 textBox.Text = cell.DisplayValue;
@@ -280,8 +598,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 cell.IsValid = true;
                 cell.ValidationErrors = "";
 
-                _logger.LogDebug("🔄 ESC pressed - Reverted cell {RowIndex}_{ColumnName} to original value: '{DisplayValue}'",
-                    cell.RowIndex, cell.ColumnName, cell.DisplayValue);
+                _logger.LogDebug("🔄 ESC pressed - Reverted cell [{RowIndex}, {ColumnName}]: '{OldValue}' → '{NewValue}'",
+                    cell.RowIndex, cell.ColumnName, oldValue, cell.DisplayValue);
 
                 await Task.CompletedTask;
             }
@@ -306,6 +624,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     var newText = currentText.Insert(currentPosition, Environment.NewLine);
                     textBox.Text = newText;
                     textBox.SelectionStart = currentPosition + Environment.NewLine.Length;
+                    _logger.LogDebug("📝 Shift+Enter - Added newline in cell [{RowIndex}, {ColumnName}]", cell.RowIndex, cell.ColumnName);
                     return;
                 }
 
@@ -315,10 +634,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Force validácia bez throttling
                 await PerformCellValidationAsync(cell, $"{cell.RowIndex}_{cell.ColumnName}");
 
-                _logger.LogDebug("✅ ENTER pressed - Confirmed cell {RowIndex}_{ColumnName} value: '{DisplayValue}'",
+                _logger.LogDebug("✅ ENTER pressed - Confirmed cell [{RowIndex}, {ColumnName}] value: '{DisplayValue}'",
                     cell.RowIndex, cell.ColumnName, cell.DisplayValue);
 
-                // TODO: Presun na bunku nižšie
                 await Task.CompletedTask;
             }
             catch (Exception ex)
@@ -340,252 +658,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Force validácia bez throttling
                 await PerformCellValidationAsync(cell, $"{cell.RowIndex}_{cell.ColumnName}");
 
-                _logger.LogDebug("✅ TAB pressed - Confirmed cell {RowIndex}_{ColumnName} value: '{DisplayValue}' (Shift: {IsShift})",
+                _logger.LogDebug("✅ TAB pressed - Confirmed cell [{RowIndex}, {ColumnName}] value: '{DisplayValue}' (Shift: {IsShift})",
                     cell.RowIndex, cell.ColumnName, cell.DisplayValue, isShiftPressed);
 
-                // TODO: Presun na ďalšiu/predchádzajúcu bunku
                 await Task.CompletedTask;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Chyba pri TAB handling");
-            }
-        }
-
-        #endregion
-
-        #region ✅ PUBLIC API Methods
-
-        /// <summary>
-        /// InitializeAsync s realtime validáciou - PUBLIC API
-        /// </summary>
-        public async Task InitializeAsync(
-            List<GridColumnDefinition> columns,
-            List<GridValidationRule>? validationRules,
-            GridThrottlingConfig throttlingConfig,
-            int emptyRowsCount = 15,
-            DataGridColorConfig? colorConfig = null)
-        {
-            try
-            {
-                _logger.LogInformation("🚀 InitializeAsync START s realtime validáciou - Columns: {ColumnCount}, Rules: {RuleCount}",
-                    columns?.Count ?? 0, validationRules?.Count ?? 0);
-                StartOperation("InitializeAsync");
-
-                if (columns == null || columns.Count == 0)
-                    throw new ArgumentException("Columns parameter cannot be null or empty", nameof(columns));
-
-                // Store throttling config pre realtime validáciu
-                _throttlingConfig = throttlingConfig?.Clone() ?? GridThrottlingConfig.Default;
-
-                // Store configuration
-                _columns.Clear();
-                _columns.AddRange(columns);
-                _unifiedRowCount = Math.Max(emptyRowsCount, 1);
-                _autoAddEnabled = true;
-                _individualColorConfig = colorConfig?.Clone();
-
-                // Initialize services
-                await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), throttlingConfig, emptyRowsCount);
-
-                // UI setup
-                if (!_xamlLoadFailed)
-                {
-                    ApplyIndividualColorsToUI();
-                    InitializeSearchSortZebra();
-                    await CreateInitialEmptyRowsAsync();
-                }
-
-                _isInitialized = true;
-                UpdateUIVisibility();
-
-                var duration = EndOperation("InitializeAsync");
-                _logger.LogInformation("✅ InitializeAsync COMPLETED s realtime validáciou - Duration: {Duration}ms", duration);
-            }
-            catch (Exception ex)
-            {
-                EndOperation("InitializeAsync");
-                _logger.LogError(ex, "❌ CRITICAL ERROR during InitializeAsync");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// LoadDataAsync s realtime validáciou
-        /// </summary>
-        public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
-        {
-            try
-            {
-                _logger.LogInformation("📊 LoadDataAsync START s realtime validáciou - Rows: {RowCount}", data?.Count ?? 0);
-                StartOperation("LoadDataAsync");
-
-                if (data == null) data = new List<Dictionary<string, object?>>();
-
-                EnsureInitialized();
-
-                if (_dataManagementService != null)
-                {
-                    await _dataManagementService.LoadDataAsync(data);
-                    await UpdateDisplayRowsWithRealtimeValidationAsync();
-                }
-
-                var duration = EndOperation("LoadDataAsync");
-                _logger.LogInformation("✅ LoadDataAsync COMPLETED s realtime validáciou - Duration: {Duration}ms", duration);
-            }
-            catch (Exception ex)
-            {
-                EndOperation("LoadDataAsync");
-                _logger.LogError(ex, "❌ ERROR in LoadDataAsync");
-                throw;
-            }
-        }
-
-        public async Task<bool> ValidateAllRowsAsync()
-        {
-            try
-            {
-                _logger.LogInformation("🔍 ValidateAllRowsAsync START");
-                EnsureInitialized();
-
-                if (_validationService == null) return false;
-                var result = await _validationService.ValidateAllRowsAsync();
-
-                _logger.LogInformation("✅ ValidateAllRowsAsync COMPLETED - Result: {IsValid}", result);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ ERROR in ValidateAllRowsAsync");
-                throw;
-            }
-        }
-
-        public async Task<DataTable> ExportToDataTableAsync()
-        {
-            try
-            {
-                _logger.LogInformation("📤 ExportToDataTableAsync START");
-                EnsureInitialized();
-
-                if (_exportService == null) return new DataTable();
-                var result = await _exportService.ExportToDataTableAsync();
-
-                _logger.LogInformation("✅ ExportToDataTableAsync COMPLETED - Rows: {RowCount}, Columns: {ColumnCount}",
-                    result.Rows.Count, result.Columns.Count);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ ERROR in ExportToDataTableAsync");
-                throw;
-            }
-        }
-
-        public async Task ClearAllDataAsync()
-        {
-            try
-            {
-                _logger.LogInformation("🗑️ ClearAllDataAsync START");
-                EnsureInitialized();
-
-                if (_dataManagementService != null)
-                {
-                    await _dataManagementService.ClearAllDataAsync();
-                    await UpdateDisplayRowsWithRealtimeValidationAsync();
-                }
-
-                _logger.LogInformation("✅ ClearAllDataAsync COMPLETED");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ ERROR in ClearAllDataAsync");
-                throw;
-            }
-        }
-
-        #endregion
-
-        #region ✅ UI Update Methods s realtime validáciou
-
-        /// <summary>
-        /// Aktualizuje ObservableCollection s realtime validáciou
-        /// </summary>
-        private async Task UpdateDisplayRowsWithRealtimeValidationAsync()
-        {
-            try
-            {
-                _logger.LogDebug("🎨 UpdateDisplayRowsWithRealtimeValidationAsync START");
-                StartOperation("UpdateDisplayRows");
-
-                if (_dataManagementService == null) return;
-
-                var allData = await _dataManagementService.GetAllDataAsync();
-
-                this.DispatcherQueue?.TryEnqueue(() =>
-                {
-                    try
-                    {
-                        _displayRows.Clear();
-
-                        for (int i = 0; i < allData.Count; i++)
-                        {
-                            var rowData = allData[i];
-                            var viewModel = new DataRowViewModel
-                            {
-                                RowIndex = i,
-                                Columns = _columns,
-                                Data = rowData
-                            };
-
-                            // ✅ Subscribe na realtime validáciu
-                            foreach (var cell in viewModel.Cells)
-                            {
-                                cell.PropertyChanged += OnCellValueChanged;
-                                cell.OriginalValue = cell.Value; // Set original value
-                            }
-
-                            _displayRows.Add(viewModel);
-                        }
-
-                        var duration = EndOperation("UpdateDisplayRows");
-                        _logger.LogDebug("✅ UpdateDisplayRows COMPLETED s realtime validáciou - {RowCount} rows, Duration: {Duration}ms",
-                            _displayRows.Count, duration);
-                    }
-                    catch (Exception uiEx)
-                    {
-                        _logger.LogError(uiEx, "❌ UpdateDisplayRows UI ERROR");
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ ERROR in UpdateDisplayRowsWithRealtimeValidationAsync");
-            }
-        }
-
-        #endregion
-
-        #region ✅ XAML Event Handlers
-
-        /// <summary>
-        /// Handler pre načítanie TextBox - pripojí KeyDown event
-        /// </summary>
-        public void OnCellTextBoxLoaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is TextBox textBox)
-            {
-                // Pripoj KeyDown event handler (async wrapper)
-                textBox.KeyDown += (s, args) =>
-                {
-                    _ = Task.Run(async () => await OnCellKeyDown(s, args));
-                };
-
-                // Tag obsahuje CellViewModel
-                if (textBox.Tag is CellViewModel cell)
-                {
-                    _logger.LogTrace("🔧 TextBox loaded pre cell {RowIndex}_{ColumnName}", cell.RowIndex, cell.ColumnName);
-                }
             }
         }
 
@@ -609,40 +689,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
-        /// <summary>
-        /// Zobrazí globálny validation overlay
-        /// </summary>
-        public void ShowValidationOverlay(string errorMessage = "Validation errors detected!")
-        {
-            this.DispatcherQueue?.TryEnqueue(() =>
-            {
-                try
-                {
-                    var validationOverlay = this.FindName("ValidationOverlay") as FrameworkElement;
-                    var validationErrorsText = this.FindName("ValidationErrorsText") as TextBlock;
-
-                    if (validationOverlay != null)
-                    {
-                        validationOverlay.Visibility = Visibility.Visible;
-                    }
-
-                    if (validationErrorsText != null)
-                    {
-                        validationErrorsText.Text = errorMessage;
-                    }
-
-                    _logger.LogDebug("⚠️ Validation overlay shown: {ErrorMessage}", errorMessage);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ Error showing validation overlay");
-                }
-            });
-        }
-
         #endregion
 
-        #region ✅ Helper Methods
+        #region ✅ Helper Methods s logovaním
 
         private void TryInitializeXaml()
         {
@@ -663,6 +712,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
+                _logger.LogDebug("🔧 Initializing Dependency Injection...");
                 var services = new ServiceCollection();
                 ConfigureServices(services);
                 _serviceProvider = services.BuildServiceProvider();
@@ -672,17 +722,20 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _exportService = _serviceProvider.GetService<IExportService>();
                 _searchAndSortService = new SearchAndSortService();
 
-                _logger.LogInformation("✅ Dependency Injection initialized");
+                _logger.LogInformation("✅ Dependency Injection initialized - Services: DataMgmt={HasDataMgmt}, Validation={HasValidation}, Export={HasExport}",
+                    _dataManagementService != null, _validationService != null, _exportService != null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "⚠️ DI initialization ERROR");
+                _logger.LogError(ex, "❌ DI initialization ERROR");
                 throw;
             }
         }
 
         private void ConfigureServices(IServiceCollection services)
         {
+            _logger.LogDebug("🔧 Configuring services with logger: {LoggerType}", _logger.GetType().Name);
+
             // ✅ NEZÁVISLÉ KOMPONENTY: Použije poskytnutý logger alebo NullLogger
             services.AddSingleton<IDataManagementService>(provider =>
                 new DataManagementService(CreateTypedLogger<DataManagementService>()));
@@ -703,16 +756,23 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private ILogger<T> CreateTypedLogger<T>()
         {
             if (_logger is NullLogger)
+            {
+                _logger.LogDebug("🔧 Creating NullLogger<{TypeName}> - no logging will occur", typeof(T).Name);
                 return NullLogger<T>.Instance;
+            }
 
             // Ak máme skutočný logger, vytvoríme z neho typed logger
+            _logger.LogDebug("🔧 Creating TypedLogger<{TypeName}> from {LoggerType}", typeof(T).Name, _logger.GetType().Name);
             return new TypedLoggerWrapper<T>(_logger);
         }
 
         private void EnsureInitialized()
         {
             if (!_isInitialized)
+            {
+                _logger.LogError("❌ DataGrid is not initialized - call InitializeAsync() first");
                 throw new InvalidOperationException("DataGrid is not initialized. Call InitializeAsync() first.");
+            }
         }
 
         #endregion
@@ -738,6 +798,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private void StartOperation(string operationName)
         {
             _operationStartTimes[operationName] = DateTime.UtcNow;
+            _logger.LogDebug("⏱️ Operation START: {OperationName}", operationName);
         }
 
         private double EndOperation(string operationName)
@@ -746,7 +807,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 _operationStartTimes.Remove(operationName);
-                return Math.Round(duration, 2);
+                var roundedDuration = Math.Round(duration, 2);
+                _logger.LogDebug("⏱️ Operation END: {OperationName} - {Duration}ms", operationName, roundedDuration);
+                return roundedDuration;
             }
             return 0;
         }
@@ -759,6 +822,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
+                _logger.LogWarning("🔧 Creating fallback UI due to XAML failure");
                 var mainGrid = new Grid();
                 var fallbackText = new TextBlock
                 {
@@ -771,6 +835,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 };
                 mainGrid.Children.Add(fallbackText);
                 this.Content = mainGrid;
+                _logger.LogInformation("✅ Fallback UI created successfully");
             }
             catch (Exception ex)
             {
@@ -794,19 +859,48 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                     if (loadingOverlay != null)
                         loadingOverlay.Visibility = _isInitialized ? Visibility.Collapsed : Visibility.Visible;
+
+                    _logger.LogDebug("🎨 UI visibility updated - Initialized: {IsInitialized}", _isInitialized);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "⚠️ UpdateUIVisibility ERROR");
+                    _logger.LogError(ex, "❌ UpdateUIVisibility ERROR");
                 }
             });
         }
 
-        private void ApplyIndividualColorsToUI() => _logger.LogDebug("🎨 ApplyIndividualColorsToUI called");
-        private void InitializeSearchSortZebra() => _logger.LogDebug("🔍 InitializeSearchSortZebra called");
-        private async Task CreateInitialEmptyRowsAsync() => await Task.CompletedTask;
+        private void ApplyIndividualColorsToUI()
+        {
+            _logger.LogDebug("🎨 ApplyIndividualColorsToUI called - HasColors: {HasColors}",
+                _individualColorConfig?.HasAnyCustomColors ?? false);
+
+            // TODO: Implementácia aplikácie farieb
+        }
+
+        private void InitializeSearchSortZebra()
+        {
+            _logger.LogDebug("🔍 InitializeSearchSortZebra called - Service: {HasService}", _searchAndSortService != null);
+
+            // TODO: Implementácia search/sort/zebra inicializácie
+        }
+
+        private async Task CreateInitialEmptyRowsAsync()
+        {
+            _logger.LogDebug("📄 CreateInitialEmptyRowsAsync called - UnifiedRowCount: {RowCount}", _unifiedRowCount);
+            await Task.CompletedTask;
+
+            // TODO: Implementácia vytvorenia prázdnych riadkov
+        }
+
         private async Task InitializeServicesAsync(List<GridColumnDefinition> columns, List<GridValidationRule> rules,
-            GridThrottlingConfig throttling, int emptyRows) => await Task.CompletedTask;
+            GridThrottlingConfig throttling, int emptyRows)
+        {
+            _logger.LogDebug("🔧 InitializeServicesAsync called - Columns: {ColCount}, Rules: {RuleCount}, EmptyRows: {EmptyRows}",
+                columns.Count, rules.Count, emptyRows);
+            await Task.CompletedTask;
+
+            // TODO: Implementácia inicializácie služieb
+        }
 
         #endregion
 
@@ -835,7 +929,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
             try
             {
-                _logger.LogInformation("🧹 AdvancedDataGrid DISPOSE START s realtime validáciou");
+                _logger.LogInformation("🧹 AdvancedDataGrid DISPOSE START - Instance: {InstanceId}", _componentInstanceId);
 
                 // Dispose validation timers
                 lock (_validationLock)
@@ -845,16 +939,20 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         timer?.Dispose();
                     }
                     _validationTimers.Clear();
+                    _logger.LogDebug("🧹 Disposed {TimerCount} validation timers", _validationTimers.Count);
                 }
 
                 // Unsubscribe from cell events
+                var cellEventCount = 0;
                 foreach (var row in _displayRows)
                 {
                     foreach (var cell in row.Cells)
                     {
                         cell.PropertyChanged -= OnCellValueChanged;
+                        cellEventCount++;
                     }
                 }
+                _logger.LogDebug("🧹 Unsubscribed from {CellEventCount} cell events", cellEventCount);
 
                 _searchAndSortService?.Dispose();
 
@@ -864,7 +962,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _operationStartTimes.Clear();
 
                 _isDisposed = true;
-                _logger.LogInformation("✅ AdvancedDataGrid DISPOSED successfully s realtime validáciou");
+                _logger.LogInformation("✅ AdvancedDataGrid DISPOSED successfully - Instance: {InstanceId}", _componentInstanceId);
             }
             catch (Exception ex)
             {
