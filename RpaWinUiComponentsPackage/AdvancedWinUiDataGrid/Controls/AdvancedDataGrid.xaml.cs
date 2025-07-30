@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ ROZŠÍRENÉ LOGOVANIE pre troubleshooting
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÉ CS1061 a CS8604 chyby + rozšírené logovanie
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions; // ✅ IBA Abstractions
@@ -74,8 +74,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                LogDebug("🔧 AdvancedDataGrid Constructor START - Instance: {InstanceId}", _componentInstanceId);
-                LogDebug("📊 Constructor - Memory before: {Memory} MB", GC.GetTotalMemory(false) / 1024 / 1024);
+                LogDebug("🔧 AdvancedDataGrid Constructor START - Instance: {0}", _componentInstanceId);
+                LogDebug("📊 Constructor - Memory before: {0} MB", GC.GetTotalMemory(false) / 1024 / 1024);
 
                 StartOperation("Constructor");
 
@@ -98,14 +98,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // ✅ UI binding
                 DataContext = this;
 
-                LogDebug("📊 Constructor - Memory after: {Memory} MB", GC.GetTotalMemory(false) / 1024 / 1024);
-                LogInfo("✅ Constructor COMPLETED - Instance: {InstanceId}, Duration: {Duration}ms",
+                LogDebug("📊 Constructor - Memory after: {0} MB", GC.GetTotalMemory(false) / 1024 / 1024);
+                LogInfo("✅ Constructor COMPLETED - Instance: {0}, Duration: {1}ms",
                     _componentInstanceId, EndOperation("Constructor"));
             }
             catch (Exception ex)
             {
-                LogError("❌ CRITICAL CONSTRUCTOR ERROR: {Error}", ex.Message);
-                LogError("❌ Constructor Exception Details: {Exception}", ex);
+                LogError("❌ CRITICAL CONSTRUCTOR ERROR: {0}", ex.Message);
+                LogError("❌ Constructor Exception Details: {0}", ex.ToString()); // ✅ OPRAVENÉ: ex.ToString() namiesto ex
                 CreateSimpleFallbackUI();
             }
         }
@@ -133,14 +133,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // ✅ Okamžite validuj UI elementy
                 ValidateUIElementsAfterXaml();
 
-                LogDebug("✅ XAML Loading COMPLETED - Duration: {Duration}ms", EndOperation("XamlLoading"));
+                LogDebug("✅ XAML Loading COMPLETED - Duration: {0}ms", EndOperation("XamlLoading"));
             }
             catch (Exception xamlEx)
             {
                 EndOperation("XamlLoading");
-                LogError("❌ XAML LOADING FAILED: {Error}", xamlEx.Message);
-                LogError("❌ XAML Exception Details: {Exception}", xamlEx);
-                LogError("❌ XAML StackTrace: {StackTrace}", xamlEx.StackTrace);
+                LogError("❌ XAML LOADING FAILED: {0}", xamlEx.Message);
+                LogError("❌ XAML Exception Details: {0}", xamlEx.ToString()); // ✅ OPRAVENÉ
+                LogError("❌ XAML StackTrace: {0}", xamlEx.StackTrace ?? "No stack trace available");
                 _xamlLoadFailed = true;
             }
         }
@@ -169,7 +169,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                 foreach (var result in validationResults)
                 {
-                    LogDebug("🔍 UI Element {ElementName}: {Status}", result.Key, result.Value ? "FOUND" : "MISSING");
+                    LogDebug("🔍 UI Element {0}: {1}", result.Key, result.Value ? "FOUND" : "MISSING");
                 }
 
                 var allElementsFound = validationResults.Values.All(v => v);
@@ -177,7 +177,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (!allElementsFound)
                 {
                     var missingElements = validationResults.Where(r => !r.Value).Select(r => r.Key);
-                    LogWarn("❌ UI Validation FAILED - Missing elements: {MissingElements}", string.Join(", ", missingElements));
+                    LogWarn("❌ UI Validation FAILED - Missing elements: {0}", string.Join(", ", missingElements));
                     _xamlLoadFailed = true;
                 }
                 else
@@ -187,8 +187,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
             catch (Exception ex)
             {
-                LogError("⚠️ UI Validation ERROR: {Error}", ex.Message);
-                LogError("⚠️ UI Validation Exception: {Exception}", ex);
+                LogError("⚠️ UI Validation ERROR: {0}", ex.Message);
+                LogError("⚠️ UI Validation Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
                 _xamlLoadFailed = true;
             }
         }
@@ -204,7 +204,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                LogDebug("🔗 SetIntegratedLogger START - Component: {HasComponent}, Enable: {Enable}",
+                LogDebug("🔗 SetIntegratedLogger START - Component: {0}, Enable: {1}",
                     loggerComponent != null, enableIntegration);
 
                 _integratedLogger = loggerComponent;
@@ -212,25 +212,25 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                 if (_loggerIntegrationEnabled && loggerComponent != null)
                 {
-                    LogInfo("🔗 LoggerComponent integration ENABLED for DataGrid instance [{InstanceId}] - Logger: {LoggerType}, File: {LogFile}",
+                    LogInfo("🔗 LoggerComponent integration ENABLED for DataGrid instance [{0}] - Logger: {1}, File: {2}",
                         _componentInstanceId, loggerComponent.ExternalLoggerType, loggerComponent.CurrentLogFile);
 
                     // Test loggeru
                     _ = Task.Run(async () =>
                     {
                         var testResult = await loggerComponent.TestLoggingAsync();
-                        LogDebug("🧪 LoggerComponent test result: {TestResult}", testResult ? "SUCCESS" : "FAILED");
+                        LogDebug("🧪 LoggerComponent test result: {0}", testResult ? "SUCCESS" : "FAILED");
                     });
                 }
                 else
                 {
-                    LogInfo("🔗 LoggerComponent integration DISABLED for DataGrid instance [{InstanceId}]", _componentInstanceId);
+                    LogInfo("🔗 LoggerComponent integration DISABLED for DataGrid instance [{0}]", _componentInstanceId);
                 }
             }
             catch (Exception ex)
             {
-                LogError("❌ SetIntegratedLogger ERROR: {Error}", ex.Message);
-                LogError("❌ SetIntegratedLogger Exception: {Exception}", ex);
+                LogError("❌ SetIntegratedLogger ERROR: {0}", ex.Message);
+                LogError("❌ SetIntegratedLogger Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
             }
         }
 
@@ -268,22 +268,37 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             _ = Task.Run(async () => await LogAsync(message, logLevel));
         }
 
-        // ✅ Helper metódy pre rôzne log levels s template podporou - RELEASE MODE READY
-        private void LogTrace(string message, params object[] args) => LogSync(FormatMessage(message, args), "TRACE");
-        private void LogDebug(string message, params object[] args) => LogSync(FormatMessage(message, args), "DEBUG");
-        private void LogInfo(string message, params object[] args) => LogSync(FormatMessage(message, args), "INFO");
-        private void LogWarn(string message, params object[] args) => LogSync(FormatMessage(message, args), "WARN");
-        private void LogError(string message, params object[] args) => LogSync(FormatMessage(message, args), "ERROR");
+        // ✅ OPRAVENÉ CS8604: Helper metódy pre rôzne log levels s safe template podporou
+        private void LogTrace(string message, params object[] args) => LogSync(SafeFormatMessage(message, args), "TRACE");
+        private void LogDebug(string message, params object[] args) => LogSync(SafeFormatMessage(message, args), "DEBUG");
+        private void LogInfo(string message, params object[] args) => LogSync(SafeFormatMessage(message, args), "INFO");
+        private void LogWarn(string message, params object[] args) => LogSync(SafeFormatMessage(message, args), "WARN");
+        private void LogError(string message, params object[] args) => LogSync(SafeFormatMessage(message, args), "ERROR");
 
-        private static string FormatMessage(string template, params object[] args)
+        /// <summary>
+        /// ✅ OPRAVENÉ CS8604: Safe message formatting s null protection
+        /// </summary>
+        private static string SafeFormatMessage(string template, params object[] args)
         {
             try
             {
-                return args.Length > 0 ? string.Format(template.Replace("{", "{{").Replace("}", "}}").Replace("{{", "{").Replace("}}", "}"), args) : template;
+                if (args == null || args.Length == 0)
+                    return template;
+
+                // Convert nulls to safe strings
+                var safeArgs = new object[args.Length];
+                for (int i = 0; i < args.Length; i++)
+                {
+                    safeArgs[i] = args[i] ?? "<null>";
+                }
+
+                return string.Format(template, safeArgs);
             }
-            catch
+            catch (Exception)
             {
-                return $"{template} [ARGS: {string.Join(", ", args)}]";
+                // Fallback ak formatting zlyhal
+                var argsList = args?.Select(a => a?.ToString() ?? "<null>") ?? new[] { "<no args>" };
+                return $"{template} [ARGS: {string.Join(", ", argsList)}]";
             }
         }
 
@@ -304,7 +319,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                LogInfo("🚀 InitializeAsync START - Columns: {ColumnCount}, Rules: {RuleCount}, EmptyRows: {EmptyRows}, LoggerComponent: {HasLogger}",
+                LogInfo("🚀 InitializeAsync START - Columns: {0}, Rules: {1}, EmptyRows: {2}, LoggerComponent: {3}",
                     columns?.Count ?? 0, validationRules?.Count ?? 0, emptyRowsCount, loggerComponent != null);
 
                 StartOperation("InitializeAsync");
@@ -313,16 +328,20 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (columns == null || columns.Count == 0)
                 {
                     var error = "Columns parameter cannot be null or empty";
-                    LogError("❌ InitializeAsync VALIDATION ERROR: {Error}", error);
+                    LogError("❌ InitializeAsync VALIDATION ERROR: {0}", error);
                     throw new ArgumentException(error, nameof(columns));
                 }
+
+                LogDebug("📝 InitializeAsync - Validating input parameters...");
+                LogDebug("📝 Columns details: {0}", string.Join(", ", columns.Select(c => c.Name)));
+                LogDebug("📝 EmptyRowsCount: {0}, AutoAdd will be: {1}", emptyRowsCount, emptyRowsCount > 0);
 
                 // ✅ LoggerComponent integrácia
                 if (loggerComponent != null)
                 {
                     LogDebug("🔗 InitializeAsync - Setting up LoggerComponent integration...");
                     SetIntegratedLogger(loggerComponent, true);
-                    LogInfo("🔗 LoggerComponent integration configured: {DiagnosticInfo}", loggerComponent.GetDiagnosticInfo());
+                    LogInfo("🔗 LoggerComponent integration configured: {0}", loggerComponent.GetDiagnosticInfo());
 
                     // ✅ Rekonfiguruj services s externým logger
                     ReconfigureServicesWithExternalLogger(loggerComponent.ExternalLogger);
@@ -336,10 +355,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _autoAddEnabled = true;
                 _individualColorConfig = colorConfig?.Clone();
 
-                LogDebug("📝 Configuration stored - Columns: {ColumnCount}, UnifiedRowCount: {RowCount}, AutoAdd: {AutoAdd}, Colors: {HasColors}",
+                LogDebug("📝 Configuration stored - Columns: {0}, UnifiedRowCount: {1}, AutoAdd: {2}, Colors: {3}",
                     _columns.Count, _unifiedRowCount, _autoAddEnabled, _individualColorConfig != null);
 
                 // ✅ Inicializácia services
+                LogDebug("🔧 InitializeAsync - Initializing services...");
                 await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), throttlingConfig, emptyRowsCount);
 
                 // ✅ UI setup
@@ -358,7 +378,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _isInitialized = true;
 
                 var duration = EndOperation("InitializeAsync");
-                LogInfo("✅ InitializeAsync COMPLETED successfully - Duration: {Duration}ms, Instance: {InstanceId}",
+                LogInfo("✅ InitializeAsync COMPLETED successfully - Duration: {0}ms, Instance: {1}",
                     duration, _componentInstanceId);
 
                 // ✅ Update UI visibility
@@ -367,9 +387,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 EndOperation("InitializeAsync");
-                LogError("❌ CRITICAL ERROR during InitializeAsync: {Error}", ex.Message);
-                LogError("❌ InitializeAsync Exception Details: {Exception}", ex);
-                LogError("❌ InitializeAsync StackTrace: {StackTrace}", ex.StackTrace);
+                LogError("❌ CRITICAL ERROR during InitializeAsync: {0}", ex.Message);
+                LogError("❌ InitializeAsync Exception Details: {0}", ex.ToString()); // ✅ OPRAVENÉ
+                LogError("❌ InitializeAsync StackTrace: {0}", ex.StackTrace ?? "No stack trace available");
                 throw;
             }
         }
@@ -381,7 +401,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                LogInfo("📊 LoadDataAsync START - Rows: {RowCount}", data?.Count ?? 0);
+                LogInfo("📊 LoadDataAsync START - Rows: {0}", data?.Count ?? 0);
                 StartOperation("LoadDataAsync");
 
                 if (data == null)
@@ -398,7 +418,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (_dataManagementService == null)
                 {
                     var error = "DataManagementService is not available";
-                    LogError("❌ LoadDataAsync ERROR: {Error}", error);
+                    LogError("❌ LoadDataAsync ERROR: {0}", error);
                     throw new InvalidOperationException(error);
                 }
 
@@ -409,14 +429,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 await UpdateDisplayRowsAsync();
 
                 var duration = EndOperation("LoadDataAsync");
-                LogInfo("✅ LoadDataAsync COMPLETED - Rows: {RowCount}, Duration: {Duration}ms", data.Count, duration);
+                LogInfo("✅ LoadDataAsync COMPLETED - Rows: {0}, Duration: {1}ms", data.Count, duration);
             }
             catch (Exception ex)
             {
                 EndOperation("LoadDataAsync");
-                LogError("❌ ERROR in LoadDataAsync: {Error}", ex.Message);
-                LogError("❌ LoadDataAsync Exception: {Exception}", ex);
-                LogError("❌ LoadDataAsync StackTrace: {StackTrace}", ex.StackTrace);
+                LogError("❌ ERROR in LoadDataAsync: {0}", ex.Message);
+                LogError("❌ LoadDataAsync Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
+                LogError("❌ LoadDataAsync StackTrace: {0}", ex.StackTrace ?? "No stack trace available");
                 throw;
             }
         }
@@ -443,12 +463,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 var isValid = await _validationService.ValidateAllRowsAsync();
 
                 var duration = EndOperation("ValidateAllRowsAsync");
-                LogInfo("✅ ValidateAllRowsAsync COMPLETED - Result: {Result}, Duration: {Duration}ms",
+                LogInfo("✅ ValidateAllRowsAsync COMPLETED - Result: {0}, Duration: {1}ms",
                     isValid ? "ALL VALID" : "ERRORS FOUND", duration);
 
                 if (!isValid)
                 {
-                    LogWarn("⚠️ Validation errors found - ErrorCount: {ErrorCount}",
+                    LogWarn("⚠️ Validation errors found - ErrorCount: {0}",
                         _validationService.TotalValidationErrorCount);
                 }
 
@@ -457,8 +477,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 EndOperation("ValidateAllRowsAsync");
-                LogError("❌ ERROR in ValidateAllRowsAsync: {Error}", ex.Message);
-                LogError("❌ ValidateAllRowsAsync Exception: {Exception}", ex);
+                LogError("❌ ERROR in ValidateAllRowsAsync: {0}", ex.Message);
+                LogError("❌ ValidateAllRowsAsync Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
                 throw;
             }
         }
@@ -485,7 +505,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 var dataTable = await _exportService.ExportToDataTableAsync();
 
                 var duration = EndOperation("ExportToDataTableAsync");
-                LogInfo("✅ ExportToDataTableAsync COMPLETED - Rows: {RowCount}, Columns: {ColumnCount}, Duration: {Duration}ms",
+                LogInfo("✅ ExportToDataTableAsync COMPLETED - Rows: {0}, Columns: {1}, Duration: {2}ms",
                     dataTable.Rows.Count, dataTable.Columns.Count, duration);
 
                 return dataTable;
@@ -493,8 +513,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 EndOperation("ExportToDataTableAsync");
-                LogError("❌ ERROR in ExportToDataTableAsync: {Error}", ex.Message);
-                LogError("❌ ExportToDataTableAsync Exception: {Exception}", ex);
+                LogError("❌ ERROR in ExportToDataTableAsync: {0}", ex.Message);
+                LogError("❌ ExportToDataTableAsync Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
                 throw;
             }
         }
@@ -524,13 +544,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 await UpdateDisplayRowsAsync();
 
                 var duration = EndOperation("ClearAllDataAsync");
-                LogInfo("✅ ClearAllDataAsync COMPLETED - Duration: {Duration}ms", duration);
+                LogInfo("✅ ClearAllDataAsync COMPLETED - Duration: {0}ms", duration);
             }
             catch (Exception ex)
             {
                 EndOperation("ClearAllDataAsync");
-                LogError("❌ ERROR in ClearAllDataAsync: {Error}", ex.Message);
-                LogError("❌ ClearAllDataAsync Exception: {Exception}", ex);
+                LogError("❌ ERROR in ClearAllDataAsync: {0}", ex.Message);
+                LogError("❌ ClearAllDataAsync Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
                 throw;
             }
         }
@@ -542,6 +562,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private void StartOperation(string operationName)
         {
             _operationStartTimes[operationName] = DateTime.UtcNow;
+            LogTrace("⏱️ Operation START: {0}", operationName);
         }
 
         private double EndOperation(string operationName)
@@ -550,6 +571,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 _operationStartTimes.Remove(operationName);
+                LogTrace("⏱️ Operation END: {0} ({1}ms)", operationName, Math.Round(duration, 2));
                 return Math.Round(duration, 2);
             }
             return 0;
@@ -563,7 +585,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                LogDebug("🔍 ValidateDataStructure START - Rows: {RowCount}", data.Count);
+                LogDebug("🔍 ValidateDataStructure START - Rows: {0}", data.Count);
 
                 if (data.Count == 0)
                 {
@@ -575,7 +597,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 var firstRow = data[0];
                 var rowColumns = firstRow.Keys.ToList();
 
-                LogDebug("🔍 ValidateDataStructure - First row columns: {Columns}", string.Join(", ", rowColumns));
+                LogDebug("🔍 ValidateDataStructure - First row columns: {0}", string.Join(", ", rowColumns));
 
                 // Skontroluj či sa stĺpce zhodujú s definíciou
                 var definedColumns = _columns.Select(c => c.Name).ToList();
@@ -584,19 +606,19 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                 if (missingColumns.Any())
                 {
-                    LogWarn("⚠️ ValidateDataStructure - Missing columns in data: {MissingColumns}", string.Join(", ", missingColumns));
+                    LogWarn("⚠️ ValidateDataStructure - Missing columns in data: {0}", string.Join(", ", missingColumns));
                 }
 
                 if (extraColumns.Any())
                 {
-                    LogWarn("⚠️ ValidateDataStructure - Extra columns in data: {ExtraColumns}", string.Join(", ", extraColumns));
+                    LogWarn("⚠️ ValidateDataStructure - Extra columns in data: {0}", string.Join(", ", extraColumns));
                 }
 
                 LogDebug("✅ ValidateDataStructure COMPLETED");
             }
             catch (Exception ex)
             {
-                LogError("❌ ValidateDataStructure ERROR: {Error}", ex.Message);
+                LogError("❌ ValidateDataStructure ERROR: {0}", ex.Message);
             }
         }
 
@@ -611,7 +633,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                LogDebug("🎨 UpdateDisplayRowsAsync START - Current rows: {CurrentRows}", _displayRows.Count);
+                LogDebug("🎨 UpdateDisplayRowsAsync START - Current rows: {0}", _displayRows.Count);
                 StartOperation("UpdateDisplayRowsAsync");
 
                 if (_dataManagementService == null)
@@ -621,7 +643,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
 
                 var allData = await _dataManagementService.GetAllDataAsync();
-                LogDebug("🎨 UpdateDisplayRowsAsync - Retrieved {DataRows} rows from service", allData.Count);
+                LogDebug("🎨 UpdateDisplayRowsAsync - Retrieved {0} rows from service", allData.Count);
 
                 // Update UI na main thread
                 this.DispatcherQueue?.TryEnqueue(() =>
@@ -646,22 +668,22 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         }
 
                         var duration = EndOperation("UpdateDisplayRowsAsync");
-                        LogDebug("✅ UpdateDisplayRowsAsync COMPLETED - UI updated: {DisplayRows} rows, Duration: {Duration}ms",
+                        LogDebug("✅ UpdateDisplayRowsAsync COMPLETED - UI updated: {0} rows, Duration: {1}ms",
                             _displayRows.Count, duration);
                     }
                     catch (Exception uiEx)
                     {
                         EndOperation("UpdateDisplayRowsAsync");
-                        LogError("❌ UpdateDisplayRowsAsync UI ERROR: {Error}", uiEx.Message);
-                        LogError("❌ UpdateDisplayRowsAsync UI Exception: {Exception}", uiEx);
+                        LogError("❌ UpdateDisplayRowsAsync UI ERROR: {0}", uiEx.Message);
+                        LogError("❌ UpdateDisplayRowsAsync UI Exception: {0}", uiEx.ToString()); // ✅ OPRAVENÉ
                     }
                 });
             }
             catch (Exception ex)
             {
                 EndOperation("UpdateDisplayRowsAsync");
-                LogError("❌ ERROR in UpdateDisplayRowsAsync: {Error}", ex.Message);
-                LogError("❌ UpdateDisplayRowsAsync Exception: {Exception}", ex);
+                LogError("❌ ERROR in UpdateDisplayRowsAsync: {0}", ex.Message);
+                LogError("❌ UpdateDisplayRowsAsync Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
             }
         }
 
@@ -689,16 +711,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                 var duration = EndOperation("InitializeDependencyInjection");
 
-                LogDebug("✅ Services initialized - DataManagement: {HasDataService}, Validation: {HasValidationService}, Export: {HasExportService}, SearchSort: {HasSearchService}",
+                LogDebug("✅ Services initialized - DataManagement: {0}, Validation: {1}, Export: {2}, SearchSort: {3}",
                     _dataManagementService != null, _validationService != null, _exportService != null, _searchAndSortService != null);
 
-                LogInfo("✅ Dependency Injection initialized successfully - Duration: {Duration}ms", duration);
+                LogInfo("✅ Dependency Injection initialized successfully - Duration: {0}ms", duration);
             }
             catch (Exception ex)
             {
                 EndOperation("InitializeDependencyInjection");
-                LogError("⚠️ DI initialization ERROR: {Error}", ex.Message);
-                LogError("⚠️ DI Exception: {Exception}", ex);
+                LogError("⚠️ DI initialization ERROR: {0}", ex.Message);
+                LogError("⚠️ DI Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
                 throw;
             }
         }
@@ -750,8 +772,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
             catch (Exception ex)
             {
-                LogError("⚠️ ConfigureServices ERROR: {Error}", ex.Message);
-                LogError("⚠️ ConfigureServices Exception: {Exception}", ex);
+                LogError("⚠️ ConfigureServices ERROR: {0}", ex.Message);
+                LogError("⚠️ ConfigureServices Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
                 throw;
             }
         }
@@ -763,7 +785,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                LogDebug("🔄 ReconfigureServicesWithExternalLogger START - Logger: {LoggerType}", externalLogger.GetType().Name);
+                LogDebug("🔄 ReconfigureServicesWithExternalLogger START - Logger: {0}", externalLogger.GetType().Name);
                 StartOperation("ReconfigureServices");
 
                 var services = new ServiceCollection();
@@ -789,7 +811,10 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 });
 
                 // Rebuild service provider s novým logger
-                _serviceProvider?.Dispose();
+                // ✅ OPRAVENÉ CS1061: Safe dispose check
+                if (_serviceProvider is IDisposable disposableProvider)
+                    disposableProvider.Dispose();
+
                 _serviceProvider = services.BuildServiceProvider();
 
                 // Znovu získaj services s novým logger
@@ -798,13 +823,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _exportService = _serviceProvider.GetService<IExportService>();
 
                 var duration = EndOperation("ReconfigureServices");
-                LogInfo("✅ Services reconfigured with external logger - Duration: {Duration}ms", duration);
+                LogInfo("✅ Services reconfigured with external logger - Duration: {0}ms", duration);
             }
             catch (Exception ex)
             {
                 EndOperation("ReconfigureServices");
-                LogError("⚠️ ReconfigureServicesWithExternalLogger ERROR: {Error}", ex.Message);
-                LogError("⚠️ ReconfigureServices Exception: {Exception}", ex);
+                LogError("⚠️ ReconfigureServicesWithExternalLogger ERROR: {0}", ex.Message);
+                LogError("⚠️ ReconfigureServices Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
             }
         }
 
@@ -833,7 +858,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             if (!_isInitialized)
             {
                 var errorMsg = "DataGrid is not initialized. Call InitializeAsync() first.";
-                LogError("❌ EnsureInitialized FAILED: {Error}", errorMsg);
+                LogError("❌ EnsureInitialized FAILED: {0}", errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
         }
@@ -870,8 +895,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
             catch (Exception fallbackEx)
             {
-                LogError("❌ CreateSimpleFallbackUI FAILED: {Error}", fallbackEx.Message);
-                LogError("❌ Fallback Exception: {Exception}", fallbackEx);
+                LogError("❌ CreateSimpleFallbackUI FAILED: {0}", fallbackEx.Message);
+                LogError("❌ Fallback Exception: {0}", fallbackEx.ToString()); // ✅ OPRAVENÉ
 
                 // ✅ Posledná záchrana - iba TextBlock
                 try
@@ -887,7 +912,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
                 catch (Exception criticalEx)
                 {
-                    LogError("❌ CRITICAL: Even emergency fallback failed: {Error}", criticalEx.Message);
+                    LogError("❌ CRITICAL: Even emergency fallback failed: {0}", criticalEx.Message);
                 }
             }
         }
@@ -908,7 +933,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 try
                 {
-                    LogDebug("🔄 UpdateUIVisibility START - Initialized: {IsInitialized}", _isInitialized);
+                    LogDebug("🔄 UpdateUIVisibility START - Initialized: {0}", _isInitialized);
 
                     var mainContentGrid = this.FindName("MainContentGrid") as FrameworkElement;
                     var loadingOverlay = this.FindName("LoadingOverlay") as FrameworkElement;
@@ -917,7 +942,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     {
                         var newVisibility = _isInitialized ? Visibility.Visible : Visibility.Collapsed;
                         mainContentGrid.Visibility = newVisibility;
-                        LogDebug("✅ MainContentGrid visibility: {Visibility}", newVisibility);
+                        LogDebug("✅ MainContentGrid visibility: {0}", newVisibility);
                     }
                     else
                     {
@@ -928,7 +953,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     {
                         var newVisibility = _isInitialized ? Visibility.Collapsed : Visibility.Visible;
                         loadingOverlay.Visibility = newVisibility;
-                        LogDebug("✅ LoadingOverlay visibility: {Visibility}", newVisibility);
+                        LogDebug("✅ LoadingOverlay visibility: {0}", newVisibility);
                     }
                     else
                     {
@@ -939,8 +964,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
                 catch (Exception ex)
                 {
-                    LogError("⚠️ UpdateUIVisibility ERROR: {Error}", ex.Message);
-                    LogError("⚠️ UpdateUIVisibility Exception: {Exception}", ex);
+                    LogError("⚠️ UpdateUIVisibility ERROR: {0}", ex.Message);
+                    LogError("⚠️ UpdateUIVisibility Exception: {0}", ex.ToString()); // ✅ OPRAVENÉ
                 }
             });
         }
@@ -949,7 +974,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             if (_xamlLoadFailed)
             {
-                LogDebug("⚠️ ShowLoadingState SKIPPED - XAML error, Message: {Message}", message);
+                LogDebug("⚠️ ShowLoadingState SKIPPED - XAML error, Message: {0}", message);
                 return;
             }
 
@@ -957,7 +982,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 try
                 {
-                    LogDebug("📺 ShowLoadingState START - Message: {Message}", message);
+                    LogDebug("📺 ShowLoadingState START - Message: {0}", message);
 
                     var loadingOverlay = this.FindName("LoadingOverlay") as FrameworkElement;
                     var loadingText = this.FindName("LoadingText") as TextBlock;
@@ -971,14 +996,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     if (loadingText != null)
                     {
                         loadingText.Text = message;
-                        LogDebug("✅ LoadingText updated: {Message}", message);
+                        LogDebug("✅ LoadingText updated: {0}", message);
                     }
 
                     LogDebug("✅ ShowLoadingState COMPLETED");
                 }
                 catch (Exception ex)
                 {
-                    LogError("⚠️ ShowLoadingState ERROR: {Error}", ex.Message);
+                    LogError("⚠️ ShowLoadingState ERROR: {0}", ex.Message);
                 }
             });
         }
@@ -1008,7 +1033,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
                 catch (Exception ex)
                 {
-                    LogError("⚠️ HideLoadingState ERROR: {Error}", ex.Message);
+                    LogError("⚠️ HideLoadingState ERROR: {0}", ex.Message);
                 }
             });
         }
@@ -1065,7 +1090,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         public async Task LoadDataAsync(DataTable dataTable)
         {
-            LogInfo("📊 LoadDataAsync(DataTable) START - Rows: {RowCount}", dataTable?.Rows.Count ?? 0);
+            LogInfo("📊 LoadDataAsync(DataTable) START - Rows: {0}", dataTable?.Rows.Count ?? 0);
 
             if (dataTable == null)
             {
@@ -1086,7 +1111,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 dataList.Add(rowDict);
             }
 
-            LogDebug("📊 DataTable converted to List<Dictionary> - Rows: {RowCount}", dataList.Count);
+            LogDebug("📊 DataTable converted to List<Dictionary> - Rows: {0}", dataList.Count);
             await LoadDataAsync(dataList);
         }
 
@@ -1095,17 +1120,17 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         // ✅ Skeleton metódy s logovaním
         private void ApplyIndividualColorsToUI()
         {
-            LogDebug("🎨 ApplyIndividualColorsToUI called - HasColors: {HasColors}", _individualColorConfig != null);
+            LogDebug("🎨 ApplyIndividualColorsToUI called - HasColors: {0}", _individualColorConfig != null);
         }
 
         private void InitializeSearchSortZebra()
         {
-            LogDebug("🔍 InitializeSearchSortZebra called - SearchSort available: {Available}", _searchAndSortService != null);
+            LogDebug("🔍 InitializeSearchSortZebra called - SearchSort available: {0}", _searchAndSortService != null);
         }
 
         private async Task CreateInitialEmptyRowsAsync()
         {
-            LogDebug("🔥 CreateInitialEmptyRowsAsync START - Creating {RowCount} initial rows", _unifiedRowCount);
+            LogDebug("🔥 CreateInitialEmptyRowsAsync START - Creating {0} initial rows", _unifiedRowCount);
             await Task.CompletedTask;
             LogDebug("✅ CreateInitialEmptyRowsAsync COMPLETED");
         }
@@ -1116,7 +1141,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             GridThrottlingConfig throttlingConfig,
             int emptyRowsCount)
         {
-            LogDebug("🔧 InitializeServicesAsync START - Columns: {ColumnCount}, Rules: {RuleCount}",
+            LogDebug("🔧 InitializeServicesAsync START - Columns: {0}, Rules: {1}",
                 columns.Count, validationRules.Count);
             await Task.CompletedTask;
             LogDebug("✅ InitializeServicesAsync COMPLETED");
@@ -1139,10 +1164,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
             try
             {
-                LogInfo("🧹 AdvancedDataGrid DISPOSE START - Instance: {InstanceId}", _componentInstanceId);
+                LogInfo("🧹 AdvancedDataGrid DISPOSE START - Instance: {0}", _componentInstanceId);
 
                 _searchAndSortService?.Dispose();
 
+                // ✅ OPRAVENÉ CS1061: Safe dispose s type check
                 if (_serviceProvider is IDisposable disposableProvider)
                     disposableProvider.Dispose();
 
@@ -1154,11 +1180,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _operationStartTimes.Clear();
 
                 _isDisposed = true;
-                LogInfo("✅ AdvancedDataGrid DISPOSED successfully - Instance: {InstanceId}", _componentInstanceId);
+                LogInfo("✅ AdvancedDataGrid DISPOSED successfully - Instance: {0}", _componentInstanceId);
             }
             catch (Exception ex)
             {
-                LogError("❌ Error during dispose: {Error}", ex.Message);
+                LogError("❌ Error during dispose: {0}", ex.Message);
             }
         }
 
