@@ -1,24 +1,23 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNÁ LoggerComponent integrácia
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s LoggerComponent integráciou
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions; // ✅ OPRAVENÉ: Iba Abstractions namiesto plného Logging
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System.Linq;
-
-// ✅ OPRAVENÉ CS0104: Aliasy pre zamedzenie konfliktov s WinUI typmi
-using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;
-using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ValidationRule;
-using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using RpaWinUiComponentsPackage.Logger;  // ✅ LoggerComponent integrácia
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+// ✅ OPRAVENÉ CS0104: Aliasy pre zamedzenie konfliktov s WinUI typmi
+using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;
+using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
+using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ValidationRule;
 
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
@@ -31,7 +30,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         #region Private Fields
 
         private IServiceProvider? _serviceProvider;
-        private ILogger<AdvancedDataGrid>? _logger;
+        private ILogger? _logger; // ✅ OPRAVENÉ: ILogger z Abstractions
         private IDataManagementService? _dataManagementService;
         private IValidationService? _validationService;
         private IExportService? _exportService;
@@ -212,12 +211,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         #region ✅ PUBLIC API Methods s Individual Colors, LoggerComponent integrácia a KOMPLETNÝM logovaním
 
         /// <summary>
-        /// ✅ OPRAVENÉ CS1501: InitializeAsync s LoggerComponent parameter - 6 argumentov
+        /// ✅ OPRAVENÉ CS8604: InitializeAsync s LoggerComponent parameter - 6 argumentov
         /// Inicializuje DataGrid s Individual Color Config + LoggerComponent integrácia - ✅ PUBLIC API
         /// </summary>
         public async Task InitializeAsync(
             List<GridColumnDefinition> columns,
-            List<GridValidationRule> validationRules,
+            List<GridValidationRule>? validationRules, // ✅ OPRAVENÉ CS8604: Nullable
             GridThrottlingConfig throttlingConfig,
             int emptyRowsCount = 15,
             DataGridColorConfig? colorConfig = null,
@@ -247,7 +246,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (_xamlLoadFailed)
                 {
                     await LogAsync("⚠️ XAML failed - continuing with data-only initialization without UI updates", "WARN");
-                    await InitializeDataOnlyAsync(columns, validationRules, throttlingConfig, emptyRowsCount, colorConfig);
+                    await InitializeDataOnlyAsync(columns, validationRules ?? new List<GridValidationRule>(), throttlingConfig, emptyRowsCount, colorConfig);
                     return;
                 }
 
@@ -281,7 +280,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // ✅ Nastav Search/Sort/Zebra
                 InitializeSearchSortZebra();
 
-                await InitializeServicesAsync(columns, validationRules, throttlingConfig, emptyRowsCount);
+                await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), throttlingConfig, emptyRowsCount);
 
                 // ✅ Vytvor počiatočné prázdne riadky
                 await CreateInitialEmptyRowsAsync();
@@ -333,9 +332,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     return;
                 }
 
+                await LogAsync("🔄 Calling DataManagementService.LoadDataAsync...", "DEBUG");
                 await _dataManagementService.LoadDataAsync(data);
 
                 // ✅ Po načítaní dát aplikuj search/sort/zebra
+                await LogAsync("🎨 Applying Search/Sort/Zebra effects after data load...", "DEBUG");
                 await ApplySearchSortZebraAsync();
 
                 await LogAsync($"✅ LoadDataAsync completed with Search/Sort/Zebra - {data.Count} rows loaded successfully", "INFO");
@@ -363,6 +364,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     return false;
                 }
 
+                await LogAsync("🔄 Calling ValidationService.ValidateAllRowsAsync...", "DEBUG");
                 var isValid = await _validationService.ValidateAllRowsAsync();
                 await LogAsync($"✅ ValidateAllRowsAsync completed - result: {(isValid ? "ALL VALID" : "ERRORS FOUND")}", "INFO");
 
@@ -391,6 +393,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     return new DataTable();
                 }
 
+                await LogAsync("🔄 Calling ExportService.ExportToDataTableAsync...", "DEBUG");
                 var dataTable = await _exportService.ExportToDataTableAsync();
                 await LogAsync($"✅ ExportToDataTableAsync completed - exported {dataTable.Rows.Count} rows, {dataTable.Columns.Count} columns", "INFO");
 
@@ -399,6 +402,38 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 await LogAsync($"❌ ERROR in ExportToDataTableAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: ClearAllDataAsync s logovaním
+        /// </summary>
+        public async Task ClearAllDataAsync()
+        {
+            try
+            {
+                await LogAsync("🗑️ ClearAllDataAsync begins...", "INFO");
+                EnsureInitialized();
+
+                if (_dataManagementService == null)
+                {
+                    await LogAsync("❌ DataManagementService not available", "ERROR");
+                    return;
+                }
+
+                await LogAsync("🔄 Calling DataManagementService.ClearAllDataAsync...", "DEBUG");
+                await _dataManagementService.ClearAllDataAsync();
+
+                // Reapply search/sort/zebra after clearing
+                await LogAsync("🎨 Reapplying Search/Sort/Zebra after clear...", "DEBUG");
+                await ApplySearchSortZebraAsync();
+
+                await LogAsync("✅ ClearAllDataAsync completed successfully", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in ClearAllDataAsync: {ex.Message}", "ERROR");
                 throw;
             }
         }
@@ -417,6 +452,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 ConfigureServices(services);
                 _serviceProvider = services.BuildServiceProvider();
 
+                // ✅ OPRAVENÉ: ILogger z Abstractions
                 _logger = _serviceProvider.GetService<ILogger<AdvancedDataGrid>>();
                 _dataManagementService = _serviceProvider.GetService<IDataManagementService>();
                 _validationService = _serviceProvider.GetService<IValidationService>();
@@ -438,9 +474,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             LogDebug("🔧 Configuring services...");
 
+            // ✅ OPRAVENÉ: Abstractions logging namiesto plného
             services.AddLogging(builder =>
             {
-                builder.AddDebug();
                 builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
             });
 
@@ -632,7 +668,27 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         public async Task LoadDataAsync(DataTable dataTable)
         {
             await LogAsync($"📊 LoadDataAsync(DataTable) with {dataTable?.Rows.Count ?? 0} rows", "INFO");
-            await Task.CompletedTask;
+
+            if (dataTable == null)
+            {
+                await LogAsync("⚠️ DataTable is null", "WARN");
+                return;
+            }
+
+            // Convert DataTable to List<Dictionary>
+            var dataList = new List<Dictionary<string, object?>>();
+
+            foreach (System.Data.DataRow row in dataTable.Rows)
+            {
+                var rowDict = new Dictionary<string, object?>();
+                foreach (System.Data.DataColumn column in dataTable.Columns)
+                {
+                    rowDict[column.ColumnName] = row[column] == DBNull.Value ? null : row[column];
+                }
+                dataList.Add(rowDict);
+            }
+
+            await LoadDataAsync(dataList);
         }
 
         public DataGridColorConfig? ColorConfig => _individualColorConfig?.Clone();
