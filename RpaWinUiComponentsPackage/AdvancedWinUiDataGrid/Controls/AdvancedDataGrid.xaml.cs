@@ -1,6 +1,6 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s LoggerComponent integráciou
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - všetky CS chyby vyriešené
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions; // ✅ OPRAVENÉ: Iba Abstractions namiesto plného Logging
+using Microsoft.Extensions.Logging.Abstractions; // ✅ OPRAVENÉ: Iba Abstractions
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
@@ -14,6 +14,7 @@ using System.Data;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Collections.ObjectModel;
 // ✅ OPRAVENÉ CS0104: Aliasy pre zamedzenie konfliktov s WinUI typmi
 using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;
 using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
@@ -30,7 +31,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         #region Private Fields
 
         private IServiceProvider? _serviceProvider;
-        private ILogger? _logger; // ✅ OPRAVENÉ: ILogger z Abstractions
         private IDataManagementService? _dataManagementService;
         private IValidationService? _validationService;
         private IExportService? _exportService;
@@ -49,14 +49,17 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         // ✅ SearchAndSortService s PUBLIC SortDirection typom
         private SearchAndSortService? _searchAndSortService;
 
-        // ✅ Interné dáta pre AUTO-ADD
+        // ✅ OPRAVENÉ CS0169, CS0414: Odstránené nepoužívané fields
+        // Pôvodné: private string? _currentSortColumn; - ODSTRÁNENÉ
+        // Pôvodné: private SortDirection _currentSortDirection = SortDirection.None; - ODSTRÁNENÉ
+
+        // ✅ Interné dáta pre AUTO-ADD a UI binding
         private readonly List<Dictionary<string, object?>> _gridData = new();
         private readonly List<GridColumnDefinition> _columns = new();
+        private readonly ObservableCollection<DataRowViewModel> _displayRows = new();
 
         // ✅ Search & Sort state tracking s PUBLIC SortDirection typom
         private readonly Dictionary<string, string> _columnSearchFilters = new();
-        private string? _currentSortColumn;
-        private SortDirection _currentSortDirection = SortDirection.None;
 
         // ✅ KĽÚČOVÁ NOVINKA: LoggerComponent integrácia
         private LoggerComponent? _integratedLogger;
@@ -88,6 +91,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     LogWarn("⚠️ XAML loading zlyhal - vytváram fallback UI");
                     CreateSimpleFallbackUI();
                 }
+
+                // ✅ NOVÉ: Inicializuj ObservableCollection pre UI binding
+                DataContext = this;
             }
             catch (Exception ex)
             {
@@ -95,6 +101,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 CreateSimpleFallbackUI();
             }
         }
+
+        /// <summary>
+        /// ✅ ObservableCollection pre UI binding - PUBLIC pre x:Bind
+        /// </summary>
+        public ObservableCollection<DataRowViewModel> DisplayRows => _displayRows;
 
         /// <summary>
         /// ✅ OPRAVENÉ: Jednoduchšie XAML loading s logovaním
@@ -250,8 +261,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     return;
                 }
 
-                _logger?.LogInformation("Začína inicializácia DataGrid s Individual Colors, Search/Sort/Zebra a {EmptyRowsCount} riadkami...", emptyRowsCount);
-
                 ShowLoadingState("Inicializuje sa DataGrid s Individual Colors, Search/Sort/Zebra a LoggerComponent...");
 
                 // ✅ AUTO-ADD: Unified row count
@@ -285,22 +294,15 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // ✅ Vytvor počiatočné prázdne riadky
                 await CreateInitialEmptyRowsAsync();
 
-                // ✅ Setup header click handlers pre sorting
-                SetupHeaderClickHandlers();
-
                 _isInitialized = true;
                 await LogAsync("🎉 DataGrid successfully initialized with LoggerComponent integration!", "INFO");
 
                 UpdateUIVisibility();
                 HideLoadingState();
-
-                _logger?.LogInformation("DataGrid úspešne inicializovaný s Individual Colors: {HasColors}, Search/Sort/Zebra enabled, LoggerComponent: {LoggerEnabled}",
-                    colorConfig != null, _loggerIntegrationEnabled);
             }
             catch (Exception ex)
             {
                 await LogAsync($"❌ CRITICAL ERROR during DataGrid initialization: {ex.Message} | StackTrace: {ex.StackTrace}", "ERROR");
-                _logger?.LogError(ex, "Chyba pri inicializácii DataGrid s Individual Colors a Search/Sort/Zebra");
 
                 if (!_xamlLoadFailed)
                 {
@@ -311,7 +313,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// ✅ LoadDataAsync s rozšíreným logovaním
+        /// ✅ LoadDataAsync s rozšíreným logovaním a UI update
         /// </summary>
         public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
         {
@@ -335,11 +337,10 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 await LogAsync("🔄 Calling DataManagementService.LoadDataAsync...", "DEBUG");
                 await _dataManagementService.LoadDataAsync(data);
 
-                // ✅ Po načítaní dát aplikuj search/sort/zebra
-                await LogAsync("🎨 Applying Search/Sort/Zebra effects after data load...", "DEBUG");
-                await ApplySearchSortZebraAsync();
+                // ✅ NOVÉ: Update UI po načítaní dát
+                await UpdateDisplayRowsAsync();
 
-                await LogAsync($"✅ LoadDataAsync completed with Search/Sort/Zebra - {data.Count} rows loaded successfully", "INFO");
+                await LogAsync($"✅ LoadDataAsync completed with UI update - {data.Count} rows loaded successfully", "INFO");
             }
             catch (Exception ex)
             {
@@ -425,9 +426,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 await LogAsync("🔄 Calling DataManagementService.ClearAllDataAsync...", "DEBUG");
                 await _dataManagementService.ClearAllDataAsync();
 
-                // Reapply search/sort/zebra after clearing
-                await LogAsync("🎨 Reapplying Search/Sort/Zebra after clear...", "DEBUG");
-                await ApplySearchSortZebraAsync();
+                // ✅ NOVÉ: Update UI po vymazaní
+                await UpdateDisplayRowsAsync();
 
                 await LogAsync("✅ ClearAllDataAsync completed successfully", "INFO");
             }
@@ -435,6 +435,54 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 await LogAsync($"❌ ERROR in ClearAllDataAsync: {ex.Message}", "ERROR");
                 throw;
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: UI Update Methods
+
+        /// <summary>
+        /// ✅ NOVÉ: Aktualizuje ObservableCollection pre UI binding
+        /// </summary>
+        private async Task UpdateDisplayRowsAsync()
+        {
+            try
+            {
+                await LogAsync("🎨 UpdateDisplayRowsAsync: Updating UI data binding...", "DEBUG");
+
+                if (_dataManagementService == null)
+                {
+                    await LogAsync("⚠️ DataManagementService not available for UI update", "WARN");
+                    return;
+                }
+
+                var allData = await _dataManagementService.GetAllDataAsync();
+
+                // Update UI na main thread
+                this.DispatcherQueue?.TryEnqueue(() =>
+                {
+                    _displayRows.Clear();
+
+                    for (int i = 0; i < allData.Count; i++)
+                    {
+                        var rowData = allData[i];
+                        var viewModel = new DataRowViewModel
+                        {
+                            RowIndex = i,
+                            Columns = _columns,
+                            Data = rowData
+                        };
+
+                        _displayRows.Add(viewModel);
+                    }
+
+                    LogSync($"🎨 UI updated: {_displayRows.Count} rows displayed", "DEBUG");
+                });
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in UpdateDisplayRowsAsync: {ex.Message}", "ERROR");
             }
         }
 
@@ -452,8 +500,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 ConfigureServices(services);
                 _serviceProvider = services.BuildServiceProvider();
 
-                // ✅ OPRAVENÉ: ILogger z Abstractions
-                _logger = _serviceProvider.GetService<ILogger<AdvancedDataGrid>>();
                 _dataManagementService = _serviceProvider.GetService<IDataManagementService>();
                 _validationService = _serviceProvider.GetService<IValidationService>();
                 _exportService = _serviceProvider.GetService<IExportService>();
@@ -461,7 +507,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // ✅ SearchAndSortService bez logger parametra
                 _searchAndSortService = new SearchAndSortService();
 
-                _logger?.LogInformation("AdvancedDataGrid s LoggerComponent integrácia inicializovaný");
                 LogInfo("✅ Dependency Injection úspešne inicializované s LoggerComponent");
             }
             catch (Exception ex)
@@ -474,11 +519,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             LogDebug("🔧 Configuring services...");
 
-            // ✅ OPRAVENÉ: Abstractions logging namiesto plného
-            services.AddLogging(builder =>
-            {
-                builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
-            });
+            // ✅ OPRAVENÉ: Bez SetMinimumLevel (nie je v Abstractions)
+            services.AddLogging();
 
             services.AddSingleton<IDataManagementService, DataManagementService>();
             services.AddSingleton<IValidationService, ValidationService>();
@@ -704,17 +746,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             LogDebug("🔍 InitializeSearchSortZebra called");
         }
 
-        private void SetupHeaderClickHandlers()
-        {
-            LogDebug("🖱️ SetupHeaderClickHandlers called");
-        }
-
-        private async Task ApplySearchSortZebraAsync()
-        {
-            LogDebug("🔍 ApplySearchSortZebraAsync called");
-            await Task.CompletedTask;
-        }
-
         private async Task CreateInitialEmptyRowsAsync()
         {
             await LogAsync($"🔥 CreateInitialEmptyRowsAsync: creating {_unifiedRowCount} initial rows", "DEBUG");
@@ -781,5 +812,50 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// ✅ NOVÉ: ViewModel pre zobrazenie riadku v UI
+    /// </summary>
+    public class DataRowViewModel : INotifyPropertyChanged
+    {
+        public int RowIndex { get; set; }
+        public List<GridColumnDefinition> Columns { get; set; } = new();
+        public Dictionary<string, object?> Data { get; set; } = new();
+
+        public List<CellViewModel> Cells
+        {
+            get
+            {
+                var cells = new List<CellViewModel>();
+                foreach (var column in Columns)
+                {
+                    var value = Data.ContainsKey(column.Name) ? Data[column.Name] : null;
+                    cells.Add(new CellViewModel
+                    {
+                        ColumnName = column.Name,
+                        Value = value,
+                        DisplayValue = value?.ToString() ?? "",
+                        Header = column.Header ?? column.Name,
+                        Width = column.Width
+                    });
+                }
+                return cells;
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    /// <summary>
+    /// ✅ NOVÉ: ViewModel pre zobrazenie bunky
+    /// </summary>
+    public class CellViewModel
+    {
+        public string ColumnName { get; set; } = "";
+        public object? Value { get; set; }
+        public string DisplayValue { get; set; } = "";
+        public string Header { get; set; } = "";
+        public double Width { get; set; } = 150;
     }
 }
