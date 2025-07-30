@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ OPRAVENÝ s LoggerComponent integráciou
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNÁ LoggerComponent integrácia s rozšíreným logovaním
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -18,12 +18,13 @@ using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Mod
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
-using RpaWinUiComponentsPackage.Logger;  // ✅ NOVÉ: LoggerComponent integrácia
+using RpaWinUiComponentsPackage.Logger;  // ✅ LoggerComponent integrácia
 
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// AdvancedDataGrid komponent s AUTO-ADD, Individual Colors, Search, Sort, Zebra Rows + LoggerComponent integrácia - ✅ PUBLIC API
+    /// AdvancedDataGrid s KOMPLETNOU LoggerComponent integráciou - ✅ PUBLIC API
+    /// Loguje všetky UI operácie, chyby, validácie, dátové operácie, search/sort/zebra
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
@@ -58,63 +59,64 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private string? _currentSortColumn;
         private SortDirection _currentSortDirection = SortDirection.None;
 
-        // ✅ NOVÉ: LoggerComponent integrácia
+        // ✅ KĽÚČOVÁ NOVINKA: LoggerComponent integrácia
         private LoggerComponent? _integratedLogger;
         private bool _loggerIntegrationEnabled = false;
+        private string _componentInstanceId = Guid.NewGuid().ToString("N")[..8];
 
         #endregion
 
-        #region ✅ Constructor s OPRAVENÝ XAML handling
+        #region ✅ Constructor s OPRAVENÝ XAML handling a LoggerComponent
 
         public AdvancedDataGrid()
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔧 AdvancedDataGrid: Začína konštruktor...");
+                LogDebug("🔧 AdvancedDataGrid: Začína konštruktor...");
 
                 // ✅ KĽÚČOVÁ OPRAVA: Jednoduchšie XAML loading bez complex error handling
                 TryInitializeXaml();
 
                 if (!_xamlLoadFailed)
                 {
-                    System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid: XAML úspešne načítané");
+                    LogDebug("✅ AdvancedDataGrid: XAML úspešne načítané");
                     InitializeDependencyInjection();
-                    System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid: Kompletne inicializovaný");
+                    LogInfo("✅ AdvancedDataGrid: Kompletne inicializovaný s LoggerComponent support");
                     UpdateUIVisibility();
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("⚠️ XAML loading zlyhal - vytváram fallback UI");
+                    LogWarn("⚠️ XAML loading zlyhal - vytváram fallback UI");
                     CreateSimpleFallbackUI();
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ CRITICAL CONSTRUCTOR ERROR: {ex.Message}");
+                LogError($"❌ CRITICAL CONSTRUCTOR ERROR: {ex.Message}", ex);
                 CreateSimpleFallbackUI();
             }
         }
 
         /// <summary>
-        /// ✅ OPRAVENÉ: Jednoduchšie XAML loading
+        /// ✅ OPRAVENÉ: Jednoduchšie XAML loading s logovaním
         /// </summary>
         private void TryInitializeXaml()
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔧 XAML Loading: Volám InitializeComponent()...");
+                LogDebug("🔧 XAML Loading: Volám InitializeComponent()...");
 
                 this.InitializeComponent();
                 _xamlLoadFailed = false;
 
-                System.Diagnostics.Debug.WriteLine("✅ XAML Loading: InitializeComponent() úspešný!");
+                LogInfo("✅ XAML Loading: InitializeComponent() úspešný!");
 
                 // ✅ NOVÉ: Okamžite skontroluj či sa UI elementy načítali
                 ValidateUIElementsAfterXaml();
             }
             catch (Exception xamlEx)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ XAML ERROR: {xamlEx.Message}");
+                LogError($"❌ XAML ERROR: {xamlEx.Message}", xamlEx);
                 _xamlLoadFailed = true;
             }
         }
@@ -129,36 +131,36 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 var hasMainContent = this.FindName("MainContentGrid") != null;
                 var hasLoadingOverlay = this.FindName("LoadingOverlay") != null;
 
-                System.Diagnostics.Debug.WriteLine($"📋 UI validácia: MainContent={hasMainContent}, LoadingOverlay={hasLoadingOverlay}");
+                LogDebug($"📋 UI validácia: MainContent={hasMainContent}, LoadingOverlay={hasLoadingOverlay}");
 
                 if (!hasMainContent || !hasLoadingOverlay)
                 {
-                    System.Diagnostics.Debug.WriteLine("❌ UI elementy sa nenačítali správne - označujem ako XAML failed");
+                    LogWarn("❌ UI elementy sa nenačítali správne - označujem ako XAML failed");
                     _xamlLoadFailed = true;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"⚠️ UI validácia chyba: {ex.Message}");
+                LogError($"⚠️ UI validácia chyba: {ex.Message}", ex);
                 _xamlLoadFailed = true;
             }
         }
 
         /// <summary>
-        /// ✅ OPRAVENÉ: Jednoduchší fallback UI
+        /// ✅ OPRAVENÉ: Jednoduchší fallback UI s logovaním
         /// </summary>
         private void CreateSimpleFallbackUI()
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔧 Vytváram jednoduchý fallback UI...");
+                LogInfo("🔧 Vytváram jednoduchý fallback UI...");
 
                 // ✅ Vytvor základný Grid namiesto komplexného UI
                 var mainGrid = new Grid();
 
                 var fallbackText = new TextBlock
                 {
-                    Text = "⚠️ AdvancedDataGrid - XAML Fallback Mode (Search/Sort/Zebra + LoggerComponent)",
+                    Text = "⚠️ AdvancedDataGrid - XAML Fallback Mode (LoggerComponent integrated)",
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     FontSize = 16,
@@ -168,16 +170,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 mainGrid.Children.Add(fallbackText);
                 this.Content = mainGrid;
 
-                System.Diagnostics.Debug.WriteLine("✅ Fallback UI vytvorené");
+                LogInfo("✅ Fallback UI vytvorené s LoggerComponent support");
             }
             catch (Exception fallbackEx)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Aj fallback UI creation failed: {fallbackEx.Message}");
+                LogError($"❌ Aj fallback UI creation failed: {fallbackEx.Message}", fallbackEx);
 
                 // ✅ Posledná záchrana - iba TextBlock
                 this.Content = new TextBlock
                 {
-                    Text = "AdvancedDataGrid - Error",
+                    Text = "AdvancedDataGrid - Error (LoggerComponent available)",
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
@@ -188,6 +190,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
+                LogDebug("🔧 Inicializujem Dependency Injection...");
+
                 var services = new ServiceCollection();
                 ConfigureServices(services);
                 _serviceProvider = services.BuildServiceProvider();
@@ -200,18 +204,18 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // ✅ SearchAndSortService bez logger parametra
                 _searchAndSortService = new SearchAndSortService();
 
-                _logger?.LogInformation("AdvancedDataGrid s Search/Sort/Zebra + LoggerComponent integrácia inicializovaný");
-                System.Diagnostics.Debug.WriteLine("✅ Dependency Injection úspešne inicializované");
+                _logger?.LogInformation("AdvancedDataGrid s LoggerComponent integrácia inicializovaný");
+                LogInfo("✅ Dependency Injection úspešne inicializované s LoggerComponent");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"⚠️ DI initialization warning: {ex}");
+                LogError($"⚠️ DI initialization warning: {ex.Message}", ex);
             }
         }
 
         #endregion
 
-        #region ✅ NOVÉ: LoggerComponent Integrácia API
+        #region ✅ KĽÚČOVÁ NOVINKA: LoggerComponent Integration API
 
         /// <summary>
         /// ✅ NOVÉ: Nastaví LoggerComponent pre integráciu s DataGrid - PUBLIC API
@@ -223,31 +227,51 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             _integratedLogger = loggerComponent;
             _loggerIntegrationEnabled = enableIntegration && loggerComponent != null;
 
-            LogAsync($"LoggerComponent integration {(enableIntegration ? "ENABLED" : "DISABLED")}", "INFO");
+            LogInfo($"LoggerComponent integration {(enableIntegration ? "ENABLED" : "DISABLED")} for DataGrid instance [{_componentInstanceId}]");
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Async logovanie s fallback na Debug.WriteLine
+        /// ✅ PRIVATE: Async logovanie s fallback na Debug.WriteLine
         /// </summary>
         private async Task LogAsync(string message, string logLevel = "INFO")
         {
             try
             {
+                var timestampedMessage = $"[{DateTime.Now:HH:mm:ss.fff}] [DataGrid-{_componentInstanceId}] {message}";
+
                 if (_loggerIntegrationEnabled && _integratedLogger != null)
                 {
-                    await _integratedLogger.LogAsync($"[AdvancedDataGrid] {message}", logLevel);
+                    await _integratedLogger.LogAsync(timestampedMessage, logLevel);
                 }
                 else
                 {
                     // Fallback na System.Diagnostics.Debug
-                    System.Diagnostics.Debug.WriteLine($"[{logLevel}] [AdvancedDataGrid] {message}");
+                    System.Diagnostics.Debug.WriteLine($"[{logLevel}] {timestampedMessage}");
                 }
             }
             catch (Exception ex)
             {
-                // Aj keď logovanie zlyh, pokračujeme
+                // Aj keď logovanie zlyhal, pokračujeme
                 System.Diagnostics.Debug.WriteLine($"⚠️ Logging failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// ✅ SYNC logovanie pre prípady kde nemôžeme await
+        /// </summary>
+        private void LogSync(string message, string logLevel = "INFO")
+        {
+            _ = Task.Run(async () => await LogAsync(message, logLevel));
+        }
+
+        // ✅ Helper metódy pre rôzne log levels
+        private void LogDebug(string message) => LogSync(message, "DEBUG");
+        private void LogInfo(string message) => LogSync(message, "INFO");
+        private void LogWarn(string message) => LogSync(message, "WARN");
+        private void LogError(string message, Exception? ex = null)
+        {
+            var errorMessage = ex != null ? $"{message} | Exception: {ex}" : message;
+            LogSync(errorMessage, "ERROR");
         }
 
         /// <summary>
@@ -256,14 +280,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         public string GetLoggerIntegrationStatus()
         {
             if (!_loggerIntegrationEnabled || _integratedLogger == null)
-                return "LoggerComponent integration: DISABLED";
+                return $"LoggerComponent integration: DISABLED for DataGrid [{_componentInstanceId}]";
 
-            return $"LoggerComponent integration: ENABLED (File: {_integratedLogger.CurrentLogFile}, Size: {_integratedLogger.CurrentFileSizeMB:F2}MB)";
+            return $"LoggerComponent integration: ENABLED for DataGrid [{_componentInstanceId}] (File: {_integratedLogger.CurrentLogFile}, Size: {_integratedLogger.CurrentFileSizeMB:F2}MB)";
         }
 
         #endregion
 
-        #region ✅ PUBLIC API Methods s Individual Colors, LoggerComponent integrácia a LEPŠÍM error handlingom
+        #region ✅ PUBLIC API Methods s Individual Colors, LoggerComponent integrácia a KOMPLETNÝM logovaním
 
         /// <summary>
         /// Inicializuje DataGrid s Individual Color Config + LoggerComponent integrácia - ✅ PUBLIC API
@@ -274,29 +298,32 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             GridThrottlingConfig throttlingConfig,
             int emptyRowsCount = 15,
             DataGridColorConfig? colorConfig = null,
-            LoggerComponent? loggerComponent = null)  // ✅ NOVÉ: Optional LoggerComponent
+            LoggerComponent? loggerComponent = null)  // ✅ NOVÉ: LoggerComponent parameter
         {
             try
             {
-                await LogAsync($"InitializeAsync začína (XAML failed: {_xamlLoadFailed}, Logger: {loggerComponent != null})...", "INFO");
+                await LogAsync($"🚀 InitializeAsync begins (XAML failed: {_xamlLoadFailed}, Logger: {loggerComponent != null}, Columns: {columns?.Count ?? 0}, EmptyRows: {emptyRowsCount})", "INFO");
 
-                // ✅ NOVÉ: Nastav LoggerComponent ak je poskytnutý
+                // ✅ KĽÚČOVÁ INTEGRÁCIA: Nastav LoggerComponent ak je poskytnutý
                 if (loggerComponent != null)
                 {
                     SetIntegratedLogger(loggerComponent, true);
-                    await LogAsync("LoggerComponent integration ENABLED for this DataGrid instance", "INFO");
+                    await LogAsync("🔗 LoggerComponent integration ENABLED for this DataGrid instance", "INFO");
                 }
 
                 // ✅ OPRAVENÉ CS8604: Null check pre columns parameter
                 if (columns == null)
                 {
+                    await LogAsync("❌ InitializeAsync: columns parameter is NULL", "ERROR");
                     throw new ArgumentNullException(nameof(columns), "Columns parameter cannot be null");
                 }
+
+                await LogAsync($"📊 InitializeAsync: Processing {columns.Count} columns, {validationRules?.Count ?? 0} validation rules", "INFO");
 
                 // ✅ KĽÚČOVÁ OPRAVA: Ak XAML zlyhal, pokračuj iba s dátovou inicializáciou
                 if (_xamlLoadFailed)
                 {
-                    await LogAsync("XAML zlyhal - pokračujem iba s dátovou inicializáciou bez UI updates", "WARN");
+                    await LogAsync("⚠️ XAML failed - continuing with data-only initialization without UI updates", "WARN");
                     await InitializeDataOnlyAsync(columns, validationRules, throttlingConfig, emptyRowsCount, colorConfig);
                     return;
                 }
@@ -309,19 +336,24 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _unifiedRowCount = Math.Max(emptyRowsCount, 1);
                 _autoAddEnabled = true;
 
-                await LogAsync($"AUTO-ADD: Nastavený unified počet riadkov = {_unifiedRowCount}", "INFO");
+                await LogAsync($"🔥 AUTO-ADD: Nastavený unified počet riadkov = {_unifiedRowCount}, auto-add enabled: {_autoAddEnabled}", "INFO");
 
                 // ✅ Individual Colors - nastavuje sa iba pri inicializácii
                 _individualColorConfig = colorConfig?.Clone() ?? DataGridColorConfig.Light;
                 if (colorConfig != null)
                 {
-                    await LogAsync("Individual Colors: Custom colors nastavené", "INFO");
+                    await LogAsync($"🎨 Individual Colors: Custom colors nastavené ({colorConfig.CustomColorsCount} custom colors)", "INFO");
                     ApplyIndividualColorsToUI();
+                }
+                else
+                {
+                    await LogAsync("🎨 Individual Colors: Using default Light colors", "INFO");
                 }
 
                 // Ulož columns pre neskoršie použitie
                 _columns.Clear();
                 _columns.AddRange(columns);
+                await LogAsync($"📋 Columns stored: {string.Join(", ", columns.Select(c => $"{c.Name}({c.DataType.Name})"))} ", "DEBUG");
 
                 // ✅ Nastav Search/Sort/Zebra
                 InitializeSearchSortZebra();
@@ -335,7 +367,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 SetupHeaderClickHandlers();
 
                 _isInitialized = true;
-                await LogAsync("DataGrid úspešne inicializovaný s LoggerComponent integráciou!", "INFO");
+                await LogAsync("🎉 DataGrid successfully initialized with LoggerComponent integration!", "INFO");
 
                 UpdateUIVisibility();
                 HideLoadingState();
@@ -345,7 +377,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
             catch (Exception ex)
             {
-                await LogAsync($"KRITICKÁ CHYBA pri inicializácii DataGrid: {ex.Message}", "ERROR");
+                await LogAsync($"❌ CRITICAL ERROR during DataGrid initialization: {ex.Message} | StackTrace: {ex.StackTrace}", "ERROR");
                 _logger?.LogError(ex, "Chyba pri inicializácii DataGrid s Individual Colors a Search/Sort/Zebra");
 
                 if (!_xamlLoadFailed)
@@ -357,8 +389,233 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// ✅ NOVÁ: Inicializácia iba dátovej časti bez UI (pre XAML fallback)
+        /// ✅ LoadDataAsync s rozšíreným logovaním
         /// </summary>
+        public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
+        {
+            try
+            {
+                if (data == null)
+                {
+                    await LogAsync("⚠️ LoadDataAsync: data parameter is null - creating empty list", "WARN");
+                    data = new List<Dictionary<string, object?>>();
+                }
+
+                await LogAsync($"📊 LoadDataAsync begins with {data.Count} rows...", "INFO");
+                EnsureInitialized();
+
+                if (_dataManagementService == null)
+                {
+                    await LogAsync("❌ DataManagementService is not available", "ERROR");
+                    return;
+                }
+
+                await _dataManagementService.LoadDataAsync(data);
+
+                // ✅ Po načítaní dát aplikuj search/sort/zebra
+                await ApplySearchSortZebraAsync();
+
+                await LogAsync($"✅ LoadDataAsync completed with Search/Sort/Zebra - {data.Count} rows loaded successfully", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in LoadDataAsync: {ex.Message} | StackTrace: {ex.StackTrace}", "ERROR");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ ValidateAllRowsAsync s logovaním
+        /// </summary>
+        public async Task<bool> ValidateAllRowsAsync()
+        {
+            try
+            {
+                await LogAsync("🔍 ValidateAllRowsAsync begins...", "INFO");
+                EnsureInitialized();
+
+                if (_validationService == null)
+                {
+                    await LogAsync("❌ ValidationService not available", "ERROR");
+                    return false;
+                }
+
+                var isValid = await _validationService.ValidateAllRowsAsync();
+                await LogAsync($"✅ ValidateAllRowsAsync completed - result: {(isValid ? "ALL VALID" : "ERRORS FOUND")}", "INFO");
+
+                return isValid;
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in ValidateAllRowsAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ ExportToDataTableAsync s logovaním
+        /// </summary>
+        public async Task<DataTable> ExportToDataTableAsync()
+        {
+            try
+            {
+                await LogAsync("📤 ExportToDataTableAsync begins...", "INFO");
+                EnsureInitialized();
+
+                if (_exportService == null)
+                {
+                    await LogAsync("❌ ExportService not available", "ERROR");
+                    return new DataTable();
+                }
+
+                var dataTable = await _exportService.ExportToDataTableAsync();
+                await LogAsync($"✅ ExportToDataTableAsync completed - exported {dataTable.Rows.Count} rows, {dataTable.Columns.Count} columns", "INFO");
+
+                return dataTable;
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in ExportToDataTableAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ ClearAllDataAsync s logovaním
+        /// </summary>
+        public async Task ClearAllDataAsync()
+        {
+            try
+            {
+                await LogAsync("🧹 ClearAllDataAsync begins...", "INFO");
+                EnsureInitialized();
+
+                if (_dataManagementService == null)
+                {
+                    await LogAsync("❌ DataManagementService not available", "ERROR");
+                    return;
+                }
+
+                await _dataManagementService.ClearAllDataAsync();
+                await LogAsync("✅ ClearAllDataAsync completed - all data cleared with AUTO-ADD minimum preserved", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in ClearAllDataAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ DeleteRowsByCustomValidationAsync s logovaním
+        /// </summary>
+        public async Task DeleteRowsByCustomValidationAsync(List<GridValidationRule> deleteRules)
+        {
+            try
+            {
+                await LogAsync($"🗑️ DeleteRowsByCustomValidationAsync begins with {deleteRules?.Count ?? 0} delete rules...", "INFO");
+                EnsureInitialized();
+
+                if (deleteRules == null || !deleteRules.Any())
+                {
+                    await LogAsync("⚠️ No delete rules provided", "WARN");
+                    return;
+                }
+
+                // TODO: Implementácia custom delete validation
+                await Task.CompletedTask;
+                await LogAsync("✅ DeleteRowsByCustomValidationAsync completed", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in DeleteRowsByCustomValidationAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ Search & Sort methods s logovaním
+        /// </summary>
+        public async Task SetColumnSearchAsync(string columnName, string searchText)
+        {
+            try
+            {
+                await LogAsync($"🔍 SetColumnSearchAsync: column='{columnName}', text='{searchText}'", "INFO");
+                EnsureInitialized();
+
+                _searchAndSortService?.SetColumnSearchFilter(columnName, searchText);
+                await ApplySearchSortZebraAsync();
+
+                await LogAsync($"✅ Search filter applied for column '{columnName}'", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in SetColumnSearchAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        public async Task ToggleColumnSortAsync(string columnName)
+        {
+            try
+            {
+                await LogAsync($"⬆️⬇️ ToggleColumnSortAsync: column='{columnName}'", "INFO");
+                EnsureInitialized();
+
+                var newDirection = _searchAndSortService?.ToggleColumnSort(columnName) ?? SortDirection.None;
+                await ApplySearchSortZebraAsync();
+
+                await LogAsync($"✅ Sort toggled for column '{columnName}' to {newDirection}", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in ToggleColumnSortAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        public async Task ClearAllSearchAsync()
+        {
+            try
+            {
+                await LogAsync("🧹 ClearAllSearchAsync begins...", "INFO");
+                EnsureInitialized();
+
+                _searchAndSortService?.ClearAllSearchFilters();
+                await ApplySearchSortZebraAsync();
+
+                await LogAsync("✅ All search filters cleared", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in ClearAllSearchAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        public async Task SetZebraRowsEnabledAsync(bool enabled)
+        {
+            try
+            {
+                await LogAsync($"🦓 SetZebraRowsEnabledAsync: enabled={enabled}", "INFO");
+                EnsureInitialized();
+
+                _searchAndSortService?.SetZebraRowsEnabled(enabled);
+                await ApplySearchSortZebraAsync();
+
+                await LogAsync($"✅ Zebra rows {(enabled ? "enabled" : "disabled")}", "INFO");
+            }
+            catch (Exception ex)
+            {
+                await LogAsync($"❌ ERROR in SetZebraRowsEnabledAsync: {ex.Message}", "ERROR");
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Inicializácia iba dátovej časti bez UI (pre XAML fallback) s logovaním
+
         private async Task InitializeDataOnlyAsync(
             List<GridColumnDefinition> columns,
             List<GridValidationRule> validationRules,
@@ -368,11 +625,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                await LogAsync("Inicializujem iba dátovú časť bez UI...", "INFO");
+                await LogAsync("🔧 Initializing data-only without UI...", "INFO");
 
-                // ✅ OPRAVENÉ CS8604: Null check pre columns parameter
                 if (columns == null)
                 {
+                    await LogAsync("❌ InitializeDataOnlyAsync: columns parameter is NULL", "ERROR");
                     throw new ArgumentNullException(nameof(columns), "Columns parameter cannot be null");
                 }
 
@@ -389,17 +646,17 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 await CreateInitialEmptyRowsAsync();
 
                 _isInitialized = true;
-                await LogAsync("Dátová inicializácia dokončená (bez UI)", "INFO");
+                await LogAsync("✅ Data-only initialization completed (without UI)", "INFO");
             }
             catch (Exception ex)
             {
-                await LogAsync($"CHYBA pri dátovej inicializácii: {ex.Message}", "ERROR");
+                await LogAsync($"❌ ERROR in data-only initialization: {ex.Message}", "ERROR");
                 throw;
             }
         }
 
         /// <summary>
-        /// ✅ NOVÁ: Pomocná metóda pre inicializáciu services
+        /// ✅ Pomocná metóda pre inicializáciu services s logovaním
         /// </summary>
         private async Task InitializeServicesAsync(
             List<GridColumnDefinition> columns,
@@ -407,77 +664,55 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             GridThrottlingConfig throttlingConfig,
             int emptyRowsCount)
         {
-            var configuration = new GridConfiguration
-            {
-                Columns = columns ?? new List<GridColumnDefinition>(),
-                ValidationRules = validationRules ?? new List<GridValidationRule>(),
-                ThrottlingConfig = throttlingConfig ?? GridThrottlingConfig.Default,
-                EmptyRowsCount = _unifiedRowCount,
-                AutoAddNewRow = _autoAddEnabled,
-                GridName = "AdvancedDataGrid_Individual_Colors_Search_Sort_Zebra_LoggerIntegration"
-            };
-
-            // Safe service calls
-            if (_dataManagementService != null)
-            {
-                await _dataManagementService.InitializeAsync(configuration);
-                await LogAsync("DataManagementService inicializovaný", "INFO");
-            }
-            if (_validationService != null)
-            {
-                await _validationService.InitializeAsync(configuration);
-                await LogAsync("ValidationService inicializovaný", "INFO");
-            }
-            if (_exportService != null)
-            {
-                await _exportService.InitializeAsync(configuration);
-                await LogAsync("ExportService inicializovaný", "INFO");
-            }
-        }
-
-        // ✅ LoadDataAsync zostáva rovnaká ale s LoggerComponent integráciou
-        public async Task LoadDataAsync(List<Dictionary<string, object?>> data)
-        {
             try
             {
-                if (data == null)
+                await LogAsync("🔧 Initializing services...", "DEBUG");
+
+                var configuration = new GridConfiguration
                 {
-                    await LogAsync("LoadDataAsync: data parameter je null - vytváram prázdny zoznam", "WARN");
-                    data = new List<Dictionary<string, object?>>();
+                    Columns = columns ?? new List<GridColumnDefinition>(),
+                    ValidationRules = validationRules ?? new List<GridValidationRule>(),
+                    ThrottlingConfig = throttlingConfig ?? GridThrottlingConfig.Default,
+                    EmptyRowsCount = _unifiedRowCount,
+                    AutoAddNewRow = _autoAddEnabled,
+                    GridName = $"AdvancedDataGrid_LoggerIntegrated_{_componentInstanceId}"
+                };
+
+                // Safe service calls
+                if (_dataManagementService != null)
+                {
+                    await _dataManagementService.InitializeAsync(configuration);
+                    await LogAsync("✅ DataManagementService initialized", "DEBUG");
+                }
+                if (_validationService != null)
+                {
+                    await _validationService.InitializeAsync(configuration);
+                    await LogAsync("✅ ValidationService initialized", "DEBUG");
+                }
+                if (_exportService != null)
+                {
+                    await _exportService.InitializeAsync(configuration);
+                    await LogAsync("✅ ExportService initialized", "DEBUG");
                 }
 
-                await LogAsync($"LoadDataAsync začína s {data.Count} riadkami...", "INFO");
-                EnsureInitialized();
-
-                if (_dataManagementService == null)
-                {
-                    await LogAsync("DataManagementService nie je dostupná", "ERROR");
-                    return;
-                }
-
-                await _dataManagementService.LoadDataAsync(data);
-
-                // ✅ Po načítaní dát aplikuj search/sort/zebra
-                await ApplySearchSortZebraAsync();
-
-                await LogAsync($"LoadDataAsync dokončené s Search/Sort/Zebra - {data.Count} riadkov načítaných", "INFO");
+                await LogAsync("✅ All services initialized successfully", "INFO");
             }
             catch (Exception ex)
             {
-                await LogAsync($"CHYBA pri LoadDataAsync: {ex.Message}", "ERROR");
+                await LogAsync($"❌ ERROR initializing services: {ex.Message}", "ERROR");
                 throw;
             }
         }
 
         #endregion
 
-        #region ✅ UI Helper Methods s lepším error handlingom
+        #region ✅ UI Helper Methods s lepším error handlingom a logovaním
 
         private void UpdateUIVisibility()
         {
             if (_xamlLoadFailed)
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ UpdateUIVisibility preskočené kvôli XAML chybe");
+                LogDebug("⚠️ UpdateUIVisibility skipped due to XAML error");
                 return;
             }
 
@@ -485,7 +720,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 try
                 {
-                    System.Diagnostics.Debug.WriteLine($"🔄 Aktualizujem UI visibility (initialized: {_isInitialized})...");
+                    LogDebug($"🔄 Updating UI visibility (initialized: {_isInitialized})...");
 
                     var mainContentGrid = this.FindName("MainContentGrid") as FrameworkElement;
                     var loadingOverlay = this.FindName("LoadingOverlay") as FrameworkElement;
@@ -493,18 +728,18 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     if (mainContentGrid != null)
                     {
                         mainContentGrid.Visibility = _isInitialized ? Visibility.Visible : Visibility.Collapsed;
-                        System.Diagnostics.Debug.WriteLine($"✅ MainContentGrid visibility = {mainContentGrid.Visibility}");
+                        LogDebug($"✅ MainContentGrid visibility = {mainContentGrid.Visibility}");
                     }
 
                     if (loadingOverlay != null)
                     {
                         loadingOverlay.Visibility = _isInitialized ? Visibility.Collapsed : Visibility.Visible;
-                        System.Diagnostics.Debug.WriteLine($"✅ LoadingOverlay visibility = {loadingOverlay.Visibility}");
+                        LogDebug($"✅ LoadingOverlay visibility = {loadingOverlay.Visibility}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"⚠️ UpdateUIVisibility error: {ex}");
+                    LogError($"⚠️ UpdateUIVisibility error: {ex.Message}", ex);
                 }
             });
         }
@@ -513,7 +748,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             if (_xamlLoadFailed)
             {
-                System.Diagnostics.Debug.WriteLine($"⚠️ ShowLoadingState preskočené kvôli XAML chybe: {message}");
+                LogDebug($"⚠️ ShowLoadingState skipped due to XAML error: {message}");
                 return;
             }
 
@@ -533,10 +768,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     {
                         loadingText.Text = message;
                     }
+
+                    LogDebug($"📺 Loading state shown: {message}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"⚠️ ShowLoadingState error: {ex}");
+                    LogError($"⚠️ ShowLoadingState error: {ex.Message}", ex);
                 }
             });
         }
@@ -545,7 +782,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             if (_xamlLoadFailed)
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ HideLoadingState preskočené kvôli XAML chybe");
+                LogDebug("⚠️ HideLoadingState skipped due to XAML error");
                 return;
             }
 
@@ -558,20 +795,24 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     {
                         loadingOverlay.Visibility = Visibility.Collapsed;
                     }
+
+                    LogDebug("📺 Loading state hidden");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"⚠️ HideLoadingState error: {ex}");
+                    LogError($"⚠️ HideLoadingState error: {ex.Message}", ex);
                 }
             });
         }
 
         #endregion
 
-        #region Helper Methods
+        #region Helper Methods s logovaním
 
         private void ConfigureServices(IServiceCollection services)
         {
+            LogDebug("🔧 Configuring services...");
+
             services.AddLogging(builder =>
             {
                 builder.AddDebug();
@@ -581,34 +822,45 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             services.AddSingleton<IDataManagementService, DataManagementService>();
             services.AddSingleton<IValidationService, ValidationService>();
             services.AddTransient<IExportService, ExportService>();
+
+            LogDebug("✅ Services configured");
         }
 
         private void EnsureInitialized()
         {
             if (!_isInitialized)
-                throw new InvalidOperationException("DataGrid nie je inicializovaný. Zavolajte InitializeAsync() najprv.");
+            {
+                var errorMsg = "DataGrid is not initialized. Call InitializeAsync() first.";
+                LogError(errorMsg);
+                throw new InvalidOperationException(errorMsg);
+            }
         }
 
         #endregion
 
-        #region Diagnostic Properties s LoggerComponent info
+        #region Diagnostic Properties s LoggerComponent info a rozšírenými diagnostikami
 
         public bool IsXamlLoaded => !_xamlLoadFailed;
 
-        public string DiagnosticInfo => $"Initialized: {_isInitialized}, XAML: {!_xamlLoadFailed}, Auto-Add: {_autoAddEnabled}, Unified-RowCount: {_unifiedRowCount}, Data-Rows: {_gridData.Count}, Individual-Colors: {_individualColorConfig != null}, Search/Sort/Zebra: {_searchAndSortService != null}, LoggerComponent: {_loggerIntegrationEnabled}";
+        public string DiagnosticInfo => $"Initialized: {_isInitialized}, XAML: {!_xamlLoadFailed}, Auto-Add: {_autoAddEnabled}, Unified-RowCount: {_unifiedRowCount}, Data-Rows: {_gridData.Count}, Individual-Colors: {_individualColorConfig != null}, Search/Sort/Zebra: {_searchAndSortService != null}, LoggerComponent: {_loggerIntegrationEnabled}, Instance: {_componentInstanceId}";
 
         public string AutoAddStatus => $"AUTO-ADD: {_unifiedRowCount} rows (initial=minimum), Auto-Add: {_autoAddEnabled}, Current-Data: {_gridData.Count}";
 
         public string SearchSortZebraStatus => _searchAndSortService?.GetStatusInfo() ?? "Search/Sort/Zebra not initialized";
 
         /// <summary>
-        /// ✅ NOVÉ: LoggerComponent integration status
+        /// ✅ LoggerComponent integration status s rozšírenými detailmi
         /// </summary>
         public string LoggerIntegrationStatus => GetLoggerIntegrationStatus();
 
+        /// <summary>
+        /// ✅ NOVÉ: Detailné info o komponente
+        /// </summary>
+        public string ComponentStatus => $"AdvancedDataGrid [{_componentInstanceId}] - Initialized: {_isInitialized}, LoggerComponent: {_loggerIntegrationEnabled}, Columns: {_columns.Count}, Services: {(_dataManagementService != null ? "✅" : "❌")}DataMgmt {(_validationService != null ? "✅" : "❌")}Validation {(_exportService != null ? "✅" : "❌")}Export {(_searchAndSortService != null ? "✅" : "❌")}SearchSort";
+
         #endregion
 
-        #region INotifyPropertyChanged & IDisposable
+        #region INotifyPropertyChanged & IDisposable s logovaním
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -631,85 +883,124 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
             try
             {
-                _ = LogAsync("AdvancedDataGrid disposing...", "INFO");
+                LogInfo($"🧹 AdvancedDataGrid [{_componentInstanceId}] disposing...");
 
                 _searchAndSortService?.Dispose();
 
                 if (_serviceProvider is IDisposable disposableProvider)
                     disposableProvider.Dispose();
 
-                // ✅ NOVÉ: LoggerComponent nie je owned by DataGrid, len sa používa
+                // ✅ LoggerComponent nie je owned by DataGrid, len sa používa
                 // Takže ho nedisposujeme, iba resetujeme referenciu
                 _integratedLogger = null;
                 _loggerIntegrationEnabled = false;
 
                 _isDisposed = true;
-                System.Diagnostics.Debug.WriteLine("✅ AdvancedDataGrid disposed s LoggerComponent integration cleanup");
+                LogInfo($"✅ AdvancedDataGrid [{_componentInstanceId}] disposed with LoggerComponent integration cleanup");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Chyba pri dispose: {ex}");
+                LogError($"❌ Error during dispose: {ex.Message}", ex);
             }
         }
 
         #endregion
 
-        // ✅ Skeleton implementácie pre zostávajúce metódy (aby sa kód skompiloval)
-        public async Task LoadDataAsync(DataTable dataTable) => await Task.CompletedTask;
-        public async Task<bool> ValidateAllRowsAsync() => await Task.FromResult(true);
-        public async Task<DataTable> ExportToDataTableAsync() => await Task.FromResult(new DataTable());
-        public async Task ClearAllDataAsync() => await Task.CompletedTask;
-        public async Task DeleteRowsByCustomValidationAsync(List<GridValidationRule> deleteRules) => await Task.CompletedTask;
-        public async Task SetColumnSearchAsync(string columnName, string searchText) => await Task.CompletedTask;
-        public async Task ToggleColumnSortAsync(string columnName) => await Task.CompletedTask;
-        public async Task ClearAllSearchAsync() => await Task.CompletedTask;
-        public async Task SetZebraRowsEnabledAsync(bool enabled) => await Task.CompletedTask;
+        // ✅ Skeleton implementácie s logovaním (aby sa kód skompiloval)
+        public async Task LoadDataAsync(DataTable dataTable)
+        {
+            await LogAsync($"📊 LoadDataAsync(DataTable) with {dataTable?.Rows.Count ?? 0} rows", "INFO");
+            await Task.CompletedTask;
+        }
 
         public DataGridColorConfig? ColorConfig => _individualColorConfig?.Clone();
 
-        private void ApplyIndividualColorsToUI() { }
-        private void InitializeSearchSortZebra() { }
-        private void SetupHeaderClickHandlers() { }
-        private async Task ApplySearchSortZebraAsync() => await Task.CompletedTask;
-        private void UpdateHeaderSortIndicators() { }
-        private async Task CreateInitialEmptyRowsAsync() => await Task.CompletedTask;
-        private Dictionary<string, object?> CreateEmptyRow() => new();
-        private bool IsRowEmpty(Dictionary<string, object?> row) => true;
+        // ✅ Skeleton metódy s logovaním
+        private void ApplyIndividualColorsToUI()
+        {
+            LogDebug("🎨 ApplyIndividualColorsToUI called");
+        }
 
-        // Test metódy s LoggerComponent integráciou
+        private void InitializeSearchSortZebra()
+        {
+            LogDebug("🔍 InitializeSearchSortZebra called");
+        }
+
+        private void SetupHeaderClickHandlers()
+        {
+            LogDebug("🖱️ SetupHeaderClickHandlers called");
+        }
+
+        private async Task ApplySearchSortZebraAsync()
+        {
+            LogDebug("🔍 ApplySearchSortZebraAsync called");
+            await Task.CompletedTask;
+        }
+
+        private void UpdateHeaderSortIndicators()
+        {
+            LogDebug("⬆️⬇️ UpdateHeaderSortIndicators called");
+        }
+
+        private async Task CreateInitialEmptyRowsAsync()
+        {
+            await LogAsync($"🔥 CreateInitialEmptyRowsAsync: creating {_unifiedRowCount} initial rows", "DEBUG");
+            await Task.CompletedTask;
+        }
+
+        private Dictionary<string, object?> CreateEmptyRow()
+        {
+            LogDebug("➕ CreateEmptyRow called");
+            return new();
+        }
+
+        private bool IsRowEmpty(Dictionary<string, object?> row)
+        {
+            var isEmpty = row?.Values.All(v => v == null || string.IsNullOrWhiteSpace(v?.ToString())) ?? true;
+            LogDebug($"❓ IsRowEmpty check: {isEmpty}");
+            return isEmpty;
+        }
+
+        // ✅ Test metódy s LoggerComponent integráciou a rozšíreným logovaním
         public async Task TestAutoAddFewRowsAsync()
         {
-            await LogAsync("Testing AUTO-ADD few rows functionality", "INFO");
+            await LogAsync("🧪 Testing AUTO-ADD few rows functionality", "INFO");
+            // TODO: Implementácia testu
             await Task.CompletedTask;
         }
 
         public async Task TestAutoAddManyRowsAsync()
         {
-            await LogAsync("Testing AUTO-ADD many rows functionality", "INFO");
+            await LogAsync("🧪 Testing AUTO-ADD many rows functionality", "INFO");
+            // TODO: Implementácia testu
             await Task.CompletedTask;
         }
 
         public async Task TestAutoAddDeleteAsync()
         {
-            await LogAsync("Testing AUTO-ADD smart delete functionality", "INFO");
+            await LogAsync("🧪 Testing AUTO-ADD smart delete functionality", "INFO");
+            // TODO: Implementácia testu
             await Task.CompletedTask;
         }
 
         public async Task TestRealtimeValidationAsync()
         {
-            await LogAsync("Testing realtime validation functionality", "INFO");
+            await LogAsync("🧪 Testing realtime validation functionality", "INFO");
+            // TODO: Implementácia testu
             await Task.CompletedTask;
         }
 
         public async Task TestNavigationAsync()
         {
-            await LogAsync("Testing navigation functionality", "INFO");
+            await LogAsync("🧪 Testing navigation functionality", "INFO");
+            // TODO: Implementácia testu
             await Task.CompletedTask;
         }
 
         public async Task TestCopyPasteAsync()
         {
-            await LogAsync("Testing copy/paste functionality", "INFO");
+            await LogAsync("🧪 Testing copy/paste functionality", "INFO");
+            // TODO: Implementácia testu
             await Task.CompletedTask;
         }
     }

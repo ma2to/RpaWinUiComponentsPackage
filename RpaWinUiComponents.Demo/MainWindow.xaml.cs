@@ -1,4 +1,4 @@
-﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÉ using direktívy a integrácia LoggerComponent
+﻿// RpaWinUiComponents.Demo/MainWindow.xaml.cs - ✅ OPRAVENÉ using direktívy a LoggerComponent integrácia
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -10,11 +10,11 @@ using Windows.UI.Core;
 // ✅ OPRAVENÉ: Správne using direktívy pre multi-component package
 #if !NO_PACKAGE
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid;
-using RpaWinUiComponentsPackage.Logger;  // ✅ CHANGED: LoggerComponent -> Logger namespace
-using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;  // ✅ FIXED: Pridané .Models
-using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ValidationRule;  // ✅ FIXED: Pridané .Models
-using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;  // ✅ FIXED: Pridané .Models
-using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.DataGridColorConfig;  // ✅ FIXED: Pridané .Models
+using RpaWinUiComponentsPackage.Logger;  // ✅ FIXED: Správny namespace pre LoggerComponent
+using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;
+using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ValidationRule;
+using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
+using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.DataGridColorConfig;
 #endif
 
 namespace RpaWinUiComponentsPackage.Demo
@@ -27,7 +27,7 @@ namespace RpaWinUiComponentsPackage.Demo
         // ✅ References na komponenty z multi-component package
 #if !NO_PACKAGE
         private AdvancedDataGrid? _actualDataGrid;
-        private LoggerComponent? _logger;  // ✅ FIXED: Teraz môže nájsť typ
+        private LoggerComponent? _logger;  // ✅ FIXED: Správny typ
 #endif
 
         public MainWindow()
@@ -71,7 +71,6 @@ namespace RpaWinUiComponentsPackage.Demo
 
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                // ✅ OPRAVENÉ: Kontrola existencie UI elementov z XAML
                 try
                 {
                     var loadingPanel = this.FindName("LoadingPanel");
@@ -133,10 +132,12 @@ namespace RpaWinUiComponentsPackage.Demo
                 // ✅ Test AdvancedDataGrid komponentu
                 _actualDataGrid = new AdvancedDataGrid();
 
-                // ✅ Test LoggerComponent komponentu - s integráciou do AdvancedDataGrid
+                // ✅ OPRAVENÉ: Vytvorenie LoggerComponent s integráciou do AdvancedDataGrid
                 var tempDir = System.IO.Path.GetTempPath();
-                _logger = new LoggerComponent(tempDir, "demo-log.log", 10);
-                await _logger.LogAsync("Multi-component package test - LoggerComponent + AdvancedDataGrid integration", "INFO");
+                var logFileName = $"RpaDemo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
+                _logger = new LoggerComponent(tempDir, logFileName, 10); // 10MB max size
+
+                await _logger.LogAsync("🚀 Multi-component package test started - AdvancedDataGrid + LoggerComponent integration", "INFO");
 
                 await Task.Delay(100);
                 _packageAvailable = true;
@@ -162,9 +163,8 @@ namespace RpaWinUiComponentsPackage.Demo
                 UpdateStatus("Multi-component package je dostupný!", "Inicializuje sa DataGrid + Logger...");
 
 #if !NO_PACKAGE
-                if (_actualDataGrid != null)
+                if (_actualDataGrid != null && _logger != null)
                 {
-                    // ✅ OPRAVENÉ: Bezpečné nastavenie DataGrid obsahu
                     try
                     {
                         var dataGridControl = this.FindName("DataGridControl") as ContentControl;
@@ -180,13 +180,10 @@ namespace RpaWinUiComponentsPackage.Demo
 
                     await Task.Delay(200);
 
-                    // ✅ Log inicializácie
-                    if (_logger != null)
-                    {
-                        await _logger.LogAsync("Inicializuje sa AdvancedDataGrid s integrated LoggerComponent", "INFO");
-                    }
+                    // ✅ KĽÚČOVÁ INTEGRÁCIA: Pošli LoggerComponent do AdvancedDataGrid
+                    await _logger.LogAsync("🔧 Inicializuje sa AdvancedDataGrid s integrated LoggerComponent", "INFO");
 
-                    // ✅ Inicializuj DataGrid s demo dátami a LoggerComponent integráciou
+                    // ✅ Demo konfigurácia s LoggerComponent integráciou
                     var columns = new List<GridColumnDefinition>
                     {
                         new("ID", typeof(int)) { MinWidth = 60, Width = 80, Header = "🔢 ID" },
@@ -209,16 +206,19 @@ namespace RpaWinUiComponentsPackage.Demo
                         AlternateRowColor = Color.FromArgb(20, 0, 120, 215)
                     };
 
-                    // ✅ KĽÚČOVÉ: Inicializuj DataGrid s LoggerComponent integráciou
-                    await _actualDataGrid.InitializeAsync(columns, rules, GridThrottlingConfig.Default, 15, colors);
+                    // ✅ KĽÚČOVÉ: Inicializuj DataGrid S LoggerComponent integráciou
+                    await _actualDataGrid.InitializeAsync(
+                        columns,
+                        rules,
+                        GridThrottlingConfig.Default,
+                        15,
+                        colors,
+                        _logger  // ✅ NOVÝ parameter - LoggerComponent integrácia!
+                    );
 
-                    // ✅ Log úspešnej inicializácie
-                    if (_logger != null)
-                    {
-                        await _logger.LogAsync("AdvancedDataGrid inicializovaný s integrated LoggerComponent", "INFO");
-                    }
+                    await _logger.LogAsync("✅ AdvancedDataGrid úspešne inicializovaný s LoggerComponent integráciou", "INFO");
 
-                    // ✅ Demo dáta
+                    // ✅ Demo dáta s logovaním
                     var demoData = new List<Dictionary<string, object?>>
                     {
                         new() { ["ID"] = 1, ["Meno"] = "Anna Nováková", ["Email"] = "anna@test.sk", ["Vek"] = 28 },
@@ -227,12 +227,7 @@ namespace RpaWinUiComponentsPackage.Demo
                     };
 
                     await _actualDataGrid.LoadDataAsync(demoData);
-
-                    // ✅ Log načítania dát
-                    if (_logger != null)
-                    {
-                        await _logger.LogAsync($"DataGrid inicializovaný s {demoData.Count} riadkami - LoggerComponent integration working!", "INFO");
-                    }
+                    await _logger.LogAsync($"📊 Demo dáta načítané: {demoData.Count} riadkov s LoggerComponent integration working!", "INFO");
                 }
 #endif
 
@@ -242,6 +237,13 @@ namespace RpaWinUiComponentsPackage.Demo
             {
                 ShowError($"Multi-component inicializácia zlyhala: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"❌ InitializeWithPackageAsync chyba: {ex}");
+
+#if !NO_PACKAGE
+                if (_logger != null)
+                {
+                    await _logger.LogAsync($"❌ CRITICAL ERROR: Multi-component initialization failed: {ex.Message}", "ERROR");
+                }
+#endif
             }
         }
 
@@ -249,7 +251,6 @@ namespace RpaWinUiComponentsPackage.Demo
         {
             try
             {
-                // ✅ OPRAVENÉ: Bezpečná práca s UI elementmi
                 try
                 {
                     var loadingPanel = this.FindName("LoadingPanel") as FrameworkElement;
@@ -266,7 +267,7 @@ namespace RpaWinUiComponentsPackage.Demo
                 }
                 catch { }
 
-                UpdateStatus("✅ Multi-component demo pripravené!", "🎉 Package je funkčný s LoggerComponent integration!");
+                UpdateStatus("✅ Multi-component demo pripravené!", "🎉 Package funguje s LoggerComponent integration!");
 
                 try
                 {
@@ -277,6 +278,16 @@ namespace RpaWinUiComponentsPackage.Demo
                 catch { }
 
                 System.Diagnostics.Debug.WriteLine("🎉 Multi-component inicializácia úspešne dokončená s LoggerComponent integration!");
+
+#if !NO_PACKAGE
+                Task.Run(async () =>
+                {
+                    if (_logger != null)
+                    {
+                        await _logger.LogAsync("🎉 Demo aplikácia úspešne spustená s LoggerComponent integráciou", "INFO");
+                    }
+                });
+#endif
             }
             catch (Exception ex)
             {
@@ -352,6 +363,16 @@ namespace RpaWinUiComponentsPackage.Demo
             catch { }
 
             System.Diagnostics.Debug.WriteLine($"❌ Error: {errorMessage}");
+
+#if !NO_PACKAGE
+            Task.Run(async () =>
+            {
+                if (_logger != null)
+                {
+                    await _logger.LogAsync($"❌ DEMO ERROR: {errorMessage}", "ERROR");
+                }
+            });
+#endif
         }
 
         #region Event Handlers s LoggerComponent integráciou
@@ -373,10 +394,9 @@ namespace RpaWinUiComponentsPackage.Demo
                     await _actualDataGrid.LoadDataAsync(sampleData);
                     UpdateStatus("Sample data načítané", "✅ Data load úspešný");
 
-                    // ✅ Log do LoggerComponent
                     if (_logger != null)
                     {
-                        await _logger.LogAsync("Sample data načítané cez demo - AdvancedDataGrid + LoggerComponent integration working!", "INFO");
+                        await _logger.LogAsync("📊 Sample data načítané cez demo UI - AdvancedDataGrid + LoggerComponent working!", "INFO");
                     }
                 }
             }
@@ -384,16 +404,14 @@ namespace RpaWinUiComponentsPackage.Demo
             {
                 ShowError($"Load data chyba: {ex.Message}");
 
-                // ✅ Log chyby
                 if (_logger != null)
                 {
-                    await _logger.LogAsync($"Load data ERROR: {ex.Message}", "ERROR");
+                    await _logger.LogAsync($"❌ Load data ERROR: {ex.Message}", "ERROR");
                 }
             }
 #endif
         }
 
-        // ✅ Ostatné event handlers s LoggerComponent integráciou
         private async void OnValidateAllClick(object sender, RoutedEventArgs e)
         {
             if (!_packageAvailable) return;
@@ -404,10 +422,9 @@ namespace RpaWinUiComponentsPackage.Demo
                 UpdateStatus(isValid ? "Všetky dáta validné" : "Validačné chyby",
                            isValid ? "✅ OK" : "❌ Chyby");
 
-                // ✅ Log validácie
                 if (_logger != null)
                 {
-                    await _logger.LogAsync($"Validation result: {(isValid ? "ALL VALID" : "ERRORS FOUND")}", "INFO");
+                    await _logger.LogAsync($"✅ Validation performed via demo UI - result: {(isValid ? "ALL VALID" : "ERRORS FOUND")}", "INFO");
                 }
             }
 #endif
@@ -422,10 +439,9 @@ namespace RpaWinUiComponentsPackage.Demo
                 await _actualDataGrid.ClearAllDataAsync();
                 UpdateStatus("Dáta vyčistené", "✅ Clear úspešný");
 
-                // ✅ Log clear operácie
                 if (_logger != null)
                 {
-                    await _logger.LogAsync("Data cleared via demo interface", "INFO");
+                    await _logger.LogAsync("🧹 Data cleared via demo interface", "INFO");
                 }
             }
 #endif
@@ -440,51 +456,146 @@ namespace RpaWinUiComponentsPackage.Demo
                 var dataTable = await _actualDataGrid.ExportToDataTableAsync();
                 UpdateStatus($"Export: {dataTable.Rows.Count} riadkov", "✅ Export úspešný");
 
-                // ✅ Log export operácie
                 if (_logger != null)
                 {
-                    await _logger.LogAsync($"Data exported: {dataTable.Rows.Count} rows", "INFO");
+                    await _logger.LogAsync($"📤 Data exported via demo UI: {dataTable.Rows.Count} rows", "INFO");
                 }
             }
 #endif
         }
 
-        // Ostatné button handlers (bez zmien)
-        private void OnApplyLightThemeClick(object sender, RoutedEventArgs e) =>
+        // Ostatné button handlers (bez zmien ale s logovaním)
+        private async void OnApplyLightThemeClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Light theme", "🎨 Téma zmenená");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🎨 UI Theme changed to Light via demo", "INFO");
+            }
+#endif
+        }
 
-        private void OnApplyDarkThemeClick(object sender, RoutedEventArgs e) =>
+        private async void OnApplyDarkThemeClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Dark theme", "🎨 Téma zmenená");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🎨 UI Theme changed to Dark via demo", "INFO");
+            }
+#endif
+        }
 
-        private void OnApplyBlueThemeClick(object sender, RoutedEventArgs e) =>
+        private async void OnApplyBlueThemeClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Blue theme", "🎨 Téma zmenená");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🎨 UI Theme changed to Blue via demo", "INFO");
+            }
+#endif
+        }
 
-        private void OnApplyCustomThemeClick(object sender, RoutedEventArgs e) =>
+        private async void OnApplyCustomThemeClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Custom theme", "🎨 Téma zmenená");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🎨 UI Theme changed to Custom via demo", "INFO");
+            }
+#endif
+        }
 
-        private void OnResetThemeClick(object sender, RoutedEventArgs e) =>
+        private async void OnResetThemeClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Default theme", "🎨 Téma zmenená");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🎨 UI Theme reset to Default via demo", "INFO");
+            }
+#endif
+        }
 
-        private void OnTestSearchClick(object sender, RoutedEventArgs e) =>
+        private async void OnTestSearchClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Search test", "🔍 Search funkcia");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🔍 Search test triggered via demo UI", "INFO");
+            }
+#endif
+        }
 
-        private void OnTestSortClick(object sender, RoutedEventArgs e) =>
+        private async void OnTestSortClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Sort test", "⬆️⬇️ Sort funkcia");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("⬆️⬇️ Sort test triggered via demo UI", "INFO");
+            }
+#endif
+        }
 
-        private void OnTestZebraToggleClick(object sender, RoutedEventArgs e) =>
+        private async void OnTestZebraToggleClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Zebra toggle", "🦓 Zebra rows");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🦓 Zebra rows toggle triggered via demo UI", "INFO");
+            }
+#endif
+        }
 
-        private void OnClearSearchClick(object sender, RoutedEventArgs e) =>
+        private async void OnClearSearchClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Search cleared", "🧹 Search vyčistený");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🧹 Search cleared via demo UI", "INFO");
+            }
+#endif
+        }
 
-        private void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e) =>
+        private async void OnTestAutoAddFewRowsClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Auto-add test", "🔥 AUTO-ADD funkcia");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🔥 AUTO-ADD few rows test triggered via demo UI", "INFO");
+            }
+#endif
+        }
 
-        private void OnTestAutoAddManyRowsClick(object sender, RoutedEventArgs e) =>
+        private async void OnTestAutoAddManyRowsClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Auto-add many", "🔥 AUTO-ADD test");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🔥 AUTO-ADD many rows test triggered via demo UI", "INFO");
+            }
+#endif
+        }
 
-        private void OnTestAutoAddDeleteClick(object sender, RoutedEventArgs e) =>
+        private async void OnTestAutoAddDeleteClick(object sender, RoutedEventArgs e)
+        {
             UpdateStatus("Auto-add delete", "🔥 Smart delete test");
+#if !NO_PACKAGE
+            if (_logger != null)
+            {
+                await _logger.LogAsync("🔥 AUTO-ADD smart delete test triggered via demo UI", "INFO");
+            }
+#endif
+        }
 
         #endregion
     }
