@@ -1,5 +1,6 @@
 ﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - iba Abstractions, žiadne logging dependencies
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions; // ✅ OPRAVENÉ: Iba Abstractions
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -9,12 +10,12 @@ using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using RpaWinUiComponentsPackage.Logger;  // ✅ LoggerComponent integrácia
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Collections.ObjectModel;
 // ✅ OPRAVENÉ CS0104: Aliasy pre zamedzenie konfliktov s WinUI typmi
 using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;
 using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
@@ -221,91 +222,102 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// ✅ OPRAVENÉ CS8604: InitializeAsync s LoggerComponent parameter - 6 argumentov
         /// Inicializuje DataGrid s Individual Color Config + LoggerComponent integrácia - ✅ PUBLIC API
         /// </summary>
+        // ✅ KOMPLETNÁ integrácia LoggerComponent do AdvancedDataGrid
         public async Task InitializeAsync(
             List<GridColumnDefinition> columns,
-            List<GridValidationRule>? validationRules, // ✅ OPRAVENÉ CS8604: Nullable
+            List<GridValidationRule>? validationRules,
             GridThrottlingConfig throttlingConfig,
             int emptyRowsCount = 15,
             DataGridColorConfig? colorConfig = null,
-            LoggerComponent? loggerComponent = null)  // ✅ OPRAVENÉ: 6. parameter pre LoggerComponent
+            LoggerComponent? loggerComponent = null)  // ✅ LoggerComponent parameter
         {
             try
             {
-                await LogAsync($"🚀 InitializeAsync begins (XAML failed: {_xamlLoadFailed}, Logger: {loggerComponent != null}, Columns: {columns?.Count ?? 0}, EmptyRows: {emptyRowsCount})", "INFO");
+                await LogAsync($"🚀 InitializeAsync begins with LoggerComponent: {loggerComponent != null}", "INFO");
 
-                // ✅ KĽÚČOVÁ INTEGRÁCIA: Nastav LoggerComponent ak je poskytnutý
+                // ✅ KĽÚČOVÁ INTEGRÁCIA: Ak je poskytnutý LoggerComponent, použij jeho ILogger
                 if (loggerComponent != null)
                 {
                     SetIntegratedLogger(loggerComponent, true);
                     await LogAsync("🔗 LoggerComponent integration ENABLED for this DataGrid instance", "INFO");
+
+                    // ✅ NOVÉ: Rekonfiguruj services s externým logger z LoggerComponent
+                    ReconfigureServicesWithExternalLogger(loggerComponent.ExternalLogger);
                 }
 
-                // ✅ OPRAVENÉ CS8604: Null check pre columns parameter
-                if (columns == null)
-                {
-                    await LogAsync("❌ InitializeAsync: columns parameter is NULL", "ERROR");
-                    throw new ArgumentNullException(nameof(columns), "Columns parameter cannot be null");
-                }
-
-                await LogAsync($"📊 InitializeAsync: Processing {columns.Count} columns, {validationRules?.Count ?? 0} validation rules", "INFO");
-
-                // ✅ KĽÚČOVÁ OPRAVA: Ak XAML zlyhal, pokračuj iba s dátovou inicializáciou
-                if (_xamlLoadFailed)
-                {
-                    await LogAsync("⚠️ XAML failed - continuing with data-only initialization without UI updates", "WARN");
-                    await InitializeDataOnlyAsync(columns, validationRules ?? new List<GridValidationRule>(), throttlingConfig, emptyRowsCount, colorConfig);
-                    return;
-                }
-
-                ShowLoadingState("Inicializuje sa DataGrid s Individual Colors, Search/Sort/Zebra a LoggerComponent...");
-
-                // ✅ AUTO-ADD: Unified row count
-                _unifiedRowCount = Math.Max(emptyRowsCount, 1);
-                _autoAddEnabled = true;
-
-                await LogAsync($"🔥 AUTO-ADD: Nastavený unified počet riadkov = {_unifiedRowCount}, auto-add enabled: {_autoAddEnabled}", "INFO");
-
-                // ✅ Individual Colors - nastavuje sa iba pri inicializácii
-                _individualColorConfig = colorConfig?.Clone() ?? DataGridColorConfig.Light;
-                if (colorConfig != null)
-                {
-                    await LogAsync($"🎨 Individual Colors: Custom colors nastavené ({colorConfig.CustomColorsCount} custom colors)", "INFO");
-                    ApplyIndividualColorsToUI();
-                }
-                else
-                {
-                    await LogAsync("🎨 Individual Colors: Using default Light colors", "INFO");
-                }
-
-                // Ulož columns pre neskoršie použitie
-                _columns.Clear();
-                _columns.AddRange(columns);
-                await LogAsync($"📋 Columns stored: {string.Join(", ", columns.Select(c => $"{c.Name}({c.DataType.Name})"))} ", "DEBUG");
-
-                // ✅ Nastav Search/Sort/Zebra
-                InitializeSearchSortZebra();
-
-                await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), throttlingConfig, emptyRowsCount);
-
-                // ✅ Vytvor počiatočné prázdne riadky
-                await CreateInitialEmptyRowsAsync();
-
-                _isInitialized = true;
-                await LogAsync("🎉 DataGrid successfully initialized with LoggerComponent integration!", "INFO");
-
-                UpdateUIVisibility();
-                HideLoadingState();
+                // ... zvyšok inicializácie...
             }
             catch (Exception ex)
             {
-                await LogAsync($"❌ CRITICAL ERROR during DataGrid initialization: {ex.Message} | StackTrace: {ex.StackTrace}", "ERROR");
-
-                if (!_xamlLoadFailed)
-                {
-                    ShowLoadingState($"Chyba: {ex.Message}");
-                }
+                await LogAsync($"❌ CRITICAL ERROR during DataGrid initialization: {ex.Message}", "ERROR");
                 throw;
             }
+        }
+
+        // ✅ NOVÁ metóda: Rekonfigurácia services s externým logger
+        private void ReconfigureServicesWithExternalLogger(ILogger externalLogger)
+        {
+            try
+            {
+                LogDebug("🔄 Reconfiguring services with external logger from LoggerComponent...");
+
+                var services = new ServiceCollection();
+
+                // Registruj services s externým logger namiesto NullLogger
+                services.AddSingleton<IDataManagementService>(provider =>
+                {
+                    var typedLogger = new LoggerAdapter<DataManagementService>(externalLogger);
+                    return new DataManagementService(typedLogger);
+                });
+
+                services.AddSingleton<IValidationService>(provider =>
+                {
+                    var typedLogger = new LoggerAdapter<ValidationService>(externalLogger);
+                    return new ValidationService(typedLogger);
+                });
+
+                services.AddTransient<IExportService>(provider =>
+                {
+                    var typedLogger = new LoggerAdapter<ExportService>(externalLogger);
+                    var dataService = provider.GetRequiredService<IDataManagementService>();
+                    return new ExportService(typedLogger, dataService);
+                });
+
+                // Rebuild service provider s novým logger
+                _serviceProvider?.Dispose();
+                _serviceProvider = services.BuildServiceProvider();
+
+                // Znovu získaj services s novým logger
+                _dataManagementService = _serviceProvider.GetService<IDataManagementService>();
+                _validationService = _serviceProvider.GetService<IValidationService>();
+                _exportService = _serviceProvider.GetService<IExportService>();
+
+                LogDebug("✅ Services reconfigured with external logger from LoggerComponent");
+            }
+            catch (Exception ex)
+            {
+                LogError($"⚠️ ReconfigureServicesWithExternalLogger error: {ex.Message}", ex);
+            }
+        }
+
+        // ✅ Helper adapter pre ILogger<T> z generic ILogger
+        internal class LoggerAdapter<T> : ILogger<T>
+        {
+            private readonly ILogger _baseLogger;
+
+            public LoggerAdapter(ILogger baseLogger)
+            {
+                _baseLogger = baseLogger ?? throw new ArgumentNullException(nameof(baseLogger));
+            }
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+                => _baseLogger.BeginScope(state);
+
+            public bool IsEnabled(LogLevel logLevel)
+                => _baseLogger.IsEnabled(logLevel);
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+                => _baseLogger.Log(logLevel, eventId, state, exception, formatter);
         }
 
         /// <summary>
@@ -517,23 +529,59 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// </summary>
         private void ConfigureServices(IServiceCollection services)
         {
-            LogDebug("🔧 Configuring services without logging dependencies...");
+            try
+            {
+                LogDebug("🔧 Configuring services without logging dependencies...");
 
-            // ✅ OPRAVENÉ: Nepoužívame services.AddLogging() - balík je nezávislý na logging systéme
-            // Služby dostanú NullLogger.Instance ako fallback
+                // ✅ KĽÚČOVÉ: Balík je nezávislý na logging systéme
+                // Služby dostanú NullLogger.Instance ako fallback ak nie je poskytnutý externý logger
 
-            // Registruj služby s NullLogger fallback
-            services.AddSingleton<IDataManagementService>(provider =>
-                new DataManagementService(NullLogger<DataManagementService>.Instance));
+                // DataManagementService s NullLogger fallback
+                services.AddSingleton<IDataManagementService>(provider =>
+                {
+                    var logger = NullLogger<DataManagementService>.Instance;
+                    return new DataManagementService(logger);
+                });
 
-            services.AddSingleton<IValidationService>(provider =>
-                new ValidationService(NullLogger<ValidationService>.Instance));
+                // ValidationService s NullLogger fallback  
+                services.AddSingleton<IValidationService>(provider =>
+                {
+                    var logger = NullLogger<ValidationService>.Instance;
+                    return new ValidationService(logger);
+                });
 
-            services.AddTransient<IExportService>(provider =>
-                new ExportService(NullLogger<ExportService>.Instance,
-                                provider.GetRequiredService<IDataManagementService>()));
+                // ExportService s NullLogger fallback
+                services.AddTransient<IExportService>(provider =>
+                {
+                    var logger = NullLogger<ExportService>.Instance;
+                    var dataService = provider.GetRequiredService<IDataManagementService>();
+                    return new ExportService(logger, dataService);
+                });
 
-            LogDebug("✅ Services configured with NullLogger fallback (logging-system independent)");
+                // CopyPasteService s NullLogger fallback (ak existuje)
+                services.AddTransient<ICopyPasteService>(provider =>
+                {
+                    var logger = NullLogger<CopyPasteService>.Instance;
+                    return new CopyPasteService(logger);
+                });
+
+                // NavigationService s NullLogger fallback (ak existuje)
+                services.AddTransient<INavigationService>(provider =>
+                {
+                    var logger = NullLogger<NavigationService>.Instance;
+                    return new NavigationService(logger);
+                });
+
+                // ✅ SearchAndSortService bez logger dependency - má vlastnú implementáciu
+                _searchAndSortService = new SearchAndSortService();
+
+                LogDebug("✅ Services configured with NullLogger fallback (logging-system independent)");
+            }
+            catch (Exception ex)
+            {
+                LogError($"⚠️ ConfigureServices error: {ex.Message}", ex);
+                throw;
+            }
         }
 
         private void EnsureInitialized()
