@@ -136,7 +136,7 @@ namespace RpaWinUiComponentsPackage.Demo
                 // ✅ OPRAVENÉ: Vytvorenie LoggerComponent s použitím alias
                 var tempDir = System.IO.Path.GetTempPath();
                 var logFileName = $"RpaDemo_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
-                _logger = new LoggerComp(tempDir, logFileName, 10); // 10MB max size
+                _logger = new LoggerComp(tempDir, logFileName, 100); // 10MB max size
 
                 if (_logger != null)
                 {
