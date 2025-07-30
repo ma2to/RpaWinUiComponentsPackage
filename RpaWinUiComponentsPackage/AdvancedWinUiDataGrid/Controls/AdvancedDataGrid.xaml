@@ -1,4 +1,4 @@
-<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ OPRAVENÉ: Pridaný namespace mapping -->
+<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ OPRAVENÉ: OneTime binding pre ViewModely -->
 <UserControl x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.AdvancedDataGrid"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -60,7 +60,7 @@
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto">
 
-                    <!-- ✅ KĽÚČOVÁ ZMENA: ItemsRepeater namiesto statického textu -->
+                    <!-- ✅ OneWay binding pre ObservableCollection (podporuje notifikácie) -->
                     <ItemsRepeater x:Name="DataRowsRepeater" 
                                    ItemsSource="{x:Bind DisplayRows, Mode=OneWay}">
                         <ItemsRepeater.Layout>
@@ -73,7 +73,7 @@
                                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                         BorderThickness="0,0,0,1">
 
-                                    <!-- Cells in row via horizontal ItemsRepeater -->
+                                    <!-- ✅ OneWay binding - ViewModely teraz podporujú PropertyChanged -->
                                     <ItemsRepeater ItemsSource="{x:Bind Cells, Mode=OneWay}">
                                         <ItemsRepeater.Layout>
                                             <StackLayout Orientation="Horizontal"/>
@@ -87,15 +87,17 @@
                                                         MinHeight="36"
                                                         Padding="8,6">
 
-                                                    <!-- Cell content -->
+                                                    <!-- ✅ TwoWay binding pre realtime validáciu -->
                                                     <TextBox Text="{x:Bind DisplayValue, Mode=TwoWay}" 
                                                              Background="Transparent"
-                                                             BorderThickness="0"
+                                                             BorderThickness="{x:Bind IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}"
+                                                             BorderBrush="{x:Bind IsValid, Converter={StaticResource BoolToValidationBrushConverter}}"
                                                              Padding="0"
                                                              AcceptsReturn="True"
                                                              TextWrapping="Wrap"
                                                              VerticalAlignment="Stretch"
-                                                             FontSize="14"/>
+                                                             FontSize="14"
+                                                             ToolTipService.ToolTip="{x:Bind ValidationErrors}"/>
                                                 </Border>
                                             </DataTemplate>
                                         </ItemsRepeater.ItemTemplate>

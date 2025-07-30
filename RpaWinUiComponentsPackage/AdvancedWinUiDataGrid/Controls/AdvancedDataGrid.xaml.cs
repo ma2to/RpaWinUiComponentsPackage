@@ -1192,9 +1192,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
     }
 
     /// <summary>
-    /// ✅ ViewModel pre zobrazenie riadku v UI - s logovaním
+    /// ✅ ViewModel pre zobrazenie riadku v UI - OPRAVENÉ: odstránené nepoužívané INotifyPropertyChanged
     /// </summary>
-    public class DataRowViewModel : INotifyPropertyChanged
+    public class DataRowViewModel
     {
         public int RowIndex { get; set; }
         public List<GridColumnDefinition> Columns { get; set; } = new();
@@ -1220,8 +1220,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 return cells;
             }
         }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
     }
 
     /// <summary>
@@ -1233,6 +1231,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         public object? Value { get; set; }
         public string DisplayValue { get; set; } = "";
         public string Header { get; set; } = "";
-        public double Width { get; set; } = 150;
+        public double Width { get; set; }
     }
 }

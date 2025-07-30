@@ -1,4 +1,4 @@
-﻿// LoggerComponent/Core/LoggerComponent.cs - ✅ OPRAVENÝ - default rozsekávanie NULL
+﻿// LoggerComponent/Core/LoggerComponent.cs - ✅ AKTUALIZOVANÝ - priame metódy pre log levely
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions; // ✅ POUZE Abstractions
 using System;
@@ -10,9 +10,8 @@ namespace RpaWinUiComponentsPackage.Logger
 {
     /// <summary>
     /// LoggerComponent - wrapper pre externý ILogger + file management - ✅ PUBLIC API
-    /// Balík je nezávislý na konkrétnom logging systéme ale poskytuje file management
-    /// POŽADUJE EXTERNÝ ILOGGER - nie je možné vytvoriť bez neho
-    /// ✅ OPRAVENÉ: Default rozsekávanie je NULL (žiadne rozsekávanie)
+    /// Poskytuje priame metódy pre Info, Debug, Warning, Error
+    /// ✅ AKTUALIZOVANÉ: Priame metódy namiesto LogAsync(message, level)
     /// </summary>
     public class LoggerComponent : IDisposable
     {
@@ -24,23 +23,21 @@ namespace RpaWinUiComponentsPackage.Logger
         // File management properties
         private readonly string _folderPath;
         private readonly string _fileName;
-        private readonly int? _maxFileSizeMB; // ✅ OPRAVENÉ: nullable int
+        private readonly int? _maxFileSizeMB;
         private readonly bool _enableFileLogging;
 
-        #region ✅ Constructor - IBA S EXTERNÝM ILOGGER
+        #region ✅ Constructor
 
         /// <summary>
         /// Vytvorí LoggerComponent s externým ILogger + file management
-        /// ✅ JEDINÝ KONŠTRUKTOR - vyžaduje externý logger
-        /// ✅ OPRAVENÉ: Default rozsekávanie je NULL (žiadne rozsekávanie)
         /// </summary>
         /// <param name="externalLogger">Externý ILogger z aplikácie (POVINNÝ)</param>
         /// <param name="folderPath">Cesta k log súborom</param>
         /// <param name="fileName">Názov log súboru</param>
-        /// <param name="maxFileSizeMB">Max veľkosť súboru v MB (NULL = bez rotácie, inak číslo pre rotáciu)</param>
+        /// <param name="maxFileSizeMB">Max veľkosť súboru v MB (NULL = bez rotácie)</param>
         public LoggerComponent(ILogger externalLogger, string folderPath, string fileName, int? maxFileSizeMB = null)
         {
-            _externalLogger = externalLogger ?? throw new ArgumentNullException(nameof(externalLogger), "External logger is required - LoggerComponent cannot work without it");
+            _externalLogger = externalLogger ?? throw new ArgumentNullException(nameof(externalLogger), "External logger is required");
             _folderPath = folderPath ?? throw new ArgumentNullException(nameof(folderPath));
             _fileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
             _maxFileSizeMB = maxFileSizeMB.HasValue ? Math.Max(0, maxFileSizeMB.Value) : null;
@@ -49,38 +46,144 @@ namespace RpaWinUiComponentsPackage.Logger
             // Vytvor folder ak neexistuje
             EnsureDirectoryExists();
 
-            // Inicializuj file manager ak je potrebné
-            LogFileManager? fileManager = null;
+            // ✅ OPRAVENÉ: Inicializuj file manager priamo v konštruktore (readonly field)
+            LoggerConfiguration config;
             if (_maxFileSizeMB.HasValue && _maxFileSizeMB.Value > 0)
             {
                 // S rotáciou
-                var config = new LoggerConfiguration
+                config = new LoggerConfiguration
                 {
                     FolderPath = _folderPath,
                     BaseFileName = _fileName,
                     MaxFileSizeMB = _maxFileSizeMB.Value,
                     EnableRotation = true
                 };
-                fileManager = new LogFileManager(config);
             }
             else
             {
-                // Bez rotácie - jednoduchý súbor
-                var config = new LoggerConfiguration
+                // Bez rotácie
+                config = new LoggerConfiguration
                 {
                     FolderPath = _folderPath,
                     BaseFileName = _fileName,
                     MaxFileSizeMB = 0,
                     EnableRotation = false
                 };
-                fileManager = new LogFileManager(config);
             }
 
-            _fileManager = fileManager;
+            _fileManager = new LogFileManager(config);
 
             // Log inicializáciu
             _externalLogger.LogInformation("LoggerComponent initialized - File: {FilePath}, Max size: {MaxSize}, Rotation: {Rotation}",
                 CurrentLogFile, _maxFileSizeMB?.ToString() ?? "UNLIMITED", IsRotationEnabled);
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Priame metódy pre log levely
+
+        /// <summary>
+        /// Zaznamená INFO správu
+        /// </summary>
+        /// <param name="message">Správa na zaznamenanie</param>
+        /// <returns>Task pre async operáciu</returns>
+        public async Task Info(string message)
+        {
+            await LogInternalAsync(message, "INFO", LogLevel.Information);
+        }
+
+        /// <summary>
+        /// Zaznamená DEBUG správu
+        /// </summary>
+        /// <param name="message">Správa na zaznamenanie</param>
+        /// <returns>Task pre async operáciu</returns>
+        public async Task Debug(string message)
+        {
+            await LogInternalAsync(message, "DEBUG", LogLevel.Debug);
+        }
+
+        /// <summary>
+        /// Zaznamená WARNING správu
+        /// </summary>
+        /// <param name="message">Správa na zaznamenanie</param>
+        /// <returns>Task pre async operáciu</returns>
+        public async Task Warning(string message)
+        {
+            await LogInternalAsync(message, "WARNING", LogLevel.Warning);
+        }
+
+        /// <summary>
+        /// Zaznamená ERROR správu
+        /// </summary>
+        /// <param name="message">Správa na zaznamenanie</param>
+        /// <returns>Task pre async operáciu</returns>
+        public async Task Error(string message)
+        {
+            await LogInternalAsync(message, "ERROR", LogLevel.Error);
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Zaznamená ERROR správu s exception
+        /// </summary>
+        /// <param name="exception">Exception na zaznamenanie</param>
+        /// <param name="message">Dodatočná správa (optional)</param>
+        /// <returns>Task pre async operáciu</returns>
+        public async Task Error(Exception exception, string? message = null)
+        {
+            var fullMessage = string.IsNullOrWhiteSpace(message)
+                ? $"Exception: {exception.Message}"
+                : $"{message} | Exception: {exception.Message}";
+
+            await LogInternalAsync(fullMessage, "ERROR", LogLevel.Error);
+        }
+
+        /// <summary>
+        /// ✅ ZACHOVANÁ: Pôvodná LogAsync metóda pre backward compatibility
+        /// </summary>
+        /// <param name="message">Správa na zaznamenanie</param>
+        /// <param name="logLevel">Úroveň logovania (INFO, ERROR, DEBUG, WARNING)</param>
+        /// <returns>Task pre async operáciu</returns>
+        public async Task LogAsync(string message, string logLevel = "INFO")
+        {
+            var level = ParseLogLevel(logLevel);
+            await LogInternalAsync(message, logLevel.ToUpperInvariant(), level);
+        }
+
+        #endregion
+
+        #region ✅ PRIVATE: Hlavná logging implementácia
+
+        /// <summary>
+        /// Interná metóda pre logovanie s automatickým timestamp a formátovaním
+        /// </summary>
+        private async Task LogInternalAsync(string message, string levelText, LogLevel logLevel)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(LoggerComponent));
+
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            await _semaphore.WaitAsync();
+            try
+            {
+                // ✅ Automatický timestamp a formát: [timestamp] [LEVEL] message
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                var formattedMessage = $"[{timestamp}] [{levelText}] {message}";
+
+                // 1. Log do súboru (ak je povolené)
+                if (_enableFileLogging && _fileManager != null)
+                {
+                    await _fileManager.WriteLogEntryAsync(formattedMessage);
+                }
+
+                // 2. Log do externého logger systému
+                await Task.Run(() => _externalLogger.Log(logLevel, message));
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
         #endregion
@@ -104,7 +207,6 @@ namespace RpaWinUiComponentsPackage.Logger
 
         /// <summary>
         /// Či je rotácia súborov povolená
-        /// ✅ OPRAVENÉ: Kontrola cez nullable int
         /// </summary>
         public bool IsRotationEnabled => _maxFileSizeMB.HasValue && _maxFileSizeMB.Value > 0;
 
@@ -119,48 +221,9 @@ namespace RpaWinUiComponentsPackage.Logger
         public string ExternalLoggerType => _externalLogger.GetType().Name;
 
         /// <summary>
-        /// ✅ NOVÉ: Maximálna veľkosť súboru (nullable)
+        /// Maximálna veľkosť súboru (nullable)
         /// </summary>
         public int? MaxFileSizeMB => _maxFileSizeMB;
-
-        #endregion
-
-        #region ✅ Main Logging Method
-
-        /// <summary>
-        /// Zaznamená správu do súboru + externého logger systému - ✅ HLAVNÁ METÓDA
-        /// </summary>
-        /// <param name="message">Správa na zaznamenanie</param>
-        /// <param name="logLevel">Úroveň logovania (INFO, ERROR, DEBUG...)</param>
-        /// <returns>Task pre async operáciu</returns>
-        public async Task LogAsync(string message, string logLevel = "INFO")
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(LoggerComponent));
-
-            if (string.IsNullOrWhiteSpace(message))
-                return;
-
-            await _semaphore.WaitAsync();
-            try
-            {
-                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                var formattedMessage = $"[{timestamp}] [{logLevel}] {message}";
-
-                // 1. Log do súboru (ak je povolené)
-                if (_enableFileLogging && _fileManager != null)
-                {
-                    await _fileManager.WriteLogEntryAsync(formattedMessage);
-                }
-
-                // 2. Log do externého logger systému
-                await Task.Run(() => LogToExternalLogger(message, logLevel));
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
 
         #endregion
 
@@ -180,30 +243,14 @@ namespace RpaWinUiComponentsPackage.Logger
             }
             catch (Exception ex)
             {
-                // Ak nie je možné vytvoriť adresár, loguj cez externý logger
                 _externalLogger?.LogError(ex, "Failed to create log directory: {LogDirectory}", _folderPath);
             }
         }
 
-        /// <summary>
-        /// Loguje do externého ILogger systému
-        /// </summary>
-        private void LogToExternalLogger(string message, string logLevel)
-        {
-            try
-            {
-                var level = ParseLogLevel(logLevel);
-                _externalLogger.Log(level, message);
-            }
-            catch (Exception ex)
-            {
-                // Fallback ak externý logger zlyhal
-                System.Diagnostics.Debug.WriteLine($"External logger failed: {ex.Message}. Original message: {message}");
-            }
-        }
+
 
         /// <summary>
-        /// Parsuje string log level na Microsoft.Extensions.Logging.Abstractions.LogLevel
+        /// Parsuje string log level na LogLevel enum
         /// </summary>
         private static LogLevel ParseLogLevel(string logLevel)
         {
@@ -221,18 +268,11 @@ namespace RpaWinUiComponentsPackage.Logger
 
         #endregion
 
-        #region ✅ Factory Methods s OPRAVENÝM default parametrom
+        #region ✅ Factory Methods
 
         /// <summary>
         /// Vytvorí LoggerComponent z externého ILoggerFactory + file settings
-        /// ✅ OPRAVENÉ: Default maxFileSizeMB je NULL
         /// </summary>
-        /// <param name="loggerFactory">ILoggerFactory z demo aplikácie</param>
-        /// <param name="folderPath">Cesta k log súborom</param>
-        /// <param name="fileName">Názov log súboru</param>
-        /// <param name="maxFileSizeMB">Max veľkosť súboru v MB (NULL = bez rotácie)</param>
-        /// <param name="categoryName">Kategória pre logger (default: "RpaDataGrid")</param>
-        /// <returns>LoggerComponent s externým logger + file management</returns>
         public static LoggerComponent FromLoggerFactory(
             ILoggerFactory loggerFactory,
             string folderPath,
@@ -248,48 +288,16 @@ namespace RpaWinUiComponentsPackage.Logger
         }
 
         /// <summary>
-        /// Vytvorí LoggerComponent z typed logger + file settings
-        /// ✅ OPRAVENÉ: Default maxFileSizeMB je NULL
+        /// Vytvorí LoggerComponent bez rotácie (jednoduchý súbor)
         /// </summary>
-        /// <typeparam name="T">Typ pre logger kategóriu</typeparam>
-        /// <param name="loggerFactory">ILoggerFactory z demo aplikácie</param>
-        /// <param name="folderPath">Cesta k log súborom</param>
-        /// <param name="fileName">Názov log súboru</param>
-        /// <param name="maxFileSizeMB">Max veľkosť súboru v MB (NULL = bez rotácie)</param>
-        /// <returns>LoggerComponent s typed logger + file management</returns>
-        public static LoggerComponent FromLoggerFactory<T>(
-            ILoggerFactory loggerFactory,
-            string folderPath,
-            string fileName,
-            int? maxFileSizeMB = null)
-        {
-            if (loggerFactory == null)
-                throw new ArgumentNullException(nameof(loggerFactory));
-
-            var logger = loggerFactory.CreateLogger<T>();
-            return new LoggerComponent(logger, folderPath, fileName, maxFileSizeMB);
-        }
-
-        /// <summary>
-        /// ✅ NOVÉ: Vytvorí LoggerComponent bez rotácie (jednoduchý súbor)
-        /// </summary>
-        /// <param name="externalLogger">Externý ILogger</param>
-        /// <param name="folderPath">Cesta k log súborom</param>
-        /// <param name="fileName">Názov log súboru</param>
-        /// <returns>LoggerComponent bez rotácie</returns>
         public static LoggerComponent WithoutRotation(ILogger externalLogger, string folderPath, string fileName)
         {
             return new LoggerComponent(externalLogger, folderPath, fileName, null);
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Vytvorí LoggerComponent s rotáciou
+        /// Vytvorí LoggerComponent s rotáciou
         /// </summary>
-        /// <param name="externalLogger">Externý ILogger</param>
-        /// <param name="folderPath">Cesta k log súborom</param>
-        /// <param name="fileName">Názov log súboru</param>
-        /// <param name="maxSizeMB">Maximálna veľkosť súboru pre rotáciu</param>
-        /// <returns>LoggerComponent s rotáciou</returns>
         public static LoggerComponent WithRotation(ILogger externalLogger, string folderPath, string fileName, int maxSizeMB)
         {
             return new LoggerComponent(externalLogger, folderPath, fileName, maxSizeMB);
@@ -301,9 +309,7 @@ namespace RpaWinUiComponentsPackage.Logger
 
         /// <summary>
         /// Získa diagnostické informácie o LoggerComponent
-        /// ✅ AKTUALIZOVANÉ: Zobrazuje správne info o rotácii
         /// </summary>
-        /// <returns>Diagnostické info ako string</returns>
         public string GetDiagnosticInfo()
         {
             var rotationInfo = IsRotationEnabled ? $"{_maxFileSizeMB}MB rotation" : "NO rotation";
@@ -317,13 +323,11 @@ namespace RpaWinUiComponentsPackage.Logger
         /// <summary>
         /// Testuje funkčnosť loggera
         /// </summary>
-        /// <returns>True ak funguje</returns>
         public async Task<bool> TestLoggingAsync()
         {
             try
             {
-                var testMessage = $"LoggerComponent test message at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Rotation: {IsRotationEnabled}";
-                await LogAsync(testMessage, "DEBUG");
+                await Debug($"LoggerComponent test message at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - Rotation: {IsRotationEnabled}");
                 return true;
             }
             catch
@@ -333,9 +337,8 @@ namespace RpaWinUiComponentsPackage.Logger
         }
 
         /// <summary>
-        /// ✅ NOVÉ: Získa informácie o rotácii
+        /// Získa informácie o rotácii
         /// </summary>
-        /// <returns>Informácie o rotácii súborov</returns>
         public string GetRotationInfo()
         {
             if (!IsRotationEnabled)
@@ -350,9 +353,6 @@ namespace RpaWinUiComponentsPackage.Logger
 
         #region ✅ IDisposable Implementation
 
-        /// <summary>
-        /// Dispose pattern implementation
-        /// </summary>
         public void Dispose()
         {
             if (_disposed) return;
@@ -361,7 +361,6 @@ namespace RpaWinUiComponentsPackage.Logger
 
             _semaphore?.Dispose();
             _fileManager?.Dispose();
-            // Poznámka: _externalLogger nie je owned by LoggerComponent, takže ho nedisposujeme
 
             _disposed = true;
         }

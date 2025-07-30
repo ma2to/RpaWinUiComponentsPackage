@@ -27,7 +27,7 @@
 
     <!-- ✅ MULTI-COMPONENT Package Information -->
     <PackageId>RpaWinUiComponentsPackage</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components Package</Product>
@@ -35,7 +35,7 @@
     <PackageTags>WinUI3;DataGrid;Logger;Components;Package</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>v1.0.1: Multi-component package with AdvancedDataGrid and LoggerComponent</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.2: Multi-component package with AdvancedDataGrid and LoggerComponent</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
     <AssemblyTitle>RPA WinUI Components Package</AssemblyTitle>
