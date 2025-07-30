@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - všetky CS chyby vyriešené
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ - iba Abstractions, žiadne logging dependencies
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions; // ✅ OPRAVENÉ: Iba Abstractions
 using Microsoft.UI.Xaml;
@@ -24,7 +24,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
     /// <summary>
     /// AdvancedDataGrid s KOMPLETNOU LoggerComponent integráciou - ✅ PUBLIC API
-    /// Loguje všetky UI operácie, chyby, validácie, dátové operácie, search/sort/zebra
+    /// Balík je nezávislý na logging systéme - používa iba Abstractions + LoggerComponent
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
@@ -48,10 +48,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         // ✅ SearchAndSortService s PUBLIC SortDirection typom
         private SearchAndSortService? _searchAndSortService;
-
-        // ✅ OPRAVENÉ CS0169, CS0414: Odstránené nepoužívané fields
-        // Pôvodné: private string? _currentSortColumn; - ODSTRÁNENÉ
-        // Pôvodné: private SortDirection _currentSortDirection = SortDirection.None; - ODSTRÁNENÉ
 
         // ✅ Interné dáta pre AUTO-ADD a UI binding
         private readonly List<Dictionary<string, object?>> _gridData = new();
@@ -488,7 +484,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Helper Methods s logovaním
+        #region ✅ Helper Methods s logovaním - OPRAVENÉ bez Microsoft.Extensions.Logging závislostí
 
         private void InitializeDependencyInjection()
         {
@@ -515,18 +511,29 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
+        /// <summary>
+        /// ✅ OPRAVENÉ: ConfigureServices bez Microsoft.Extensions.Logging závislostí
+        /// Balík je nezávislý na logging systéme - používa iba NullLogger.Instance
+        /// </summary>
         private void ConfigureServices(IServiceCollection services)
         {
-            LogDebug("🔧 Configuring services...");
+            LogDebug("🔧 Configuring services without logging dependencies...");
 
-            // ✅ OPRAVENÉ: Bez SetMinimumLevel (nie je v Abstractions)
-            services.AddLogging();
+            // ✅ OPRAVENÉ: Nepoužívame services.AddLogging() - balík je nezávislý na logging systéme
+            // Služby dostanú NullLogger.Instance ako fallback
 
-            services.AddSingleton<IDataManagementService, DataManagementService>();
-            services.AddSingleton<IValidationService, ValidationService>();
-            services.AddTransient<IExportService, ExportService>();
+            // Registruj služby s NullLogger fallback
+            services.AddSingleton<IDataManagementService>(provider =>
+                new DataManagementService(NullLogger<DataManagementService>.Instance));
 
-            LogDebug("✅ Services configured");
+            services.AddSingleton<IValidationService>(provider =>
+                new ValidationService(NullLogger<ValidationService>.Instance));
+
+            services.AddTransient<IExportService>(provider =>
+                new ExportService(NullLogger<ExportService>.Instance,
+                                provider.GetRequiredService<IDataManagementService>()));
+
+            LogDebug("✅ Services configured with NullLogger fallback (logging-system independent)");
         }
 
         private void EnsureInitialized()
