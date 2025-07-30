@@ -1,0 +1,136 @@
+﻿<!-- RpaWinUiComponentsPackage/RpaWinUiComponentsPackage.csproj - MULTI-COMPONENT PACKAGE -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- ✅ Multi-component package config -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
+
+    <!-- ✅ XAML compilation -->
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
+    <UseCompiledXaml>true</UseCompiledXaml>
+    <GenerateXbfFilesForPackaging>true</GenerateXbfFilesForPackaging>
+
+    <!-- ✅ Package generation -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- ✅ MULTI-COMPONENT Package Information -->
+    <PackageId>RpaWinUiComponentsPackage</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>RPA Team</Authors>
+    <Company>RPA Company</Company>
+    <Product>RPA WinUI Components Package</Product>
+    <Description>WinUI3 Components Package: AdvancedDataGrid + LoggerComponent + More</Description>
+    <PackageTags>WinUI3;DataGrid;Logger;Components;Package</PackageTags>
+    <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReleaseNotes>v1.0.0: Multi-component package with AdvancedDataGrid and LoggerComponent</PackageReleaseNotes>
+
+    <!-- ✅ Assembly Information -->
+    <AssemblyTitle>RPA WinUI Components Package</AssemblyTitle>
+    <AssemblyDescription>Multi-component package for WinUI3</AssemblyDescription>
+
+    <!-- ✅ SUPPRESS warnings -->
+    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277;NETSDK1152</NoWarn>
+  </PropertyGroup>
+
+  <!-- ✅ EXPLICIT XAML files for AdvancedWinUiDataGrid -->
+  <ItemGroup>
+    <Page Include="AdvancedWinUiDataGrid\Controls\AdvancedDataGrid.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="AdvancedWinUiDataGrid\Controls\DataGridCell.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="AdvancedWinUiDataGrid\Controls\SearchAndSortHeader.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="AdvancedWinUiDataGrid\Controls\SpecialColumns\DeleteRowColumn.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="AdvancedWinUiDataGrid\Controls\SpecialColumns\ValidationAlertsColumn.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="AdvancedWinUiDataGrid\Themes\Generic.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+  <!-- ✅ WinUI Dependencies -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
+  </ItemGroup>
+
+  <!-- ✅ Dependency Injection & Logging -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.7" />
+  </ItemGroup>
+
+  <!-- ✅ Additional System Dependencies -->
+  <ItemGroup>
+    <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+  </ItemGroup>
+
+  <!-- ✅ MSBuild targets -->
+  <ItemGroup>
+    <None Include="build/RpaWinUiComponentsPackage.targets" Pack="true" PackagePath="build/" />
+    <None Include="buildTransitive/RpaWinUiComponentsPackage.targets" Pack="true" PackagePath="buildTransitive/" />
+  </ItemGroup>
+
+  <!-- ✅ SINGLE PATH packaging -->
+  <ItemGroup>
+    <None Include="$(OutputPath)$(AssemblyName).dll"
+          Pack="true"
+          PackagePath="lib/net8.0-windows10.0.19041.0/"
+          Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
+
+    <None Include="$(OutputPath)$(AssemblyName).pdb"
+          Pack="true"
+          PackagePath="lib/net8.0-windows10.0.19041.0/"
+          Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+
+    <None Include="$(OutputPath)*.xbf"
+          Pack="true"
+          PackagePath="lib/net8.0-windows10.0.19041.0/"
+          Condition="Exists('$(OutputPath)')" />
+
+    <None Include="$(OutputPath)**/*.xbf"
+          Pack="true"
+          PackagePath="lib/net8.0-windows10.0.19041.0/" />
+  </ItemGroup>
+
+  <!-- ✅ XAML content fallback -->
+  <ItemGroup>
+    <None Include="AdvancedWinUiDataGrid\Controls\**\*.xaml" Pack="true" PackagePath="content/AdvancedWinUiDataGrid/Controls/" />
+    <None Include="AdvancedWinUiDataGrid\Themes\*.xaml" Pack="true" PackagePath="content/AdvancedWinUiDataGrid/Themes/" />
+  </ItemGroup>
+
+  <!-- ✅ Clean duplicate paths -->
+  <Target Name="CleanDuplicateLibPaths" BeforeTargets="Pack">
+    <Message Text="🧹 Multi-component package: Cleaning duplicate paths..." Importance="high" />
+    <ItemGroup>
+      <None Remove="@(None)" Condition="'%(None.Pack)' == 'true' AND '%(None.PackagePath)' == 'lib/net8.0-windows10.0.19041/'" />
+    </ItemGroup>
+    <Message Text="✅ Multi-component package paths cleaned" Importance="high" />
+  </Target>
+
+</Project>

@@ -1,0 +1,81 @@
+﻿<!-- build/RpaWinUiComponentsPackage.targets - MULTI-COMPONENT PACKAGE -->
+<Project>
+
+  <!-- ✅ Debug informácie -->
+  <Target Name="DebugMultiComponentPackage" BeforeTargets="ResolveReferences" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
+    <Message Text="🔍 RpaWinUiComponentsPackage: Multi-component package loaded" Importance="normal" />
+    <Message Text="📦 Components: AdvancedWinUiDataGrid, LoggerComponent" Importance="normal" />
+    <Message Text="🔍 MSBuildThisFileDirectory = $(MSBuildThisFileDirectory)" Importance="normal" />
+  </Target>
+
+  <!-- ✅ SINGLE unified path for all components -->
+  <PropertyGroup>
+    <RpaComponentsLibPath>$(MSBuildThisFileDirectory)../lib/net8.0-windows10.0.19041.0/</RpaComponentsLibPath>
+    <RpaComponentsContentPath>$(MSBuildThisFileDirectory)../content/</RpaComponentsContentPath>
+  </PropertyGroup>
+
+  <!-- ✅ Assembly reference - SINGLE package with multiple components -->
+  <ItemGroup Condition="'$(UseWinUI)' == 'true' AND '$(RpaComponentsLibPath)' != ''">
+
+    <!-- Main package assembly -->
+    <Reference Include="RpaWinUiComponentsPackage" Condition="Exists('$(RpaComponentsLibPath)RpaWinUiComponentsPackage.dll')">
+      <HintPath>$(RpaComponentsLibPath)RpaWinUiComponentsPackage.dll</HintPath>
+      <Private>False</Private>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </Reference>
+
+  </ItemGroup>
+
+  <!-- ✅ XBF files copying for AdvancedWinUiDataGrid -->
+  <Target Name="CopyMultiComponentXbfFiles" BeforeTargets="PrepareForBuild" Condition="'$(UseWinUI)' == 'true' AND '$(RpaComponentsLibPath)' != ''">
+    <Message Text="🎨 Copying XBF files for multi-component package from: $(RpaComponentsLibPath)" Importance="normal" />
+
+    <!-- Find XBF files -->
+    <ItemGroup>
+      <RpaComponentXbfFiles Include="$(RpaComponentsLibPath)*.xbf" />
+      <RpaComponentXbfFiles Include="$(RpaComponentsLibPath)**/*.xbf" />
+    </ItemGroup>
+
+    <!-- Copy XBF files -->
+    <Copy SourceFiles="@(RpaComponentXbfFiles)"
+          DestinationFolder="$(OutputPath)%(RecursiveDir)"
+          SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          UseHardlinksIfPossible="false"
+          Condition="'@(RpaComponentXbfFiles)' != ''" />
+
+    <Message Text="✅ Copied @(RpaComponentXbfFiles->Count()) XBF files for multi-component package" 
+             Importance="normal" 
+             Condition="'@(RpaComponentXbfFiles)' != ''" />
+  </Target>
+
+  <!-- ✅ WinUI3 specific settings -->
+  <PropertyGroup Condition="'$(UseWinUI)' == 'true'">
+    <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
+
+    <!-- Suppress warnings -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277;NETSDK1152</MSBuildWarningsAsMessages>
+    <NoWarn>$(NoWarn);NETSDK1152</NoWarn>
+  </PropertyGroup>
+
+  <!-- ✅ Verification target -->
+  <Target Name="VerifyMultiComponentPackage" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug' AND '$(UseWinUI)' == 'true'">
+
+    <PropertyGroup>
+      <MultiComponentDllExists Condition="Exists('$(RpaComponentsLibPath)RpaWinUiComponentsPackage.dll')">true</MultiComponentDllExists>
+    </PropertyGroup>
+
+    <Message Text="✅ Multi-component package DLL found: $(RpaComponentsLibPath)RpaWinUiComponentsPackage.dll"
+             Importance="normal"
+             Condition="'$(MultiComponentDllExists)' == 'true'" />
+
+    <Message Text="🎉 RpaWinUiComponentsPackage multi-component package loaded successfully!"
+             Importance="high"
+             Condition="'$(MultiComponentDllExists)' == 'true'" />
+
+    <Error Text="❌ Multi-component package DLL not found: $(RpaComponentsLibPath)RpaWinUiComponentsPackage.dll"
+           Condition="'$(MultiComponentDllExists)' != 'true'" />
+  </Target>
+
+</Project>

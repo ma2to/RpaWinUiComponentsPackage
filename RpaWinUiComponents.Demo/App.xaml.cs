@@ -1,7 +1,7 @@
 ﻿// RpaWinUiComponents.Demo/App.xaml.cs
 using Microsoft.UI.Xaml;
 
-namespace RpaWinUiComponents.Demo
+namespace RpaWinUiComponentsPackage.Demo
 {
     /// <summary>
     /// Demo aplikácia pre testovanie AdvancedWinUiDataGrid balíka
