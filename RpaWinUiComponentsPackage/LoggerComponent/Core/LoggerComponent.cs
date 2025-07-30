@@ -1,4 +1,4 @@
-﻿// LoggerComponent/Core/LoggerComponent.cs - ✅ KOMPLETNE OPRAVENÝ hybrid
+﻿// LoggerComponent/Core/LoggerComponent.cs - ✅ KOMPLETNE OPRAVENÝ - iba s externým ILogger
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions; // ✅ POUZE Abstractions
 using System;
@@ -9,12 +9,13 @@ using System.Threading.Tasks;
 namespace RpaWinUiComponentsPackage.Logger
 {
     /// <summary>
-    /// LoggerComponent - hybrid externý ILogger + file management - ✅ PUBLIC API
+    /// LoggerComponent - wrapper pre externý ILogger + file management - ✅ PUBLIC API
     /// Balík je nezávislý na konkrétnom logging systéme ale poskytuje file management
+    /// POŽADUJE EXTERNÝ ILOGGER - nie je možné vytvoriť bez neho
     /// </summary>
     public class LoggerComponent : IDisposable
     {
-        private readonly ILogger? _externalLogger;
+        private readonly ILogger _externalLogger;
         private readonly SemaphoreSlim _semaphore = new(1, 1);
         private readonly LogFileManager? _fileManager;
         private bool _disposed = false;
@@ -25,18 +26,19 @@ namespace RpaWinUiComponentsPackage.Logger
         private readonly int _maxFileSizeMB;
         private readonly bool _enableFileLogging;
 
-        #region ✅ Constructors
+        #region ✅ Constructor - IBA S EXTERNÝM ILOGGER
 
         /// <summary>
         /// Vytvorí LoggerComponent s externým ILogger + file management
+        /// ✅ JEDINÝ KONŠTRUKTOR - vyžaduje externý logger
         /// </summary>
-        /// <param name="externalLogger">Externý ILogger z demo aplikácie</param>
+        /// <param name="externalLogger">Externý ILogger z aplikácie (POVINNÝ)</param>
         /// <param name="folderPath">Cesta k log súborom</param>
         /// <param name="fileName">Názov log súboru</param>
         /// <param name="maxFileSizeMB">Max veľkosť súboru v MB (0 = bez rotácie)</param>
         public LoggerComponent(ILogger externalLogger, string folderPath, string fileName, int maxFileSizeMB = 10)
         {
-            _externalLogger = externalLogger ?? throw new ArgumentNullException(nameof(externalLogger));
+            _externalLogger = externalLogger ?? throw new ArgumentNullException(nameof(externalLogger), "External logger is required - LoggerComponent cannot work without it");
             _folderPath = folderPath ?? throw new ArgumentNullException(nameof(folderPath));
             _fileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
             _maxFileSizeMB = Math.Max(0, maxFileSizeMB);
@@ -55,35 +57,10 @@ namespace RpaWinUiComponentsPackage.Logger
             };
 
             _fileManager = new LogFileManager(config);
-        }
 
-        /// <summary>
-        /// Vytvorí LoggerComponent iba s file logging (bez externého logger)
-        /// </summary>
-        /// <param name="folderPath">Cesta k log súborom</param>
-        /// <param name="fileName">Názov log súboru</param>
-        /// <param name="maxFileSizeMB">Max veľkosť súboru v MB (0 = bez rotácie)</param>
-        public LoggerComponent(string folderPath, string fileName, int maxFileSizeMB = 10)
-        {
-            _externalLogger = null;
-            _folderPath = folderPath ?? throw new ArgumentNullException(nameof(folderPath));
-            _fileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
-            _maxFileSizeMB = Math.Max(0, maxFileSizeMB);
-            _enableFileLogging = true;
-
-            // Vytvor folder ak neexistuje
-            EnsureDirectoryExists();
-
-            // Inicializuj file manager
-            var config = new LoggerConfiguration
-            {
-                FolderPath = _folderPath,
-                BaseFileName = _fileName,
-                MaxFileSizeMB = _maxFileSizeMB,
-                EnableRotation = _maxFileSizeMB > 0
-            };
-
-            _fileManager = new LogFileManager(config);
+            // Log inicializáciu
+            _externalLogger.LogInformation("LoggerComponent initialized with file logging: {FilePath}, Max size: {MaxSize}MB, Rotation: {Rotation}",
+                CurrentLogFile, _maxFileSizeMB, IsRotationEnabled);
         }
 
         #endregion
@@ -111,14 +88,14 @@ namespace RpaWinUiComponentsPackage.Logger
         public bool IsRotationEnabled => _maxFileSizeMB > 0;
 
         /// <summary>
-        /// Má externý logger
+        /// Externý logger (pre AdvancedDataGrid použitie)
         /// </summary>
-        public bool HasExternalLogger => _externalLogger != null;
+        public ILogger ExternalLogger => _externalLogger;
 
         /// <summary>
         /// Typ externého loggera
         /// </summary>
-        public string ExternalLoggerType => _externalLogger?.GetType().Name ?? "None";
+        public string ExternalLoggerType => _externalLogger.GetType().Name;
 
         #endregion
 
@@ -150,17 +127,8 @@ namespace RpaWinUiComponentsPackage.Logger
                     await _fileManager.WriteLogEntryAsync(formattedMessage);
                 }
 
-                // 2. Log do externého logger systému (ak existuje)
-                if (_externalLogger != null)
-                {
-                    await Task.Run(() => LogToExternalLogger(message, logLevel));
-                }
-
-                // 3. Fallback debug log
-                if (_externalLogger == null && !_enableFileLogging)
-                {
-                    System.Diagnostics.Debug.WriteLine(formattedMessage);
-                }
+                // 2. Log do externého logger systému
+                await Task.Run(() => LogToExternalLogger(message, logLevel));
             }
             finally
             {
@@ -186,7 +154,8 @@ namespace RpaWinUiComponentsPackage.Logger
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to create log directory: {ex.Message}");
+                // Ak nie je možné vytvoriť adresár, loguj cez externý logger
+                _externalLogger?.LogError(ex, "Failed to create log directory: {LogDirectory}", _folderPath);
             }
         }
 
@@ -197,8 +166,6 @@ namespace RpaWinUiComponentsPackage.Logger
         {
             try
             {
-                if (_externalLogger == null) return;
-
                 var level = ParseLogLevel(logLevel);
                 _externalLogger.Log(level, message);
             }
@@ -319,6 +286,8 @@ namespace RpaWinUiComponentsPackage.Logger
         {
             if (_disposed) return;
 
+            _externalLogger.LogInformation("LoggerComponent disposing...");
+
             _semaphore?.Dispose();
             _fileManager?.Dispose();
             // Poznámka: _externalLogger nie je owned by LoggerComponent, takže ho nedisposujeme
@@ -329,7 +298,7 @@ namespace RpaWinUiComponentsPackage.Logger
         #endregion
     }
 
-    #region ✅ Internal supporting classes
+    #region ✅ Internal supporting classes - NEMENNÉ
 
     /// <summary>
     /// Konfigurácia pre LoggerComponent file management - INTERNAL
