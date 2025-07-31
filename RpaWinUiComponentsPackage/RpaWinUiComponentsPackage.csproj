@@ -27,7 +27,7 @@
 
     <!-- ✅ MULTI-COMPONENT Package Information -->
     <PackageId>RpaWinUiComponentsPackage</PackageId>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components Package</Product>
@@ -35,7 +35,7 @@
     <PackageTags>WinUI3;DataGrid;Logger;Components;Package</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>v1.0.2: Multi-component package with AdvancedDataGrid and LoggerComponent</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.3: Multi-component package with AdvancedDataGrid (Resize+Scroll) and LoggerComponent</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
     <AssemblyTitle>RPA WinUI Components Package</AssemblyTitle>
@@ -82,6 +82,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
+    <!-- ✅ ODSTRÁNENÉ: Microsoft.Extensions.Logging - použije sa iba Abstractions -->
     <!-- ✅ ODSTRÁNENÉ: Microsoft.Extensions.Logging.Debug - nepotrebné v balíku -->
   </ItemGroup>
 

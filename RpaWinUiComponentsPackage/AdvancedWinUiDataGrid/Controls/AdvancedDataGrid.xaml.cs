@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;
 using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
 using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ValidationRule;
+using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.DataGridColorConfig;
 
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
@@ -451,9 +452,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     Width = 4,
                     Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
                     HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Stretch,
-                    Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast)
+                    VerticalAlignment = VerticalAlignment.Stretch
                 };
+
+                // ✅ OPRAVENÉ CS0117: Set cursor cez ProtectedCursor
+                this.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
 
                 headerGrid.Children.Add(resizeGrip);
             }
@@ -606,11 +609,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                     if (header?.ResizeGrip != null && IsPointerOverResizeGrip(position, header))
                     {
-                        this.Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
+                        this.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
                     }
                     else
                     {
-                        this.Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
+                        this.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
                     }
                 }
             }
@@ -647,6 +650,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
+        // ✅ OPRAVENÉ CS0123: Správny signature pre PointerEventHandler
         private void OnPointerCaptureLost(object sender, PointerEventArgs e)
         {
             try

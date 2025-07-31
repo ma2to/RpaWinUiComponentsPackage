@@ -4,13 +4,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid">
 
-    <!-- ✅ OPRAVENÉ: Resources pre realtime validáciu - bez neexistujúcich transitions -->
+    <!-- ✅ OPRAVENÉ: Resources pre realtime validáciu -->
     <UserControl.Resources>
         <!-- Converters pre validáciu -->
         <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter" />
         <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter" />
 
-        <!-- ✅ OPRAVENÉ: Style pre validačné TextBoxy bez transitions -->
+        <!-- ✅ OPRAVENÉ: Style pre validačné TextBoxy -->
         <Style x:Key="ValidatedTextBoxStyle" TargetType="TextBox">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="4,2" />
@@ -38,7 +38,7 @@
         </Style>
     </UserControl.Resources>
 
-    <!-- ✅ OPRAVENÉ: Main border bez duplicitného Child -->
+    <!-- ✅ OPRAVENÉ: Main border -->
     <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1"
@@ -53,7 +53,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- ✅ OPRAVENÉ: Header Grid s resize funkcionalitou -->
+                <!-- ✅ NOVÉ: Header Grid s resize funkcionalitou -->
                 <Border x:Name="HeaderGrid" 
                         Grid.Row="0"
                         Background="{ThemeResource LayerFillColorAltBrush}"
@@ -84,9 +84,7 @@
                               VerticalScrollBarVisibility="Auto"
                               ZoomMode="Disabled"
                               HorizontalScrollMode="Auto"
-                              VerticalScrollMode="Auto"
-                              ScrollViewer.HorizontalScrollChaining="Auto"
-                              ScrollViewer.VerticalScrollChaining="Auto">
+                              VerticalScrollMode="Auto">
 
                     <!-- ✅ NOVÉ: Main data container -->
                     <StackPanel x:Name="DataRowsContainer" 
@@ -98,7 +96,7 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- ✅ OPRAVENÉ: Loading Overlay - bez duplicitného Child -->
+            <!-- ✅ OPRAVENÉ: Loading Overlay -->
             <Border x:Name="LoadingOverlay"
                     Background="{ThemeResource LayerFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -133,7 +131,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- ✅ OPRAVENÉ: Validačný overlay bez transitions -->
+            <!-- ✅ OPRAVENÉ: Validačný overlay -->
             <Border x:Name="ValidationOverlay"
                     Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
                     BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"

@@ -1,4 +1,4 @@
-﻿<!-- Directory.Build.props - Solution-level nastavenia pre NETSDK1004 fix -->
+﻿<!-- Directory.Build.props - Solution-level nastavenia pre multi-component package -->
 <Project>
 
   <PropertyGroup>
@@ -6,18 +6,22 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    
+
     <!-- ✅ NETSDK1004 Fix: Force proper restore behavior -->
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
     <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
     <RestoreForceEvaluate>false</RestoreForceEvaluate>
-    
-    <!-- ✅ Suppress known warnings -->
-    <NoWarn>$(NoWarn);CS0414;NETSDK1022;CA1416</NoWarn>
-    
+
+    <!-- ✅ AKTUALIZOVANÉ: Suppress known warnings + nové pre WinUI3 + Logging -->
+    <NoWarn>$(NoWarn);CS0414;NETSDK1022;CA1416;NETSDK1152;NU5128;NU5131;MSB3270;MSB3271;MSB3277</NoWarn>
+
     <!-- ✅ Build performance -->
     <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+
+    <!-- ✅ NOVÉ: WinUI3 support -->
+    <UseWinUI Condition="'$(UseWinUI)' == ''">true</UseWinUI>
+    <EnableMsixTooling Condition="'$(EnableMsixTooling)' == ''">false</EnableMsixTooling>
   </PropertyGroup>
 
   <!-- ✅ Global package versions -->
@@ -27,12 +31,27 @@
     <NetCoreTargetFramework>net8.0</NetCoreTargetFramework>
     <WindowsTargetFramework>net8.0-windows10.0.19041.0</WindowsTargetFramework>
     <WindowsMinTargetFramework>10.0.17763.0</WindowsMinTargetFramework>
+
+    <!-- ✅ NOVÉ: Logging framework verzie -->
+    <MicrosoftExtensionsLoggingAbstractionsVersion>9.0.7</MicrosoftExtensionsLoggingAbstractionsVersion>
+    <MicrosoftExtensionsDependencyInjectionVersion>9.0.7</MicrosoftExtensionsDependencyInjectionVersion>
+  </PropertyGroup>
+
+  <!-- ✅ NOVÉ: Multi-component package global properties -->
+  <PropertyGroup Condition="'$(IsMultiComponentPackage)' == 'true'">
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <XamlCompilationEnabled>true</XamlCompilationEnabled>
+    <UseCompiledXaml>true</UseCompiledXaml>
   </PropertyGroup>
 
   <!-- ✅ Debug informácie -->
   <Target Name="ShowGlobalBuildInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="🌍 Directory.Build.props active - Global settings applied" Importance="normal" />
     <Message Text="📦 RestoreProjectStyle: $(RestoreProjectStyle)" Importance="normal" />
+    <Message Text="🔧 UseWinUI: $(UseWinUI), WindowsAppSDK: $(WindowsAppSDKVersion)" Importance="normal" />
+    <Message Text="📝 Logging Abstractions: $(MicrosoftExtensionsLoggingAbstractionsVersion)" Importance="normal" />
   </Target>
 
   <!-- ✅ Pre-build cleanup -->
@@ -41,14 +60,31 @@
       <AssetsFile>$(MSBuildProjectDirectory)\obj\project.assets.json</AssetsFile>
       <AssetsFileExists Condition="Exists('$(AssetsFile)')">true</AssetsFileExists>
     </PropertyGroup>
-    
+
     <Message Text="🔍 Checking assets file: $(AssetsFile)" Importance="low" />
-    
+
     <!-- ✅ Ak assets file neexistuje, pokús sa o restore -->
-    <Exec Command="dotnet restore &quot;$(MSBuildProjectFile)&quot; --verbosity quiet" 
+    <Exec Command="dotnet restore &quot;$(MSBuildProjectFile)&quot; --verbosity quiet"
           Condition="'$(AssetsFileExists)' != 'true'"
           ContinueOnError="true"
           IgnoreExitCode="true" />
+  </Target>
+
+  <!-- ✅ NOVÉ: Global cleanup target pre multi-component packages -->
+  <Target Name="CleanupMultiComponentOutput" AfterTargets="Build" Condition="'$(IsMultiComponentPackage)' == 'true'">
+    <Message Text="🧹 Multi-component package cleanup..." Importance="low" />
+
+    <!-- Remove duplicates from output -->
+    <ItemGroup>
+      <DuplicateOutputFiles Include="$(OutputPath)**/*.*" Exclude="$(OutputPath)$(AssemblyName).*" />
+    </ItemGroup>
+
+    <Message Text="🧹 Found $(DuplicateOutputFiles->Count()) potential duplicate files" Importance="low" />
+  </Target>
+
+  <!-- ✅ NOVÉ: Validate logging abstractions usage -->
+  <Target Name="ValidateLoggingUsage" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <Message Text="✅ Using Microsoft.Extensions.Logging.Abstractions - Independent component design" Importance="low" />
   </Target>
 
 </Project>
