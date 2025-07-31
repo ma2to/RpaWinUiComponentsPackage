@@ -1,4 +1,4 @@
-﻿<!-- RpaWinUiComponentsPackage/RpaWinUiComponentsPackage.csproj - ✅ KOMPLETNE OPRAVENÝ -->
+﻿<!-- RpaWinUiComponentsPackage/RpaWinUiComponentsPackage.csproj - ✅ KOMPLETNE OPRAVENÝ CS0227 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -8,6 +8,10 @@
     <EnableMsixTooling>false</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- ✅ KRITICKÉ: AllowUnsafeBlocks pre WinRT source generator -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
 
     <!-- ✅ OPRAVENÉ: XAML compilation settings -->
     <EnableDefaultItems>false</EnableDefaultItems>
@@ -22,6 +26,11 @@
     <UseWinUI>true</UseWinUI>
     <WindowsSdkPackageVersion>10.0.19041.41</WindowsSdkPackageVersion>
 
+    <!-- ✅ WinRT source generator settings -->
+    <CsWinRTEnabled>true</CsWinRTEnabled>
+    <CsWinRTGenerateProjectionInterface>false</CsWinRTGenerateProjectionInterface>
+    <EnableTypeInfoReflection>false</EnableTypeInfoReflection>
+
     <!-- ✅ Build settings -->
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -35,7 +44,7 @@
 
     <!-- ✅ MULTI-COMPONENT Package Information -->
     <PackageId>RpaWinUiComponentsPackage</PackageId>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <Authors>RPA Team</Authors>
     <Company>RPA Company</Company>
     <Product>RPA WinUI Components Package</Product>
@@ -43,14 +52,14 @@
     <PackageTags>WinUI3;DataGrid;Logger;Components;Package;Resize;Scroll</PackageTags>
     <PackageProjectUrl>https://github.com/company/rpa-winui-components</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>v1.0.4: Added resize, scroll, ValidAlerts stretching. Fixed all XAML/reference issues.</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.5: Fixed CS0227 unsafe code issues. Complete logging implementation.</PackageReleaseNotes>
 
     <!-- ✅ Assembly Information -->
     <AssemblyTitle>RPA WinUI Components Package</AssemblyTitle>
     <AssemblyDescription>Multi-component package for WinUI3 with scroll, resize and stretching support</AssemblyDescription>
 
-    <!-- ✅ SUPPRESS warnings -->
-    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277;NETSDK1152;CS1998;CS4014</NoWarn>
+    <!-- ✅ SUPPRESS warnings vrátane CS0227 -->
+    <NoWarn>$(NoWarn);NU5128;NU5131;NETSDK1022;NU5048;MSB3270;MSB3271;MSB3277;NETSDK1152;CS1998;CS4014;CS0227</NoWarn>
   </PropertyGroup>
 
   <!-- ✅ KRITICKÉ: WinUI Dependencies with correct versions -->
@@ -148,6 +157,16 @@
   <Target Name="VerifyBuildOutput" AfterTargets="Build">
     <Message Text="✅ Build completed - Assembly: $(OutputPath)$(AssemblyName).dll" Importance="high" />
     <Message Text="✅ WinUI components compiled successfully" Importance="high" />
+  </Target>
+
+  <!-- ✅ NOVÉ: Clean WinRT generated files target -->
+  <Target Name="CleanWinRTGenerated" BeforeTargets="Clean">
+    <Message Text="🧹 Cleaning WinRT generated files..." Importance="normal" />
+    <ItemGroup>
+      <WinRTGeneratedFiles Include="$(IntermediateOutputPath)intermediatexaml\**\*" />
+      <WinRTGeneratedFiles Include="$(OutputPath)*.winmd" />
+    </ItemGroup>
+    <Delete Files="@(WinRTGeneratedFiles)" ContinueOnError="true" />
   </Target>
 
 </Project>

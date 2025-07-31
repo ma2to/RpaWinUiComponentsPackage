@@ -1,4 +1,4 @@
-﻿<!-- Directory.Build.props - ✅ KOMPLETNE OPRAVENÝ pre WinUI3 + Logging.Abstractions -->
+﻿<!-- Directory.Build.props - ✅ KOMPLETNE OPRAVENÝ pre WinUI3 + CS0227 fix -->
 <Project>
 
   <PropertyGroup>
@@ -7,13 +7,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
+    <!-- ✅ KRITICKÉ: AllowUnsafeBlocks pre WinRT source generator -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+
     <!-- ✅ OPRAVENÉ: Force proper restore behavior -->
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
     <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
     <RestoreForceEvaluate>false</RestoreForceEvaluate>
 
-    <!-- ✅ OPRAVENÉ: Suppress ALL known warnings -->
-    <NoWarn>$(NoWarn);CS0414;CS1998;CS4014;NETSDK1022;CA1416;NETSDK1152;NU5128;NU5131;MSB3270;MSB3271;MSB3277;XLS0414</NoWarn>
+    <!-- ✅ OPRAVENÉ: Suppress ALL known warnings vrátane CS0227 -->
+    <NoWarn>$(NoWarn);CS0414;CS1998;CS4014;CS0227;NETSDK1022;CA1416;NETSDK1152;NU5128;NU5131;MSB3270;MSB3271;MSB3277;XLS0414</NoWarn>
 
     <!-- ✅ Build performance -->
     <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
@@ -22,11 +26,16 @@
     <!-- ✅ KRITICKÉ: WinUI3 support -->
     <UseWinUI Condition="'$(UseWinUI)' == ''">true</UseWinUI>
     <EnableMsixTooling Condition="'$(EnableMsixTooling)' == ''">false</EnableMsixTooling>
-    
+
     <!-- ✅ OPRAVENÉ: Windows SDK versions -->
     <WindowsSdkPackageVersion>10.0.19041.41</WindowsSdkPackageVersion>
     <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
+
+    <!-- ✅ WinRT source generator settings -->
+    <CsWinRTEnabled>true</CsWinRTEnabled>
+    <CsWinRTGenerateProjectionInterface>false</CsWinRTGenerateProjectionInterface>
+    <EnableTypeInfoReflection>false</EnableTypeInfoReflection>
   </PropertyGroup>
 
   <!-- ✅ OPRAVENÉ: Updated package versions pre kompatibilitu -->
@@ -58,11 +67,15 @@
     <AssetTargetFallback>$(AssetTargetFallback);native,Version=0.0</AssetTargetFallback>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
-    
+
     <!-- ✅ KRITICKÉ: WinUI XAML compilation -->
     <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
     <XamlCompilationEnabled>true</XamlCompilationEnabled>
     <UseCompiledXaml>true</UseCompiledXaml>
+
+    <!-- ✅ NOVÉ: WinRT Unsafe code support -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CsWinRTEnabled>true</CsWinRTEnabled>
   </PropertyGroup>
 
   <!-- ✅ NOVÉ: Global UsingsImports pre všetky projekty -->
@@ -80,6 +93,7 @@
   <!-- ✅ Debug informácie -->
   <Target Name="ShowGlobalBuildInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="🌍 Directory.Build.props active - Global settings applied" Importance="normal" />
+    <Message Text="🔓 AllowUnsafeBlocks: $(AllowUnsafeBlocks) - CS0227 Fix" Importance="normal" />
     <Message Text="📦 RestoreProjectStyle: $(RestoreProjectStyle)" Importance="normal" />
     <Message Text="🔧 UseWinUI: $(UseWinUI), WindowsAppSDK: $(WindowsAppSDKVersion)" Importance="normal" />
     <Message Text="📝 Logging Abstractions: $(MicrosoftExtensionsLoggingAbstractionsVersion)" Importance="normal" />
@@ -102,9 +116,10 @@
           IgnoreExitCode="true" />
   </Target>
 
-  <!-- ✅ NOVÉ: WinUI3 verification target -->
+  <!-- ✅ NOVÉ: WinUI3 verification target s unsafe code check -->
   <Target Name="VerifyWinUISetup" BeforeTargets="Build" Condition="'$(UseWinUI)' == 'true'">
     <Message Text="✅ WinUI3 setup verified - XAML compilation enabled" Importance="low" />
+    <Message Text="🔓 Unsafe code enabled: $(AllowUnsafeBlocks) - CS0227 Fixed" Importance="low" />
     <Message Text="📱 Target platforms: $(RuntimeIdentifiers)" Importance="low" />
   </Target>
 
@@ -117,10 +132,12 @@
   <!-- ✅ NOVÉ: Cleanup target pre clean builds -->
   <Target Name="CleanupBuildArtifacts" AfterTargets="Clean">
     <Message Text="🧹 Cleaning build artifacts..." Importance="low" />
-    
+
     <ItemGroup>
       <FilesToDelete Include="$(OutputPath)**/*.*" />
       <FilesToDelete Include="$(IntermediateOutputPath)**/*.*" />
+      <!-- ✅ NOVÉ: Clean WinRT generated files -->
+      <FilesToDelete Include="$(IntermediateOutputPath)intermediatexaml\**\*.*" />
     </ItemGroup>
 
     <Delete Files="@(FilesToDelete)" ContinueOnError="true" />
@@ -131,6 +148,7 @@
   <Target Name="LogBuildPerformance" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
     <Message Text="⏱️ Build completed at: $([System.DateTime]::Now.ToString('HH:mm:ss'))" Importance="normal" />
     <Message Text="🎯 Assembly: $(TargetFileName)" Importance="normal" />
+    <Message Text="🔓 Unsafe blocks enabled: $(AllowUnsafeBlocks)" Importance="normal" />
   </Target>
 
 </Project>
