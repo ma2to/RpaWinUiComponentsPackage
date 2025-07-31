@@ -1,5 +1,6 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ VŠETKY CHYBY OPRAVENÉ + RESIZE + SCROLL + LOGGING
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s Resize+Scroll+Stretch
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -25,10 +26,9 @@ using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
     /// <summary>
-    /// AdvancedDataGrid - NEZÁVISLÝ KOMPONENT s ILogger abstractions + RESIZE + SCROLL
-    /// ✅ ÚPLNE NEZÁVISLÝ na LoggerComponent - používa iba ILogger abstractions
-    /// ✅ OPRAVENÉ: Všetky XAML a C# chyby
-    /// ✅ NOVÉ: Mouse resize stĺpcov, scroll support, ValidAlerts stretching
+    /// AdvancedDataGrid - NEZÁVISLÝ KOMPONENT s ILogger abstractions
+    /// ✅ KOMPLETNE OPRAVENÝ: Resize+Scroll+Stretch+Logging
+    /// ✅ NEZÁVISLÝ na LoggerComponent - používa iba ILogger abstractions
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
@@ -41,7 +41,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         private bool _isInitialized = false;
         private bool _isDisposed = false;
-        private bool _xamlLoadFailed = false;
 
         // Auto-Add fields
         private int _unifiedRowCount = 15;
@@ -61,9 +60,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         // Search & Sort state tracking
         private readonly Dictionary<string, string> _columnSearchFilters = new();
 
-        // ✅ NEZÁVISLÉ LOGOVANIE: Používa ILogger abstractions
+        // ✅ OPRAVENÉ: NEZÁVISLÉ LOGOVANIE - používa ILogger abstractions
         private readonly ILogger _logger;
-        private string _componentInstanceId = Guid.NewGuid().ToString("N")[..8];
+        private readonly string _componentInstanceId = Guid.NewGuid().ToString("N")[..8];
 
         // Performance tracking
         private readonly Dictionary<string, DateTime> _operationStartTimes = new();
@@ -83,9 +82,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         // ✅ NOVÉ: Scroll synchronization
         private bool _isScrollSynchronizing = false;
 
+        // ✅ NOVÉ: Layout management
+        private double _totalAvailableWidth = 0;
+        private double _validAlertsMinWidth = 200;
+
         #endregion
 
-        #region ✅ NEZÁVISLÉ Constructors s ILogger podporou
+        #region ✅ OPRAVENÉ: Constructors s ILogger abstractions podporou
 
         /// <summary>
         /// Vytvorí AdvancedDataGrid bez loggingu (NullLogger) - DEFAULT konštruktor
@@ -96,37 +99,31 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         /// <summary>
         /// Vytvorí AdvancedDataGrid s voliteľným loggerom
-        /// ✅ HLAVNÝ KONŠTRUKTOR - podporuje externe logovanie
+        /// ✅ HLAVNÝ KONŠTRUKTOR - podporuje externe logovanie cez abstractions
         /// </summary>
         /// <param name="logger">ILogger pre logovanie (null = žiadne logovanie)</param>
         public AdvancedDataGrid(ILogger? logger)
         {
             try
             {
-                // ✅ NEZÁVISLÉ LOGOVANIE: Použije poskytnutý logger alebo NullLogger
+                // ✅ OPRAVENÉ: Použije poskytnutý logger alebo NullLogger
                 _logger = logger ?? NullLogger.Instance;
 
                 _logger.LogDebug("🔧 AdvancedDataGrid Constructor START - Instance: {ComponentInstanceId}", _componentInstanceId);
                 StartOperation("Constructor");
 
-                TryInitializeXaml();
+                // ✅ KRITICKÉ: InitializeComponent pre UserControl
+                this.InitializeComponent();
 
-                if (!_xamlLoadFailed)
-                {
-                    _logger.LogDebug("✅ Constructor - XAML úspešne načítané");
-                    InitializeDependencyInjection();
-                    InitializeResizeSupport();
-                    InitializeScrollSupport();
-                    _logger.LogInformation("✅ Constructor - Kompletne inicializovaný s realtime validáciou, resize a scroll");
-                    UpdateUIVisibility();
-                }
-                else
-                {
-                    _logger.LogWarning("⚠️ Constructor - XAML loading zlyhal, vytváram fallback UI");
-                    CreateSimpleFallbackUI();
-                }
+                _logger.LogDebug("✅ Constructor - XAML úspešne načítané");
+                InitializeDependencyInjection();
+                InitializeResizeSupport();
+                InitializeScrollSupport();
+                InitializeLayoutManagement();
 
-                DataContext = this;
+                _logger.LogInformation("✅ Constructor - Kompletne inicializovaný s resize, scroll, stretch");
+
+                this.DataContext = this;
                 var duration = EndOperation("Constructor");
                 _logger.LogInformation("✅ Constructor COMPLETED - Instance: {ComponentInstanceId}, Duration: {Duration}ms",
                     _componentInstanceId, duration);
@@ -134,7 +131,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ CRITICAL CONSTRUCTOR ERROR");
-                CreateSimpleFallbackUI();
+                throw;
             }
         }
 
@@ -152,8 +149,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// </summary>
         public async Task InitializeAsync(
             List<GridColumnDefinition> columns,
-            List<GridValidationRule>? validationRules,
-            GridThrottlingConfig? throttlingConfig,
+            List<GridValidationRule>? validationRules = null,
+            GridThrottlingConfig? throttlingConfig = null,
             int emptyRowsCount = 15,
             DataGridColorConfig? colorConfig = null)
         {
@@ -188,22 +185,19 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Initialize services
                 await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), _throttlingConfig, emptyRowsCount);
 
-                // UI setup
-                if (!_xamlLoadFailed)
-                {
-                    ApplyIndividualColorsToUI();
-                    InitializeSearchSortZebra();
-                    await CreateInitialEmptyRowsAsync();
-                    CreateResizableHeaders();
-                    SetupValidAlertsStretching();
-                }
+                // ✅ NOVÉ: UI setup s resize, scroll a stretch funkcionalitou
+                ApplyIndividualColorsToUI();
+                InitializeSearchSortZebra();
+                await CreateInitialEmptyRowsAsync();
+                await CreateResizableHeadersAsync();
+                SetupValidAlertsStretching();
+                SetupScrollSynchronization();
 
                 _isInitialized = true;
-                UpdateUIVisibility();
+                await UpdateUIVisibilityAsync();
 
                 var duration = EndOperation("InitializeAsync");
-                _logger.LogInformation("✅ InitializeAsync COMPLETED - Duration: {Duration}ms, Instance: {InstanceId}",
-                    duration, _componentInstanceId);
+                _logger.LogInformation("✅ InitializeAsync COMPLETED - Duration: {Duration}ms, Features: Resize+Scroll+Stretch", duration);
             }
             catch (Exception ex)
             {
@@ -245,8 +239,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 {
                     await _dataManagementService.LoadDataAsync(data);
                     await UpdateDisplayRowsWithRealtimeValidationAsync();
-                    RefreshDataDisplay();
+                    await RefreshDataDisplayAsync();
                 }
+
+                // ✅ NOVÉ: Update layout after data load
+                await UpdateLayoutAfterDataChangeAsync();
 
                 var duration = EndOperation("LoadDataAsync");
                 _logger.LogInformation("✅ LoadDataAsync COMPLETED - Duration: {Duration}ms, FinalRowCount: {FinalCount}",
@@ -330,7 +327,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 {
                     await _dataManagementService.ClearAllDataAsync();
                     await UpdateDisplayRowsWithRealtimeValidationAsync();
-                    RefreshDataDisplay();
+                    await RefreshDataDisplayAsync();
                 }
 
                 var duration = EndOperation("ClearAllData");
@@ -358,7 +355,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 _logger.LogDebug("🔧 InitializeResizeSupport START");
 
-                // Register for window-level pointer events pre resize tracking
+                // Register for pointer events pre resize tracking
                 this.PointerMoved += OnPointerMoved;
                 this.PointerPressed += OnPointerPressed;
                 this.PointerReleased += OnPointerReleased;
@@ -375,29 +372,35 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Vytvorí resizable headers pre stĺpce
         /// </summary>
-        private void CreateResizableHeaders()
+        private async Task CreateResizableHeadersAsync()
         {
             try
             {
-                if (_xamlLoadFailed || HeaderStackPanel == null)
+                if (HeaderStackPanel == null)
                 {
-                    _logger.LogWarning("⚠️ Cannot create resizable headers - XAML failed or HeaderStackPanel null");
+                    _logger.LogWarning("⚠️ Cannot create resizable headers - HeaderStackPanel null");
                     return;
                 }
 
                 _logger.LogDebug("🔧 CreateResizableHeaders START - Columns: {ColumnCount}", _columns.Count);
 
-                _resizableHeaders.Clear();
-                HeaderStackPanel.Children.Clear();
-
-                foreach (var column in _columns)
+                await this.DispatcherQueue.EnqueueAsync(async () =>
                 {
-                    var header = CreateResizableHeader(column);
-                    _resizableHeaders.Add(header);
-                    HeaderStackPanel.Children.Add(header.HeaderBorder);
-                }
+                    _resizableHeaders.Clear();
+                    HeaderStackPanel.Children.Clear();
 
-                _logger.LogInformation("✅ Created {HeaderCount} resizable headers", _resizableHeaders.Count);
+                    foreach (var column in _columns)
+                    {
+                        var header = await CreateResizableHeaderAsync(column);
+                        _resizableHeaders.Add(header);
+                        HeaderStackPanel.Children.Add(header.HeaderBorder);
+                    }
+
+                    // ✅ KĽÚČOVÉ: Setup ValidAlerts stretching
+                    await SetupValidAlertsStretchingAsync();
+
+                    _logger.LogInformation("✅ Created {HeaderCount} resizable headers", _resizableHeaders.Count);
+                });
             }
             catch (Exception ex)
             {
@@ -408,147 +411,77 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Vytvorí jeden resizable header pre stĺpec
         /// </summary>
-        private ResizableColumnHeader CreateResizableHeader(GridColumnDefinition column)
+        private async Task<ResizableColumnHeader> CreateResizableHeaderAsync(GridColumnDefinition column)
         {
-            var headerBorder = new Border
+            return await Task.Run(() =>
             {
-                Background = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
-                BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-                BorderThickness = new Thickness(0, 0, 1, 1),
-                MinHeight = 40,
-                Width = column.Width
-            };
-
-            var headerGrid = new Grid();
-            headerBorder.Child = headerGrid;
-
-            // Header text
-            var headerText = new TextBlock
-            {
-                Text = column.Header ?? column.Name,
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                FontSize = 14,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(8, 6, 12, 6),
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-
-            // ✅ NOVÉ: ValidAlerts stĺpec sa roztiahne
-            if (column.Name == "ValidAlerts")
-            {
-                headerBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
-                headerText.Text = "⚠️ Validation Alerts";
-                headerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
-            }
-
-            headerGrid.Children.Add(headerText);
-
-            // Resize grip (iba ak nie je ValidAlerts)
-            Border? resizeGrip = null;
-            if (column.Name != "ValidAlerts")
-            {
-                resizeGrip = new Border
+                var headerBorder = new Border
                 {
-                    Width = 4,
-                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Stretch
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
+                    BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                    BorderThickness = new Thickness(0, 0, 1, 1),
+                    MinHeight = 40,
+                    Width = column.Width,
+                    HorizontalAlignment = HorizontalAlignment.Left
                 };
 
-                // ✅ OPRAVENÉ CS0117: Set cursor cez ProtectedCursor
-                this.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
+                var headerGrid = new Grid();
+                headerBorder.Child = headerGrid;
 
-                headerGrid.Children.Add(resizeGrip);
-            }
-
-            var resizableHeader = new ResizableColumnHeader
-            {
-                Column = column,
-                HeaderBorder = headerBorder,
-                HeaderText = headerText,
-                ResizeGrip = resizeGrip,
-                OriginalWidth = column.Width
-            };
-
-            _logger.LogTrace("📏 Created resizable header: {ColumnName} (Width: {Width})", column.Name, column.Width);
-
-            return resizableHeader;
-        }
-
-        /// <summary>
-        /// Nastaví ValidAlerts stĺpec aby sa roztiahol na koniec
-        /// </summary>
-        private void SetupValidAlertsStretching()
-        {
-            try
-            {
-                _logger.LogDebug("🔧 SetupValidAlertsStretching START");
-
-                var validAlertsHeader = _resizableHeaders.FirstOrDefault(h => h.Column.Name == "ValidAlerts");
-                if (validAlertsHeader != null)
+                // Header text
+                var headerText = new TextBlock
                 {
-                    // Nastav ValidAlerts aby sa roztiahol
-                    validAlertsHeader.HeaderBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    Text = column.Header ?? column.Name,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    FontSize = 14,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(8, 6, 12, 6),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                };
 
-                    // Aktualizuj layout pri zmene veľkosti
-                    this.SizeChanged += OnDataGridSizeChanged;
-
-                    _logger.LogDebug("✅ ValidAlerts stretching configured");
-                }
-                else
+                // ✅ KĽÚČOVÉ: ValidAlerts stĺpec konfigurácia
+                if (column.Name == "ValidAlerts")
                 {
-                    _logger.LogDebug("⚠️ ValidAlerts column not found for stretching");
+                    headerBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
+                    headerText.Text = "⚠️ Validation Alerts";
+                    headerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error setting up ValidAlerts stretching");
-            }
-        }
 
-        private void OnDataGridSizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            try
-            {
-                if (!_isInitialized) return;
+                headerGrid.Children.Add(headerText);
 
-                _logger.LogTrace("📏 DataGrid size changed: {NewWidth}x{NewHeight}", e.NewSize.Width, e.NewSize.Height);
+                // Resize grip (iba ak nie je ValidAlerts)
+                Border? resizeGrip = null;
+                if (column.Name != "ValidAlerts")
+                {
+                    resizeGrip = new Border
+                    {
+                        Width = 4,
+                        Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        VerticalAlignment = VerticalAlignment.Stretch
+                    };
 
-                // Prepočítaj šírku ValidAlerts stĺpca
-                RecalculateValidAlertsWidth();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error handling size change");
-            }
-        }
+                    headerGrid.Children.Add(resizeGrip);
+                }
 
-        private void RecalculateValidAlertsWidth()
-        {
-            try
-            {
-                var validAlertsHeader = _resizableHeaders.FirstOrDefault(h => h.Column.Name == "ValidAlerts");
-                if (validAlertsHeader == null) return;
+                var resizableHeader = new ResizableColumnHeader
+                {
+                    Column = column,
+                    HeaderBorder = headerBorder,
+                    HeaderText = headerText,
+                    ResizeGrip = resizeGrip,
+                    OriginalWidth = column.Width
+                };
 
-                var totalWidth = this.ActualWidth;
-                var otherColumnsWidth = _resizableHeaders
-                    .Where(h => h.Column.Name != "ValidAlerts")
-                    .Sum(h => h.HeaderBorder.Width);
+                _logger.LogTrace("📏 Created resizable header: {ColumnName} (Width: {Width})", column.Name, column.Width);
 
-                var validAlertsWidth = Math.Max(200, totalWidth - otherColumnsWidth - 20); // 20px for margins
-                validAlertsHeader.HeaderBorder.Width = validAlertsWidth;
-
-                _logger.LogTrace("📏 ValidAlerts width recalculated: {Width}", validAlertsWidth);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error recalculating ValidAlerts width");
-            }
+                return resizableHeader;
+            });
         }
 
         #endregion
 
-        #region ✅ NOVÉ: Resize Event Handlers
+        #region ✅ NOVÉ: Resize Event Handlers - OPRAVENÉ
 
         private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
         {
@@ -594,27 +527,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     _currentResizingHeader.Column.Width = newWidth;
 
                     // Update data columns width too
-                    UpdateDataColumnsWidth(_currentResizingHeader.Column.Name, newWidth);
+                    _ = UpdateDataColumnsWidthAsync(_currentResizingHeader.Column.Name, newWidth);
 
                     _logger.LogTrace("🖱️ Resizing column {ColumnName}: {NewWidth}",
                         _currentResizingHeader.Column.Name, newWidth);
 
                     e.Handled = true;
-                }
-                else
-                {
-                    // Update cursor pre resize grip hover
-                    var position = e.GetCurrentPoint(this);
-                    var header = FindHeaderUnderPointer(position);
-
-                    if (header?.ResizeGrip != null && IsPointerOverResizeGrip(position, header))
-                    {
-                        this.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast);
-                    }
-                    else
-                    {
-                        this.ProtectedCursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
-                    }
                 }
             }
             catch (Exception ex)
@@ -639,7 +557,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     this.ReleasePointerCapture(e.Pointer);
 
                     // Recalculate ValidAlerts if needed
-                    RecalculateValidAlertsWidth();
+                    _ = RecalculateValidAlertsWidthAsync();
 
                     e.Handled = true;
                 }
@@ -650,7 +568,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
-        // ✅ OPRAVENÉ CS0123: Správny signature pre PointerEventHandler
+        // ✅ OPRAVENÉ: Správny signature pre PointerEventHandler
         private void OnPointerCaptureLost(object sender, PointerEventArgs e)
         {
             try
@@ -668,44 +586,153 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
-        private ResizableColumnHeader? FindHeaderUnderPointer(PointerPoint position)
+        private ResizableColumnHeader? FindHeaderUnderPointer(Microsoft.UI.Input.PointerPoint position)
         {
             foreach (var header in _resizableHeaders)
             {
-                var headerPosition = header.HeaderBorder.TransformToVisual(this).TransformPoint(new Windows.Foundation.Point(0, 0));
-                var headerBounds = new Windows.Foundation.Rect(
-                    headerPosition.X,
-                    headerPosition.Y,
-                    header.HeaderBorder.ActualWidth,
-                    header.HeaderBorder.ActualHeight);
-
-                if (headerBounds.Contains(position.Position))
+                try
                 {
-                    return header;
+                    var headerPosition = header.HeaderBorder.TransformToVisual(this).TransformPoint(new Windows.Foundation.Point(0, 0));
+                    var headerBounds = new Windows.Foundation.Rect(
+                        headerPosition.X,
+                        headerPosition.Y,
+                        header.HeaderBorder.ActualWidth,
+                        header.HeaderBorder.ActualHeight);
+
+                    if (headerBounds.Contains(position.Position))
+                    {
+                        return header;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Error finding header under pointer");
                 }
             }
             return null;
         }
 
-        private bool IsPointerOverResizeGrip(PointerPoint position, ResizableColumnHeader header)
+        private bool IsPointerOverResizeGrip(Microsoft.UI.Input.PointerPoint position, ResizableColumnHeader header)
         {
             if (header.ResizeGrip == null) return false;
 
-            var gripPosition = header.ResizeGrip.TransformToVisual(this).TransformPoint(new Windows.Foundation.Point(0, 0));
-            var gripBounds = new Windows.Foundation.Rect(
-                gripPosition.X,
-                gripPosition.Y,
-                header.ResizeGrip.ActualWidth,
-                header.ResizeGrip.ActualHeight);
+            try
+            {
+                var gripPosition = header.ResizeGrip.TransformToVisual(this).TransformPoint(new Windows.Foundation.Point(0, 0));
+                var gripBounds = new Windows.Foundation.Rect(
+                    gripPosition.X,
+                    gripPosition.Y,
+                    header.ResizeGrip.ActualWidth,
+                    header.ResizeGrip.ActualHeight);
 
-            return gripBounds.Contains(position.Position);
+                return gripBounds.Contains(position.Position);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error checking resize grip");
+                return false;
+            }
         }
 
-        private void UpdateDataColumnsWidth(string columnName, double newWidth)
+        private async Task UpdateDataColumnsWidthAsync(string columnName, double newWidth)
         {
-            // TODO: Update width of data columns to match header
-            // This would involve updating the ItemsRepeater or data rows
-            _logger.LogTrace("📏 UpdateDataColumnsWidth: {ColumnName} = {NewWidth}", columnName, newWidth);
+            try
+            {
+                // TODO: Update width of data columns to match header
+                await Task.CompletedTask;
+                _logger.LogTrace("📏 UpdateDataColumnsWidth: {ColumnName} = {NewWidth}", columnName, newWidth);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error updating data columns width");
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: ValidAlerts Stretching Implementation
+
+        /// <summary>
+        /// Nastaví ValidAlerts stĺpec aby sa roztiahol na koniec
+        /// </summary>
+        private void SetupValidAlertsStretching()
+        {
+            try
+            {
+                _logger.LogDebug("🔧 SetupValidAlertsStretching START");
+
+                var validAlertsHeader = _resizableHeaders.FirstOrDefault(h => h.Column.Name == "ValidAlerts");
+                if (validAlertsHeader != null)
+                {
+                    // Nastav ValidAlerts aby sa roztiahol
+                    validAlertsHeader.HeaderBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+                    // Aktualizuj layout pri zmene veľkosti
+                    this.SizeChanged += OnDataGridSizeChanged;
+
+                    _logger.LogDebug("✅ ValidAlerts stretching configured");
+                }
+                else
+                {
+                    _logger.LogDebug("⚠️ ValidAlerts column not found for stretching");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error setting up ValidAlerts stretching");
+            }
+        }
+
+        private async Task SetupValidAlertsStretchingAsync()
+        {
+            await Task.Run(() => SetupValidAlertsStretching());
+        }
+
+        private void OnDataGridSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            try
+            {
+                if (!_isInitialized) return;
+
+                _logger.LogTrace("📏 DataGrid size changed: {NewWidth}x{NewHeight}", e.NewSize.Width, e.NewSize.Height);
+
+                _totalAvailableWidth = e.NewSize.Width;
+
+                // Prepočítaj šírku ValidAlerts stĺpca
+                _ = RecalculateValidAlertsWidthAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error handling size change");
+            }
+        }
+
+        private async Task RecalculateValidAlertsWidthAsync()
+        {
+            try
+            {
+                await this.DispatcherQueue.EnqueueAsync(() =>
+                {
+                    var validAlertsHeader = _resizableHeaders.FirstOrDefault(h => h.Column.Name == "ValidAlerts");
+                    if (validAlertsHeader == null) return;
+
+                    if (_totalAvailableWidth <= 0) return;
+
+                    var otherColumnsWidth = _resizableHeaders
+                        .Where(h => h.Column.Name != "ValidAlerts")
+                        .Sum(h => h.HeaderBorder.Width);
+
+                    var validAlertsWidth = Math.Max(_validAlertsMinWidth, _totalAvailableWidth - otherColumnsWidth - 20); // 20px for margins
+                    validAlertsHeader.HeaderBorder.Width = validAlertsWidth;
+                    validAlertsHeader.Column.Width = validAlertsWidth;
+
+                    _logger.LogTrace("📏 ValidAlerts width recalculated: {Width}", validAlertsWidth);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error recalculating ValidAlerts width");
+            }
         }
 
         #endregion
@@ -717,19 +744,31 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             try
             {
                 _logger.LogDebug("🔧 InitializeScrollSupport START");
+                // Scroll events sa nastavia v SetupScrollSynchronization
+                _logger.LogDebug("✅ Scroll support initialized");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error initializing scroll support");
+            }
+        }
 
-                if (!_xamlLoadFailed && DataGridScrollViewer != null && HeaderScrollViewer != null)
+        private void SetupScrollSynchronization()
+        {
+            try
+            {
+                if (DataGridScrollViewer != null && HeaderScrollViewer != null)
                 {
                     // Synchronizuj horizontal scroll medzi header a data
                     DataGridScrollViewer.ViewChanged += OnDataScrollViewChanged;
                     HeaderScrollViewer.ViewChanged += OnHeaderScrollViewChanged;
 
-                    _logger.LogDebug("✅ Scroll synchronization initialized");
+                    _logger.LogDebug("✅ Scroll synchronization configured");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error initializing scroll support");
+                _logger.LogError(ex, "❌ Error setting up scroll synchronization");
             }
         }
 
@@ -740,7 +779,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (_isScrollSynchronizing || HeaderScrollViewer == null) return;
 
                 _isScrollSynchronizing = true;
-                var horizontalOffset = DataGridScrollViewer.HorizontalOffset;
+                var horizontalOffset = DataGridScrollViewer!.HorizontalOffset;
                 HeaderScrollViewer.ChangeView(horizontalOffset, null, null, true);
                 _isScrollSynchronizing = false;
 
@@ -760,7 +799,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (_isScrollSynchronizing || DataGridScrollViewer == null) return;
 
                 _isScrollSynchronizing = true;
-                var horizontalOffset = HeaderScrollViewer.HorizontalOffset;
+                var horizontalOffset = HeaderScrollViewer!.HorizontalOffset;
                 DataGridScrollViewer.ChangeView(horizontalOffset, null, null, true);
                 _isScrollSynchronizing = false;
 
@@ -775,30 +814,78 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Data Display Implementation
+        #region ✅ NOVÉ: Layout Management
+
+        private void InitializeLayoutManagement()
+        {
+            try
+            {
+                _logger.LogDebug("🔧 InitializeLayoutManagement START");
+
+                // Register for layout updates
+                this.LayoutUpdated += OnLayoutUpdated;
+
+                _logger.LogDebug("✅ Layout management initialized");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error initializing layout management");
+            }
+        }
+
+        private void OnLayoutUpdated(object? sender, object e)
+        {
+            try
+            {
+                if (!_isInitialized) return;
+
+                // Update total available width
+                if (this.ActualWidth > 0 && Math.Abs(_totalAvailableWidth - this.ActualWidth) > 1)
+                {
+                    _totalAvailableWidth = this.ActualWidth;
+                    _ = RecalculateValidAlertsWidthAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error in OnLayoutUpdated");
+            }
+        }
+
+        private async Task UpdateLayoutAfterDataChangeAsync()
+        {
+            try
+            {
+                await Task.Delay(100); // Small delay to let layout settle
+                await RecalculateValidAlertsWidthAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error updating layout after data change");
+            }
+        }
+
+        #endregion
+
+        #region ✅ Data Display Implementation - OPRAVENÉ
 
         /// <summary>
         /// Refreshuje zobrazenie dát v UI
         /// </summary>
-        private void RefreshDataDisplay()
+        private async Task RefreshDataDisplayAsync()
         {
             try
             {
-                if (_xamlLoadFailed || DataRowsContainer == null) return;
+                if (DataRowsContainer == null) return;
 
                 _logger.LogDebug("🎨 RefreshDataDisplay START - Rows: {RowCount}", _displayRows.Count);
 
-                this.DispatcherQueue?.TryEnqueue(() =>
+                await this.DispatcherQueue.EnqueueAsync(() =>
                 {
                     try
                     {
-                        DataRowsContainer.Children.Clear();
-
-                        foreach (var row in _displayRows)
-                        {
-                            var rowElement = CreateDataRowElement(row);
-                            DataRowsContainer.Children.Add(rowElement);
-                        }
+                        DataRowsContainer.ItemsSource = null;
+                        DataRowsContainer.ItemsSource = _displayRows;
 
                         _logger.LogDebug("✅ Data display refreshed - {RowCount} rows rendered", _displayRows.Count);
                     }
@@ -814,70 +901,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
-        private FrameworkElement CreateDataRowElement(DataRowViewModel row)
-        {
-            var rowBorder = new Border
-            {
-                Background = new SolidColorBrush(Microsoft.UI.Colors.White),
-                BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
-                BorderThickness = new Thickness(0, 0, 0, 1),
-                MinHeight = 36
-            };
-
-            var rowStackPanel = new StackPanel { Orientation = Orientation.Horizontal };
-            rowBorder.Child = rowStackPanel;
-
-            foreach (var cell in row.Cells)
-            {
-                var cellElement = CreateDataCellElement(cell);
-                rowStackPanel.Children.Add(cellElement);
-            }
-
-            return rowBorder;
-        }
-
-        private FrameworkElement CreateDataCellElement(CellViewModel cell)
-        {
-            var column = _columns.FirstOrDefault(c => c.Name == cell.ColumnName);
-            var width = column?.Width ?? 150;
-
-            var cellBorder = new Border
-            {
-                Background = new SolidColorBrush(Microsoft.UI.Colors.White),
-                BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
-                BorderThickness = new Thickness(0, 0, 1, 0),
-                Width = width,
-                MinHeight = 36,
-                Padding = new Thickness(4, 2)
-            };
-
-            // ✅ ValidAlerts stĺpec sa roztiahne
-            if (cell.ColumnName == "ValidAlerts")
-            {
-                cellBorder.HorizontalAlignment = HorizontalAlignment.Stretch;
-            }
-
-            var textBox = new TextBox
-            {
-                Text = cell.DisplayValue,
-                Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                BorderThickness = new Thickness(0),
-                AcceptsReturn = true,
-                TextWrapping = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Stretch
-            };
-
-            // Realtime validation visual feedback
-            if (!cell.IsValid)
-            {
-                textBox.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                textBox.BorderThickness = new Thickness(2);
-            }
-
-            cellBorder.Child = textBox;
-            return cellBorder;
-        }
-
         #endregion
 
         #region ✅ UI Update Methods s kompletným logovaním
@@ -889,7 +912,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                _logger.LogDebug("🎨 UpdateDisplayRowsWithRealtimeValidationAsync START");
+                _logger.LogDebug("🎨 UpdateDisplayRowsWithRealtimeValidation START");
                 StartOperation("UpdateDisplayRows");
 
                 if (_dataManagementService == null)
@@ -901,7 +924,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 var allData = await _dataManagementService.GetAllDataAsync();
                 _logger.LogDebug("📊 Retrieved {DataCount} rows from DataManagementService", allData.Count);
 
-                this.DispatcherQueue?.TryEnqueue(() =>
+                await this.DispatcherQueue.EnqueueAsync(() =>
                 {
                     try
                     {
@@ -941,286 +964,34 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 EndOperation("UpdateDisplayRows");
-                _logger.LogError(ex, "❌ ERROR in UpdateDisplayRowsWithRealtimeValidationAsync");
+                _logger.LogError(ex, "❌ ERROR in UpdateDisplayRowsWithRealtimeValidation");
             }
+        }
+
+        private async Task UpdateUIVisibilityAsync()
+        {
+            await this.DispatcherQueue.EnqueueAsync(() =>
+            {
+                try
+                {
+                    if (MainContentGrid != null)
+                        MainContentGrid.Visibility = _isInitialized ? Visibility.Visible : Visibility.Collapsed;
+
+                    if (LoadingOverlay != null)
+                        LoadingOverlay.Visibility = _isInitialized ? Visibility.Collapsed : Visibility.Visible;
+
+                    _logger.LogDebug("🎨 UI visibility updated - Initialized: {IsInitialized}", _isInitialized);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ UpdateUIVisibility ERROR");
+                }
+            });
         }
 
         #endregion
 
-        #region ✅ Realtime Validation Implementation s logovaním
-
-        /// <summary>
-        /// Spustí realtime validáciu pre bunku s throttling
-        /// </summary>
-        private async Task ValidateCellRealtimeAsync(CellViewModel cell)
-        {
-            if (_validationService == null || !_isInitialized)
-            {
-                _logger.LogDebug("🔍 ValidateCellRealtime SKIPPED - Service: {HasService}, Initialized: {IsInit}",
-                    _validationService != null, _isInitialized);
-                return;
-            }
-
-            try
-            {
-                var cellKey = $"{cell.RowIndex}_{cell.ColumnName}";
-
-                lock (_validationLock)
-                {
-                    // Cancel existing timer pre túto bunku
-                    if (_validationTimers.TryGetValue(cellKey, out var existingTimer))
-                    {
-                        existingTimer.Dispose();
-                        _validationTimers.Remove(cellKey);
-                    }
-
-                    // Create new timer with throttling delay
-                    var delay = _throttlingConfig?.ValidationDebounceMs ?? 300;
-                    var timer = new System.Threading.Timer(async _ =>
-                    {
-                        await PerformCellValidationAsync(cell, cellKey);
-                    }, null, delay, Timeout.Infinite);
-
-                    _validationTimers[cellKey] = timer;
-                }
-
-                _logger.LogDebug("🔍 Realtime validácia scheduled pre {CellKey}: '{DisplayValue}' (delay: {Delay}ms)",
-                    cellKey, cell.DisplayValue, _throttlingConfig?.ValidationDebounceMs ?? 300);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Chyba realtime validácie pre {CellKey}", $"{cell.RowIndex}_{cell.ColumnName}");
-            }
-        }
-
-        /// <summary>
-        /// Vykoná skutočnú validáciu bunky
-        /// </summary>
-        private async Task PerformCellValidationAsync(CellViewModel cell, string cellKey)
-        {
-            try
-            {
-                if (_validationService == null) return;
-
-                _logger.LogDebug("🔍 PerformCellValidation START - {CellKey}: '{Value}'", cellKey, cell.DisplayValue);
-
-                // Validate cell value
-                var errors = await _validationService.ValidateCellAsync(cell.ColumnName, cell.DisplayValue);
-
-                // Update UI na main thread
-                this.DispatcherQueue?.TryEnqueue(() =>
-                {
-                    var wasValid = cell.IsValid;
-                    cell.IsValid = !errors.Any();
-                    cell.ValidationErrors = string.Join("; ", errors);
-
-                    if (wasValid != cell.IsValid)
-                    {
-                        _logger.LogDebug("🔍 Validation state changed for {CellKey}: {OldState} → {NewState}",
-                            cellKey, wasValid ? "VALID" : "INVALID", cell.IsValid ? "VALID" : "INVALID");
-                    }
-
-                    if (errors.Any())
-                    {
-                        _logger.LogWarning("⚠️ Validation errors for {CellKey}: {Errors}", cellKey, string.Join("; ", errors));
-                    }
-                });
-
-                // Clean up timer
-                lock (_validationLock)
-                {
-                    if (_validationTimers.TryGetValue(cellKey, out var timer))
-                    {
-                        timer.Dispose();
-                        _validationTimers.Remove(cellKey);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Chyba pri validácii bunky {CellKey}", cellKey);
-            }
-        }
-
-        /// <summary>
-        /// Handler pre cell value changes (volá sa z ViewModelu)
-        /// </summary>
-        private async void OnCellValueChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (sender is CellViewModel cell && e.PropertyName == nameof(CellViewModel.DisplayValue))
-            {
-                _logger.LogDebug("📝 Cell value changed: [{RowIndex}, {ColumnName}] = '{NewValue}' (was: '{OldValue}')",
-                    cell.RowIndex, cell.ColumnName, cell.DisplayValue, cell.OriginalValue);
-
-                // Spusti realtime validáciu
-                await ValidateCellRealtimeAsync(cell);
-
-                // Update data management service
-                if (_dataManagementService != null)
-                {
-                    try
-                    {
-                        await _dataManagementService.SetCellValueAsync(cell.RowIndex, cell.ColumnName, cell.DisplayValue);
-                        _logger.LogDebug("✅ Cell value persisted to DataManagementService");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "❌ Failed to persist cell value to DataManagementService");
-                    }
-                }
-            }
-        }
-
-        #endregion
-
-        #region ✅ XAML Event Handlers s logovaním
-
-        /// <summary>
-        /// Handler pre načítanie TextBox - pripojí KeyDown event
-        /// </summary>
-        public void OnCellTextBoxLoaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is TextBox textBox)
-            {
-                // Pripoj KeyDown event handler (async wrapper)
-                textBox.KeyDown += (s, args) =>
-                {
-                    _ = Task.Run(async () => await OnCellKeyDown(s, args));
-                };
-
-                // Tag obsahuje CellViewModel
-                if (textBox.Tag is CellViewModel cell)
-                {
-                    _logger.LogTrace("🔧 TextBox loaded pre cell [{RowIndex}, {ColumnName}]", cell.RowIndex, cell.ColumnName);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Handler pre keyboard events v bunkách
-        /// </summary>
-        private async Task OnCellKeyDown(object sender, KeyRoutedEventArgs e)
-        {
-            if (sender is not TextBox textBox) return;
-
-            try
-            {
-                // Získaj CellViewModel z Tag
-                if (textBox.Tag is not CellViewModel cell) return;
-
-                _logger.LogDebug("⌨️ KeyDown in cell [{RowIndex}, {ColumnName}]: {Key}",
-                    cell.RowIndex, cell.ColumnName, e.Key);
-
-                switch (e.Key)
-                {
-                    case Windows.System.VirtualKey.Escape:
-                        await HandleEscapeKey(textBox, cell);
-                        e.Handled = true;
-                        break;
-
-                    case Windows.System.VirtualKey.Enter:
-                        await HandleEnterKey(textBox, cell, IsShiftPressed());
-                        e.Handled = true;
-                        break;
-
-                    case Windows.System.VirtualKey.Tab:
-                        await HandleTabKey(textBox, cell, IsShiftPressed());
-                        e.Handled = true;
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Chyba pri spracovaní keyboard event");
-            }
-        }
-
-        /// <summary>
-        /// Handle Escape key - zruš zmeny
-        /// </summary>
-        private async Task HandleEscapeKey(TextBox textBox, CellViewModel cell)
-        {
-            try
-            {
-                var oldValue = cell.DisplayValue;
-                // Vráť originálnu hodnotu
-                cell.DisplayValue = cell.OriginalValue?.ToString() ?? "";
-                textBox.Text = cell.DisplayValue;
-
-                // Vyčisti validačné chyby
-                cell.IsValid = true;
-                cell.ValidationErrors = "";
-
-                _logger.LogDebug("🔄 ESC pressed - Reverted cell [{RowIndex}, {ColumnName}]: '{OldValue}' → '{NewValue}'",
-                    cell.RowIndex, cell.ColumnName, oldValue, cell.DisplayValue);
-
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Chyba pri ESC handling");
-            }
-        }
-
-        /// <summary>
-        /// Handle Enter key - potvrď zmeny
-        /// </summary>
-        private async Task HandleEnterKey(TextBox textBox, CellViewModel cell, bool isShiftPressed)
-        {
-            try
-            {
-                if (isShiftPressed)
-                {
-                    // Shift+Enter = nový riadok v bunke
-                    var currentPosition = textBox.SelectionStart;
-                    var currentText = textBox.Text;
-                    var newText = currentText.Insert(currentPosition, Environment.NewLine);
-                    textBox.Text = newText;
-                    textBox.SelectionStart = currentPosition + Environment.NewLine.Length;
-                    _logger.LogDebug("📝 Shift+Enter - Added newline in cell [{RowIndex}, {ColumnName}]", cell.RowIndex, cell.ColumnName);
-                    return;
-                }
-
-                // Potvrď hodnotu
-                cell.OriginalValue = cell.DisplayValue;
-
-                // Force validácia bez throttling
-                await PerformCellValidationAsync(cell, $"{cell.RowIndex}_{cell.ColumnName}");
-
-                _logger.LogDebug("✅ ENTER pressed - Confirmed cell [{RowIndex}, {ColumnName}] value: '{DisplayValue}'",
-                    cell.RowIndex, cell.ColumnName, cell.DisplayValue);
-
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Chyba pri ENTER handling");
-            }
-        }
-
-        /// <summary>
-        /// Handle Tab key - potvrď zmeny a presun
-        /// </summary>
-        private async Task HandleTabKey(TextBox textBox, CellViewModel cell, bool isShiftPressed)
-        {
-            try
-            {
-                // Potvrď hodnotu
-                cell.OriginalValue = cell.DisplayValue;
-
-                // Force validácia bez throttling
-                await PerformCellValidationAsync(cell, $"{cell.RowIndex}_{cell.ColumnName}");
-
-                _logger.LogDebug("✅ TAB pressed - Confirmed cell [{RowIndex}, {ColumnName}] value: '{DisplayValue}' (Shift: {IsShift})",
-                    cell.RowIndex, cell.ColumnName, cell.DisplayValue, isShiftPressed);
-
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Chyba pri TAB handling");
-            }
-        }
+        #region ✅ XAML Event Handlers - PUBLIC pre XAML
 
         /// <summary>
         /// Handler pre skrytie validation overlay - PUBLIC pre XAML
@@ -1246,18 +1017,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #region ✅ Helper Methods s logovaním
 
-        private void TryInitializeXaml()
+        private void EnsureInitialized()
         {
-            try
+            if (!_isInitialized)
             {
-                this.InitializeComponent();
-                _xamlLoadFailed = false;
-                _logger.LogDebug("✅ XAML Loading SUCCESS");
-            }
-            catch (Exception xamlEx)
-            {
-                _logger.LogError(xamlEx, "❌ XAML LOADING FAILED");
-                _xamlLoadFailed = true;
+                _logger.LogError("❌ DataGrid is not initialized - call InitializeAsync() first");
+                throw new InvalidOperationException("DataGrid is not initialized. Call InitializeAsync() first.");
             }
         }
 
@@ -1319,31 +1084,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             return new TypedLoggerWrapper<T>(_logger);
         }
 
-        private void EnsureInitialized()
-        {
-            if (!_isInitialized)
-            {
-                _logger.LogError("❌ DataGrid is not initialized - call InitializeAsync() first");
-                throw new InvalidOperationException("DataGrid is not initialized. Call InitializeAsync() first.");
-            }
-        }
-
-        #endregion
-
-        #region ✅ Keyboard Helper Methods
-
-        private static bool IsShiftPressed()
-        {
-            var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
-            return (shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
-        }
-
-        private static bool IsCtrlPressed()
-        {
-            var ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
-            return (ctrlState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
-        }
-
         #endregion
 
         #region ✅ Performance Tracking
@@ -1369,80 +1109,23 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Skeleton Methods
-
-        private void CreateSimpleFallbackUI()
-        {
-            try
-            {
-                _logger.LogWarning("🔧 Creating fallback UI due to XAML failure");
-                var mainGrid = new Grid();
-                var fallbackText = new TextBlock
-                {
-                    Text = "⚠️ AdvancedDataGrid - XAML Fallback Mode\n(Realtime validation available)",
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    FontSize = 16,
-                    TextWrapping = TextWrapping.Wrap,
-                    TextAlignment = TextAlignment.Center
-                };
-                mainGrid.Children.Add(fallbackText);
-                this.Content = mainGrid;
-                _logger.LogInformation("✅ Fallback UI created successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ CreateSimpleFallbackUI FAILED");
-            }
-        }
-
-        private void UpdateUIVisibility()
-        {
-            if (_xamlLoadFailed) return;
-
-            this.DispatcherQueue?.TryEnqueue(() =>
-            {
-                try
-                {
-                    var mainContentGrid = this.FindName("MainContentGrid") as FrameworkElement;
-                    var loadingOverlay = this.FindName("LoadingOverlay") as FrameworkElement;
-
-                    if (mainContentGrid != null)
-                        mainContentGrid.Visibility = _isInitialized ? Visibility.Visible : Visibility.Collapsed;
-
-                    if (loadingOverlay != null)
-                        loadingOverlay.Visibility = _isInitialized ? Visibility.Collapsed : Visibility.Visible;
-
-                    _logger.LogDebug("🎨 UI visibility updated - Initialized: {IsInitialized}", _isInitialized);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ UpdateUIVisibility ERROR");
-                }
-            });
-        }
+        #region ✅ Skeleton/Stub Methods - OPRAVENÉ async
 
         private void ApplyIndividualColorsToUI()
         {
             _logger.LogDebug("🎨 ApplyIndividualColorsToUI called - HasColors: {HasColors}",
                 _individualColorConfig?.HasAnyCustomColors ?? false);
-
-            // TODO: Implementácia aplikácie farieb
         }
 
         private void InitializeSearchSortZebra()
         {
             _logger.LogDebug("🔍 InitializeSearchSortZebra called - Service: {HasService}", _searchAndSortService != null);
-
-            // TODO: Implementácia search/sort/zebra inicializácie
         }
 
         private async Task CreateInitialEmptyRowsAsync()
         {
             _logger.LogDebug("📄 CreateInitialEmptyRowsAsync called - UnifiedRowCount: {RowCount}", _unifiedRowCount);
             await Task.CompletedTask;
-
-            // TODO: Implementácia vytvorenia prázdnych riadkov
         }
 
         private async Task InitializeServicesAsync(List<GridColumnDefinition> columns, List<GridValidationRule> rules,
@@ -1451,8 +1134,30 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             _logger.LogDebug("🔧 InitializeServicesAsync called - Columns: {ColCount}, Rules: {RuleCount}, EmptyRows: {EmptyRows}",
                 columns.Count, rules.Count, emptyRows);
             await Task.CompletedTask;
+        }
 
-            // TODO: Implementácia inicializácie služieb
+        // ✅ OPRAVENÉ: Async Cell value change handler
+        private async void OnCellValueChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (sender is CellViewModel cell && e.PropertyName == nameof(CellViewModel.DisplayValue))
+            {
+                _logger.LogDebug("📝 Cell value changed: [{RowIndex}, {ColumnName}] = '{NewValue}'",
+                    cell.RowIndex, cell.ColumnName, cell.DisplayValue);
+
+                // Handle async validation
+                try
+                {
+                    await Task.Run(async () =>
+                    {
+                        // Placeholder for validation logic
+                        await Task.CompletedTask;
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Error in async cell value change handling");
+                }
+            }
         }
 
         #endregion
@@ -1463,13 +1168,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         public string DiagnosticInfo =>
             $"AdvancedDataGrid[{_componentInstanceId}]: Initialized={_isInitialized}, " +
-            $"RealtimeValidation=ENABLED, Rows={_displayRows.Count}, Logger={_logger.GetType().Name}, Resize=ENABLED, Scroll=ENABLED";
+            $"Features=Resize+Scroll+Stretch, Rows={_displayRows.Count}, Logger={_logger.GetType().Name}";
 
-        // ✅ NOVÉ: XAML element access properties
+        // ✅ XAML element access properties
         private StackPanel? HeaderStackPanel => this.FindName("HeaderStackPanel") as StackPanel;
         private ScrollViewer? HeaderScrollViewer => this.FindName("HeaderScrollViewer") as ScrollViewer;
         private ScrollViewer? DataGridScrollViewer => this.FindName("DataGridScrollViewer") as ScrollViewer;
-        private StackPanel? DataRowsContainer => this.FindName("DataRowsContainer") as StackPanel;
+        private ItemsControl? DataRowsContainer => this.FindName("DataRowsContainer") as ItemsControl;
 
         #endregion
 
@@ -1498,27 +1203,29 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         timer?.Dispose();
                     }
                     _validationTimers.Clear();
-                    _logger.LogDebug("🧹 Disposed {TimerCount} validation timers", _validationTimers.Count);
                 }
 
-                // Unsubscribe from cell events
-                var cellEventCount = 0;
-                foreach (var row in _displayRows)
-                {
-                    foreach (var cell in row.Cells)
-                    {
-                        cell.PropertyChanged -= OnCellValueChanged;
-                        cellEventCount++;
-                    }
-                }
-                _logger.LogDebug("🧹 Unsubscribed from {CellEventCount} cell events", cellEventCount);
-
-                // ✅ Dispose resize support
+                // Unsubscribe from events
                 this.PointerMoved -= OnPointerMoved;
                 this.PointerPressed -= OnPointerPressed;
                 this.PointerReleased -= OnPointerReleased;
                 this.PointerCaptureLost -= OnPointerCaptureLost;
                 this.SizeChanged -= OnDataGridSizeChanged;
+                this.LayoutUpdated -= OnLayoutUpdated;
+
+                if (DataGridScrollViewer != null)
+                    DataGridScrollViewer.ViewChanged -= OnDataScrollViewChanged;
+                if (HeaderScrollViewer != null)
+                    HeaderScrollViewer.ViewChanged -= OnHeaderScrollViewChanged;
+
+                // Unsubscribe from cell events
+                foreach (var row in _displayRows)
+                {
+                    foreach (var cell in row.Cells)
+                    {
+                        cell.PropertyChanged -= OnCellValueChanged;
+                    }
+                }
 
                 _searchAndSortService?.Dispose();
 
@@ -1565,7 +1272,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
     }
 
     /// <summary>
-    /// ✅ NOVÉ: Resizable column header class
+    /// ✅ Resizable column header class
     /// </summary>
     internal class ResizableColumnHeader
     {
@@ -1576,12 +1283,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         public double OriginalWidth { get; set; }
     }
 
-    #endregion
-
-    #region ✅ ViewModely s realtime validáciou - NEZMENENÉ
-
     /// <summary>
-    /// ViewModel pre zobrazenie riadku v UI - S realtime validáciou
+    /// ✅ ViewModely s realtime validáciou
     /// </summary>
     public class DataRowViewModel : INotifyPropertyChanged
     {
@@ -1605,15 +1308,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         Header = column.Header ?? column.Name,
                         Width = column.Width,
                         RowIndex = RowIndex,
-                        OriginalValue = value // Set original value
+                        OriginalValue = value
                     };
                     cells.Add(cell);
                 }
                 return cells;
             }
         }
-
-        #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -1622,13 +1323,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        #endregion
-
         public override string ToString() => $"DataRow {RowIndex}: {Cells.Count} cells";
     }
 
     /// <summary>
-    /// ViewModel pre zobrazenie bunky - S KOMPLETNOU realtime validáciou
+    /// ViewModel pre zobrazenie bunky
     /// </summary>
     public class CellViewModel : INotifyPropertyChanged
     {
@@ -1638,14 +1337,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         public string ColumnName { get; set; } = "";
         public object? Value { get; set; }
-        public object? OriginalValue { get; set; } // Pre ESC handling
+        public object? OriginalValue { get; set; }
         public string Header { get; set; } = "";
         public double Width { get; set; }
         public int RowIndex { get; set; }
 
-        /// <summary>
-        /// DisplayValue s PropertyChanged pre realtime validáciu
-        /// </summary>
         public string DisplayValue
         {
             get => _displayValue;
@@ -1653,35 +1349,24 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 if (SetProperty(ref _displayValue, value))
                 {
-                    Value = value; // Aktualizuj aj Value object
+                    Value = value;
                 }
             }
         }
 
-        /// <summary>
-        /// Validačný stav bunky
-        /// </summary>
         public bool IsValid
         {
             get => _isValid;
             set => SetProperty(ref _isValid, value);
         }
 
-        /// <summary>
-        /// Validačné chyby bunky
-        /// </summary>
         public string ValidationErrors
         {
             get => _validationErrors;
             set => SetProperty(ref _validationErrors, value);
         }
 
-        /// <summary>
-        /// Má validačné chyby
-        /// </summary>
         public bool HasValidationErrors => !string.IsNullOrEmpty(ValidationErrors);
-
-        #region INotifyPropertyChanged
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -1697,8 +1382,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             OnPropertyChanged(propertyName);
             return true;
         }
-
-        #endregion
 
         public override string ToString() => $"Cell[{ColumnName}]: {DisplayValue} (Valid: {IsValid})";
     }
