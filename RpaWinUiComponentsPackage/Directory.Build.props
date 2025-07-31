@@ -1,92 +1,54 @@
-﻿<!-- Directory.Build.props - MUSÍ BYŤ V ROOT ADRESÁRI SOLUTION -->
+﻿<!-- Directory.Build.props - Solution-level nastavenia pre NETSDK1004 fix -->
 <Project>
 
   <PropertyGroup>
-    <!-- ✅ Global nastavenia pre všetky projekty v solution -->
+    <!-- ✅ Global nastavenia pre všetky projekty -->
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-
+    
     <!-- ✅ NETSDK1004 Fix: Force proper restore behavior -->
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
     <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
     <RestoreForceEvaluate>false</RestoreForceEvaluate>
-
-    <!-- ✅ Suppress known warnings pre WinUI3 komponenty -->
-    <NoWarn>$(NoWarn);CS0414;NETSDK1022;CA1416;CS8602;CS8604;CS1998;WMC0001;WMC0011;WMC1506;WMC0035;XLS0501</NoWarn>
-
-    <!-- ✅ Build performance optimizations -->
+    
+    <!-- ✅ Suppress known warnings -->
+    <NoWarn>$(NoWarn);CS0414;NETSDK1022;CA1416</NoWarn>
+    
+    <!-- ✅ Build performance -->
     <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
-
-    <!-- ✅ Package versions alignment -->
-    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
-  <!-- ✅ Global package versions pre konzistentnosť -->
+  <!-- ✅ Global package versions -->
   <PropertyGroup>
     <WindowsAppSDKVersion>1.7.250606001</WindowsAppSDKVersion>
     <WindowsSDKBuildToolsVersion>10.0.26100.4654</WindowsSDKBuildToolsVersion>
     <NetCoreTargetFramework>net8.0</NetCoreTargetFramework>
     <WindowsTargetFramework>net8.0-windows10.0.19041.0</WindowsTargetFramework>
     <WindowsMinTargetFramework>10.0.17763.0</WindowsMinTargetFramework>
-    <MicrosoftExtensionsVersion>9.0.7</MicrosoftExtensionsVersion>
   </PropertyGroup>
 
-  <!-- ✅ WinUI3 specific settings -->
-  <PropertyGroup Condition="'$(UseWinUI)' == 'true'">
-    <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
-    <XamlCompilationEnabled>true</XamlCompilationEnabled>
-    <UseCompiledXaml>true</UseCompiledXaml>
-
-    <!-- ✅ Suppress WinUI specific warnings -->
-    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277;NETSDK1152</MSBuildWarningsAsMessages>
-  </PropertyGroup>
-
-  <!-- ✅ Multi-component package support -->
-  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-  </PropertyGroup>
-
-  <!-- ✅ Debugging informácie -->
+  <!-- ✅ Debug informácie -->
   <Target Name="ShowGlobalBuildInfo" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-    <Message Text="🌍 Directory.Build.props ACTIVE - Global settings applied to all projects" Importance="high" />
+    <Message Text="🌍 Directory.Build.props active - Global settings applied" Importance="normal" />
     <Message Text="📦 RestoreProjectStyle: $(RestoreProjectStyle)" Importance="normal" />
-    <Message Text="🎯 Target Framework: $(TargetFramework)" Importance="normal" />
-    <Message Text="🔧 UseWinUI: $(UseWinUI)" Importance="normal" />
   </Target>
 
-  <!-- ✅ Pre-build assets validation -->
+  <!-- ✅ Pre-build cleanup -->
   <Target Name="EnsureAssetsFileExists" BeforeTargets="Build">
     <PropertyGroup>
       <AssetsFile>$(MSBuildProjectDirectory)\obj\project.assets.json</AssetsFile>
       <AssetsFileExists Condition="Exists('$(AssetsFile)')">true</AssetsFileExists>
     </PropertyGroup>
-
+    
     <Message Text="🔍 Checking assets file: $(AssetsFile)" Importance="low" />
-
-    <!-- ✅ Force restore ak assets file neexistuje -->
-    <Exec Command="dotnet restore &quot;$(MSBuildProjectFile)&quot; --verbosity quiet"
+    
+    <!-- ✅ Ak assets file neexistuje, pokús sa o restore -->
+    <Exec Command="dotnet restore &quot;$(MSBuildProjectFile)&quot; --verbosity quiet" 
           Condition="'$(AssetsFileExists)' != 'true'"
           ContinueOnError="true"
           IgnoreExitCode="true" />
   </Target>
-
-  <!-- ✅ Memory optimization pre veľké solution -->
-  <PropertyGroup>
-    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
-    <RetainOnlyEssentialItems>true</RetainOnlyEssentialItems>
-  </PropertyGroup>
-
-  <!-- ✅ Code analysis suppression pre komponenty -->
-  <PropertyGroup Condition="'$(IsTestProject)' != 'true'">
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)CodeAnalysis.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
 
 </Project>
