@@ -1,4 +1,4 @@
-﻿// Services/DataManagementService.cs - ✅ NEZÁVISLÝ s ILogger<T>
+﻿// Services/DataManagementService.cs - ✅ OPRAVENÉ CS4032, CS0029 chyby
 using Microsoft.Extensions.Logging;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -13,6 +13,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
     /// <summary>
     /// Implementácia služby pre správu dát v DataGrid s Auto-Add funkciou - INTERNAL
     /// ✅ NEZÁVISLÝ KOMPONENT s ILogger<DataManagementService>
+    /// ✅ OPRAVENÉ: Všetky CS4032, CS0029 chyby
     /// </summary>
     internal class DataManagementService : IDataManagementService
     {
@@ -101,7 +102,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
 
         #endregion
 
-        #region ✅ KOMPLETNÁ Auto-Add Implementation s logovaním
+        #region ✅ KOMPLETNÁ Auto-Add Implementation s opravenými async/await
 
         private async Task InitializeInternalAsync(GridConfiguration configuration)
         {
@@ -303,7 +304,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         }
 
         /// <summary>
-        /// ✅ Inteligentné mazanie s Auto-Add ochranou a detailným logovaním
+        /// ✅ OPRAVENÉ CS0029: Inteligentné mazanie s Auto-Add ochranou a detailným logovaním
         /// </summary>
         private async Task DeleteRowInternalAsync(int rowIndex)
         {
@@ -362,6 +363,67 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ ERROR in DeleteRowAsync - RowIndex: {RowIndex}", rowIndex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ OPRAVENÉ CS4032: AddRowInternalAsync s správnym async/await
+        /// </summary>
+        private async Task<int> AddRowInternalAsync(Dictionary<string, object?>? initialData)
+        {
+            try
+            {
+                EnsureInitialized();
+
+                _logger.LogDebug("➕ AddRowAsync START - HasInitialData: {HasData}", initialData != null);
+
+                int newRowIndex = -1;
+
+                await Task.Run(() =>
+                {
+                    lock (_dataLock)
+                    {
+                        // Kontrola maxRows limitu
+                        if (_configuration!.MaxRows > 0 && _gridData.Count >= _configuration.MaxRows)
+                        {
+                            _logger.LogWarning("⚠️ AddRow: Maximum row limit reached ({MaxRows})", _configuration.MaxRows);
+                            newRowIndex = -1;
+                            return;
+                        }
+
+                        Dictionary<string, object?> newRow;
+
+                        if (initialData != null)
+                        {
+                            newRow = ProcessAndValidateRowData(initialData);
+                            _logger.LogDebug("📝 AddRow: Processing row with {CellCount} initial values", initialData.Count);
+                        }
+                        else
+                        {
+                            newRow = CreateEmptyRow();
+                            _logger.LogDebug("📄 AddRow: Creating empty row");
+                        }
+
+                        _gridData.Add(newRow);
+                        newRowIndex = _gridData.Count - 1;
+
+                        // ✅ Auto-Add logika: Ak pridávame dátový riadok, zabezpeč prázdny na konci
+                        if (_autoAddEnabled && initialData != null)
+                        {
+                            CheckAndAddEmptyRowIfNeeded();
+                        }
+
+                        _logger.LogInformation("✅ AddRow COMPLETED - New row at index {RowIndex} (total: {TotalRows})",
+                            newRowIndex, _gridData.Count);
+                    }
+                });
+
+                return newRowIndex; // ✅ OPRAVENÉ CS0029: Return int namiesto Task<int>
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in AddRowAsync");
                 throw;
             }
         }
@@ -636,64 +698,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ ERROR in GetCellValueAsync [{RowIndex}, {ColumnName}]", rowIndex, columnName);
-                throw;
-            }
-        }
-
-        private Task<int> AddRowInternalAsync(Dictionary<string, object?>? initialData)
-        {
-            try
-            {
-                EnsureInitialized();
-
-                _logger.LogDebug("➕ AddRowAsync START - HasInitialData: {HasData}", initialData != null);
-
-                int newRowIndex = -1;
-
-                await Task.Run(() =>
-                {
-                    lock (_dataLock)
-                    {
-                        // Kontrola maxRows limitu
-                        if (_configuration!.MaxRows > 0 && _gridData.Count >= _configuration.MaxRows)
-                        {
-                            _logger.LogWarning("⚠️ AddRow: Maximum row limit reached ({MaxRows})", _configuration.MaxRows);
-                            newRowIndex = -1;
-                            return;
-                        }
-
-                        Dictionary<string, object?> newRow;
-
-                        if (initialData != null)
-                        {
-                            newRow = ProcessAndValidateRowData(initialData);
-                            _logger.LogDebug("📝 AddRow: Processing row with {CellCount} initial values", initialData.Count);
-                        }
-                        else
-                        {
-                            newRow = CreateEmptyRow();
-                            _logger.LogDebug("📄 AddRow: Creating empty row");
-                        }
-
-                        _gridData.Add(newRow);
-                        newRowIndex = _gridData.Count - 1;
-
-                        // ✅ Auto-Add logika: Ak pridávame dátový riadok, zabezpeč prázdny na konci
-                        if (_autoAddEnabled && initialData != null)
-                        {
-                            CheckAndAddEmptyRowIfNeeded();
-                        }
-
-                        _logger.LogInformation("✅ AddRow COMPLETED - New row at index {RowIndex} (total: {TotalRows})",
-                            newRowIndex, _gridData.Count);
-                    }
-                });
-
-                return newRowIndex;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ ERROR in AddRowAsync");
                 throw;
             }
         }

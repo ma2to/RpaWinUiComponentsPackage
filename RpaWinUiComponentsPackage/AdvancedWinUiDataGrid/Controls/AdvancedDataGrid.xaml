@@ -1,16 +1,16 @@
-<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ S REALTIME VALIDÁCIOU -->
+<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ VŠETKY XAML CHYBY OPRAVENÉ -->
 <UserControl x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.AdvancedDataGrid"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid">
 
-    <!-- ✅ NOVÉ: Resources pre realtime validáciu -->
+    <!-- ✅ OPRAVENÉ: Resources pre realtime validáciu -->
     <UserControl.Resources>
         <!-- Converters pre validáciu -->
         <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter" />
         <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter" />
 
-        <!-- ✅ Style pre validačné TextBoxy -->
+        <!-- ✅ OPRAVENÉ: Style pre validačné TextBoxy bez neexistujúcich Transitions -->
         <Style x:Key="ValidatedTextBoxStyle" TargetType="TextBox">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="4,2" />
@@ -18,15 +18,7 @@
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="FontSize" Value="14" />
-            <!-- ✅ Transition animácie pre validáciu -->
-            <Setter Property="Transitions">
-                <Setter.Value>
-                    <TransitionCollection>
-                        <BorderThicknessTransition />
-                        <BrushTransition Property="BorderBrush" />
-                    </TransitionCollection>
-                </Setter.Value>
-            </Setter>
+            <!-- ✅ OPRAVENÉ: Odstránené neexistujúce BorderThicknessTransition a BrushTransition -->
         </Style>
     </UserControl.Resources>
 
@@ -68,7 +60,7 @@
                                             MinHeight="40"
                                             Padding="8,6">
 
-                                        <!-- ✅ NOVÉ: Header s tooltip pre validačné info -->
+                                        <!-- ✅ Header s tooltip pre validačné info -->
                                         <TextBlock Text="{Binding Header}" 
                                                    FontWeight="SemiBold"
                                                    FontSize="14"
@@ -122,20 +114,9 @@
                                                              BorderThickness="{x:Bind IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}"
                                                              Tag="{x:Bind}"
                                                              ToolTipService.ToolTip="{x:Bind ValidationErrors}"
-                                                             Loaded="OnCellTextBoxLoaded">
+                                                             Loaded="OnCellTextBoxLoaded"/>
 
-                                                        <!-- ✅ NOVÉ: Visual states pre validáciu -->
-                                                        <TextBox.Resources>
-                                                            <!-- Custom focus visual pre validačné chyby -->
-                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ValidatedTextBoxStyle}">
-                                                                <Style.Triggers>
-                                                                    <!-- WinUI3 uses VisualStateManager instead of Triggers -->
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBox.Resources>
-                                                    </TextBox>
-
-                                                    <!-- ✅ NOVÉ: Validačný indikátor -->
+                                                    <!-- ✅ OPRAVENÉ: Validačný indikátor bez neexistujúceho OpacityTransition -->
                                                     <Border x:Name="ValidationIndicator"
                                                             Width="4"
                                                             HorizontalAlignment="Right"
@@ -143,13 +124,7 @@
                                                             Background="{ThemeResource SystemFillColorCriticalBrush}"
                                                             Visibility="{x:Bind HasValidationErrors, Mode=OneWay}"
                                                             Opacity="0.8">
-
-                                                        <!-- Pulsing animácia pre validačné chyby -->
-                                                        <Border.Transitions>
-                                                            <TransitionCollection>
-                                                                <OpacityTransition />
-                                                            </TransitionCollection>
-                                                        </Border.Transitions>
+                                                        <!-- ✅ OPRAVENÉ: Odstránené neexistujúce OpacityTransition -->
                                                     </Border>
 
                                                 </Border>
@@ -188,7 +163,7 @@
                               TextWrapping="Wrap"
                               MaxWidth="350"/>
 
-                    <!-- ✅ NOVÉ: Validačné info v loading -->
+                    <!-- ✅ Validačné info v loading -->
                     <TextBlock Text="⚡ Realtime validation • ESC to cancel • ENTER to confirm • TAB to navigate"
                               FontSize="12"
                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -199,7 +174,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- ✅ NOVÉ: Validačný overlay (zobrazuje sa keď sú globálne validačné chyby) -->
+            <!-- ✅ Validačný overlay (zobrazuje sa keď sú globálne validačné chyby) -->
             <Border x:Name="ValidationOverlay"
                     Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
                     BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"

@@ -98,30 +98,22 @@
 
   <!-- ✅ SINGLE PATH packaging -->
   <ItemGroup>
-    <None Include="$(OutputPath)$(AssemblyName).dll"
-          Pack="true"
-          PackagePath="lib/net8.0-windows10.0.19041.0/"
-          Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/net8.0-windows10.0.19041.0/" Condition="Exists('$(OutputPath)$(AssemblyName).dll')" />
 
-    <None Include="$(OutputPath)$(AssemblyName).pdb"
-          Pack="true"
-          PackagePath="lib/net8.0-windows10.0.19041.0/"
-          Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+    <None Include="$(OutputPath)$(AssemblyName).pdb" Pack="true" PackagePath="lib/net8.0-windows10.0.19041.0/" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
 
-    <None Include="$(OutputPath)*.xbf"
-          Pack="true"
-          PackagePath="lib/net8.0-windows10.0.19041.0/"
-          Condition="Exists('$(OutputPath)')" />
+    <None Include="$(OutputPath)*.xbf" Pack="true" PackagePath="lib/net8.0-windows10.0.19041.0/" Condition="Exists('$(OutputPath)')" />
 
-    <None Include="$(OutputPath)**/*.xbf"
-          Pack="true"
-          PackagePath="lib/net8.0-windows10.0.19041.0/" />
+    <None Include="$(OutputPath)**/*.xbf" Pack="true" PackagePath="lib/net8.0-windows10.0.19041.0/" />
   </ItemGroup>
 
   <!-- ✅ XAML content fallback -->
   <ItemGroup>
     <None Include="AdvancedWinUiDataGrid\Controls\**\*.xaml" Pack="true" PackagePath="content/AdvancedWinUiDataGrid/Controls/" />
     <None Include="AdvancedWinUiDataGrid\Themes\*.xaml" Pack="true" PackagePath="content/AdvancedWinUiDataGrid/Themes/" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Common\SharedUtilities\" />
   </ItemGroup>
 
   <!-- ✅ Clean duplicate paths -->

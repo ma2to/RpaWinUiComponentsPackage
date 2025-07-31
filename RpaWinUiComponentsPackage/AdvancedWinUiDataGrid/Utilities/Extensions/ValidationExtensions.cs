@@ -1,15 +1,16 @@
-﻿// Extensions/ValidationExtensions.cs - ✅ OPRAVENÝ
+﻿// AdvancedWinUiDataGrid/Utilities/Extensions/ValidationExtensions.cs - ✅ PRESUNUTO
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace RpaWinUiComponentsPackage.Common.SharedUtilities.Extensions
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities.Extensions
 {
     /// <summary>
     /// Extension metódy pre ValidationRule a validačné operácie.
     /// Poskytuje pomocné metódy pre tvorbu a správu validačných pravidiel.
+    /// ✅ INTERNAL - súčasť AdvancedWinUiDataGrid komponentu
     /// </summary>
     internal static class ValidationExtensions
     {
