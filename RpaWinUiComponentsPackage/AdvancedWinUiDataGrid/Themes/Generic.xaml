@@ -13,7 +13,7 @@
     <local:ZebraRowMultiConverter x:Key="ZebraRowMultiConverter" />
     <local:RowIndexToZebraConverter x:Key="RowIndexToZebraConverter" />
 
-    <!-- ✅ OPRAVENÉ: Štýl pre AdvancedDataGrid bez x:Type -->
+    <!-- ✅ OPRAVENÉ: Style pre AdvancedDataGrid bez x:Type -->
     <Style x:Key="AdvancedDataGridStyle" TargetType="local:AdvancedDataGrid">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -28,7 +28,7 @@
         <Setter Property="MinHeight" Value="200" />
     </Style>
 
-    <!-- ✅ Štýly pre ostatné komponenty -->
+    <!-- ✅ Default styles pre komponenty -->
     <Style TargetType="local:DataGridCell">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -102,136 +102,5 @@
                         To="#20000000"
                         Duration="{StaticResource DataGridAnimationDuration}" />
     </Storyboard>
-
-    <!-- ✅ Template resources -->
-    <ControlTemplate x:Key="DataGridLoadingTemplate" TargetType="ContentControl">
-        <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
-            <StackPanel HorizontalAlignment="Center" 
-                       VerticalAlignment="Center" 
-                       Spacing="16">
-                <ProgressRing IsActive="True" 
-                             Width="32" 
-                             Height="32"/>
-                <TextBlock Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content}"
-                          FontSize="14"
-                          FontWeight="Medium"
-                          HorizontalAlignment="Center"
-                          TextWrapping="Wrap"
-                          MaxWidth="300"/>
-            </StackPanel>
-        </Border>
-    </ControlTemplate>
-
-    <ControlTemplate x:Key="DataGridErrorTemplate" TargetType="ContentControl">
-        <Border Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
-                BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="16">
-            <StackPanel HorizontalAlignment="Center" 
-                       VerticalAlignment="Center" 
-                       Spacing="12">
-                <FontIcon Glyph="&#xE783;" 
-                         FontSize="24"
-                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
-                <TextBlock Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content}"
-                          FontSize="14"
-                          FontWeight="Medium"
-                          HorizontalAlignment="Center"
-                          TextWrapping="Wrap"
-                          MaxWidth="400"
-                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
-            </StackPanel>
-        </Border>
-    </ControlTemplate>
-
-    <!-- ✅ Data templates pre cell types -->
-    <DataTemplate x:Key="StandardCellTemplate">
-        <Border Background="{Binding IsValid, Converter={StaticResource BoolToValidationBrushConverter}}"
-                BorderBrush="{Binding IsValid, Converter={StaticResource BoolToValidationBrushConverter}}"
-                BorderThickness="{Binding IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}"
-                MinHeight="36"
-                HorizontalAlignment="Stretch">
-            <TextBox Text="{Binding DisplayValue, Mode=TwoWay}" 
-                     BorderThickness="0"
-                     Background="Transparent"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalAlignment="Stretch"
-                     HorizontalAlignment="Stretch"
-                     Margin="4,2"
-                     FontSize="14" />
-        </Border>
-    </DataTemplate>
-
-    <DataTemplate x:Key="ZebraRowCellTemplate">
-        <Border Background="{Binding IsZebraRow, Converter={StaticResource ZebraRowConverter}}"
-                BorderBrush="{StaticResource DataGridCellBorderBrush}"
-                BorderThickness="0,0,1,1"
-                MinHeight="36"
-                HorizontalAlignment="Stretch">
-            <TextBox Text="{Binding DisplayValue, Mode=TwoWay}" 
-                     BorderThickness="0"
-                     Background="Transparent"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalAlignment="Stretch"
-                     HorizontalAlignment="Stretch"
-                     Margin="4,2"
-                     FontSize="14" />
-        </Border>
-    </DataTemplate>
-
-    <!-- ✅ Header templates -->
-    <DataTemplate x:Key="DataGridHeaderTemplate">
-        <Border Background="{StaticResource DataGridHeaderBackgroundBrush}"
-                BorderBrush="{StaticResource DataGridCellBorderBrush}"
-                BorderThickness="0,0,1,1"
-                Padding="8,8"
-                MinHeight="40"
-                HorizontalAlignment="Stretch">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0"
-                           Text="{Binding}" 
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Left"
-                           FontWeight="SemiBold"
-                           FontSize="14"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{StaticResource DataGridHeaderTextBrush}"/>
-
-                <Border Grid.Column="1"
-                        Width="4"
-                        Background="Transparent"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Stretch" />
-            </Grid>
-        </Border>
-    </DataTemplate>
-
-    <DataTemplate x:Key="ValidAlertsHeaderTemplate">
-        <Border Background="{StaticResource DataGridHeaderBackgroundBrush}"
-                BorderBrush="{StaticResource DataGridCellBorderBrush}"
-                BorderThickness="0,0,0,1"
-                Padding="8,8"
-                MinHeight="40"
-                MinWidth="200"
-                HorizontalAlignment="Stretch">
-            <TextBlock Text="⚠️ Validation Alerts" 
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Left"
-                       FontWeight="SemiBold"
-                       FontSize="14"
-                       Foreground="Orange"/>
-        </Border>
-    </DataTemplate>
 
 </ResourceDictionary>

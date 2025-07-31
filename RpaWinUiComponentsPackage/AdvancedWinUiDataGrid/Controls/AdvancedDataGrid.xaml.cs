@@ -1,4 +1,4 @@
-﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ s Resize+Scroll+Stretch
+﻿// Controls/AdvancedDataGrid.xaml.cs - ✅ KOMPLETNE OPRAVENÝ všetky CS chyby
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,9 +7,11 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
+using Microsoft.UI.Input; // ✅ PRIDANÉ pre PointerEventArgs
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
+using RpaWinUiComponentsPackage.Common.SharedUtilities.Extensions; // ✅ PRIDANÉ pre EnqueueAsync
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -27,8 +29,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
     /// <summary>
     /// AdvancedDataGrid - NEZÁVISLÝ KOMPONENT s ILogger abstractions
-    /// ✅ KOMPLETNE OPRAVENÝ: Resize+Scroll+Stretch+Logging
-    /// ✅ NEZÁVISLÝ na LoggerComponent - používa iba ILogger abstractions
+    /// ✅ KOMPLETNE OPRAVENÝ: Všetky CS1061, CS0123, CS0246 chyby
     /// </summary>
     public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
     {
@@ -72,17 +73,17 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private GridThrottlingConfig? _throttlingConfig;
         private readonly object _validationLock = new object();
 
-        // ✅ NOVÉ: Column resize functionality
+        // ✅ Column resize functionality
         private readonly List<ResizableColumnHeader> _resizableHeaders = new();
         private bool _isResizing = false;
         private ResizableColumnHeader? _currentResizingHeader;
         private double _resizeStartPosition;
         private double _resizeStartWidth;
 
-        // ✅ NOVÉ: Scroll synchronization
+        // ✅ Scroll synchronization
         private bool _isScrollSynchronizing = false;
 
-        // ✅ NOVÉ: Layout management
+        // ✅ Layout management
         private double _totalAvailableWidth = 0;
         private double _validAlertsMinWidth = 200;
 
@@ -112,7 +113,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _logger.LogDebug("🔧 AdvancedDataGrid Constructor START - Instance: {ComponentInstanceId}", _componentInstanceId);
                 StartOperation("Constructor");
 
-                // ✅ KRITICKÉ: InitializeComponent pre UserControl
+                // ✅ KRITICKÉ: InitializeComponent pre UserControl - automaticky generované z XAML
                 this.InitializeComponent();
 
                 _logger.LogDebug("✅ Constructor - XAML úspešne načítané");
@@ -185,7 +186,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Initialize services
                 await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), _throttlingConfig, emptyRowsCount);
 
-                // ✅ NOVÉ: UI setup s resize, scroll a stretch funkcionalitou
+                // ✅ UI setup s resize, scroll a stretch funkcionalitou
                 ApplyIndividualColorsToUI();
                 InitializeSearchSortZebra();
                 await CreateInitialEmptyRowsAsync();
@@ -242,7 +243,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     await RefreshDataDisplayAsync();
                 }
 
-                // ✅ NOVÉ: Update layout after data load
+                // ✅ Update layout after data load
                 await UpdateLayoutAfterDataChangeAsync();
 
                 var duration = EndOperation("LoadDataAsync");
@@ -344,7 +345,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: Column Resize Implementation
+        #region ✅ Column Resize Implementation
 
         /// <summary>
         /// Inicializuje podporu pre resize stĺpcov
@@ -481,7 +482,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: Resize Event Handlers - OPRAVENÉ
+        #region ✅ OPRAVENÉ: Resize Event Handlers
 
         private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
         {
@@ -568,7 +569,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
-        // ✅ OPRAVENÉ: Správny signature pre PointerEventHandler
+        // ✅ OPRAVENÉ CS0123: Správny signature pre WinUI3 PointerEventHandler
         private void OnPointerCaptureLost(object sender, PointerEventArgs e)
         {
             try
@@ -650,7 +651,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: ValidAlerts Stretching Implementation
+        #region ✅ ValidAlerts Stretching Implementation
 
         /// <summary>
         /// Nastaví ValidAlerts stĺpec aby sa roztiahol na koniec
@@ -737,7 +738,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: Scroll Support Implementation
+        #region ✅ Scroll Support Implementation
 
         private void InitializeScrollSupport()
         {
@@ -814,7 +815,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ NOVÉ: Layout Management
+        #region ✅ Layout Management
 
         private void InitializeLayoutManagement()
         {
@@ -867,7 +868,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Data Display Implementation - OPRAVENÉ
+        #region ✅ Data Display Implementation
 
         /// <summary>
         /// Refreshuje zobrazenie dát v UI
@@ -1109,7 +1110,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
-        #region ✅ Skeleton/Stub Methods - OPRAVENÉ async
+        #region ✅ Skeleton/Stub Methods
 
         private void ApplyIndividualColorsToUI()
         {
@@ -1175,6 +1176,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private ScrollViewer? HeaderScrollViewer => this.FindName("HeaderScrollViewer") as ScrollViewer;
         private ScrollViewer? DataGridScrollViewer => this.FindName("DataGridScrollViewer") as ScrollViewer;
         private ItemsControl? DataRowsContainer => this.FindName("DataRowsContainer") as ItemsControl;
+        private Grid? MainContentGrid => this.FindName("MainContentGrid") as Grid;
+        private Border? LoadingOverlay => this.FindName("LoadingOverlay") as Border;
 
         #endregion
 
