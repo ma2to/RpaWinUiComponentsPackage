@@ -1,10 +1,10 @@
-﻿<!-- AdvancedWinUiDataGrid/Themes/Generic.xaml - ✅ KOMPLETNE OPRAVENÝ -->
+﻿<!-- AdvancedWinUiDataGrid/Themes/Generic.xaml - ✅ KOMPLETNE OPRAVENÉ XLS0414 -->
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid">
 
-    <!-- ✅ CONVERTERS - Definované ako resources -->
+    <!-- ✅ OPRAVENÉ: Converters - bez x:Type (WinUI3 syntax) -->
     <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
     <local:InvertedBoolToVisibilityConverter x:Key="InvertedBoolToVisibilityConverter" />
     <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter" />
@@ -13,8 +13,8 @@
     <local:ZebraRowMultiConverter x:Key="ZebraRowMultiConverter" />
     <local:RowIndexToZebraConverter x:Key="RowIndexToZebraConverter" />
 
-    <!-- ✅ ZÁKLADNÝ štýl pre AdvancedDataGrid (UserControl) -->
-    <Style TargetType="local:AdvancedDataGrid">
+    <!-- ✅ OPRAVENÉ: Štýl pre AdvancedDataGrid bez x:Type -->
+    <Style x:Key="AdvancedDataGridStyle" TargetType="local:AdvancedDataGrid">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -28,7 +28,7 @@
         <Setter Property="MinHeight" Value="200" />
     </Style>
 
-    <!-- ✅ Štýly pre DataGridCell -->
+    <!-- ✅ Štýly pre ostatné komponenty -->
     <Style TargetType="local:DataGridCell">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -41,7 +41,6 @@
         <Setter Property="UseSystemFocusVisuals" Value="True" />
     </Style>
 
-    <!-- ✅ Štýly pre SearchAndSortHeader -->
     <Style TargetType="local:SearchAndSortHeader">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorAltBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -51,7 +50,6 @@
         <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
 
-    <!-- ✅ Štýly pre DeleteRowColumn -->
     <Style TargetType="local:DeleteRowColumn">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -63,7 +61,6 @@
         <Setter Property="IsTabStop" Value="False" />
     </Style>
 
-    <!-- ✅ Štýly pre ValidationAlertsColumn s stretching support -->
     <Style TargetType="local:ValidationAlertsColumn">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -75,7 +72,7 @@
         <Setter Property="IsTabStop" Value="False" />
     </Style>
 
-    <!-- ✅ Color theme resources pre runtime customization -->
+    <!-- ✅ Color theme resources -->
     <SolidColorBrush x:Key="DataGridCellBackgroundBrush" Color="{ThemeResource LayerFillColorDefault}" />
     <SolidColorBrush x:Key="DataGridCellBorderBrush" Color="{ThemeResource CardStrokeColorDefault}" />
     <SolidColorBrush x:Key="DataGridCellTextBrush" Color="{ThemeResource TextFillColorPrimary}" />
@@ -84,8 +81,6 @@
     <SolidColorBrush x:Key="DataGridValidationErrorBrush" Color="{ThemeResource SystemFillColorCritical}" />
     <SolidColorBrush x:Key="DataGridSelectionBrush" Color="{ThemeResource AccentFillColorDefault}" />
     <SolidColorBrush x:Key="DataGridHoverBrush" Color="{ThemeResource SubtleFillColorSecondary}" />
-
-    <!-- ✅ NOVÉ: Zebra rows colors -->
     <SolidColorBrush x:Key="DataGridZebraRowBrush" Color="#14000000" />
     <SolidColorBrush x:Key="DataGridNormalRowBrush" Color="Transparent" />
 
@@ -93,10 +88,7 @@
     <Thickness x:Key="DataGridValidationErrorBorderThickness">2</Thickness>
     <Thickness x:Key="DataGridNormalBorderThickness">0,0,1,1</Thickness>
 
-    <!-- ✅ NOVÉ: Resize cursor resources -->
-    <x:String x:Key="ResizeCursorType">SizeWE</x:String>
-
-    <!-- ✅ Animation resources pre smooth UX -->
+    <!-- ✅ Animation resources -->
     <Duration x:Key="DataGridAnimationDuration">0:0:0.2</Duration>
 
     <Storyboard x:Key="DataGridCellFocusAnimation">
@@ -111,7 +103,7 @@
                         Duration="{StaticResource DataGridAnimationDuration}" />
     </Storyboard>
 
-    <!-- ✅ Template resources pre advanced customization -->
+    <!-- ✅ Template resources -->
     <ControlTemplate x:Key="DataGridLoadingTemplate" TargetType="ContentControl">
         <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -133,7 +125,6 @@
         </Border>
     </ControlTemplate>
 
-    <!-- ✅ Error template -->
     <ControlTemplate x:Key="DataGridErrorTemplate" TargetType="ContentControl">
         <Border Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
                 BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
@@ -176,65 +167,6 @@
         </Border>
     </DataTemplate>
 
-    <DataTemplate x:Key="ReadOnlyCellTemplate">
-        <Border Background="Transparent"
-                BorderBrush="{StaticResource DataGridCellBorderBrush}"
-                BorderThickness="0,0,1,1"
-                MinHeight="36"
-                HorizontalAlignment="Stretch">
-            <TextBlock Text="{Binding DisplayValue}" 
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Stretch"
-                       TextWrapping="Wrap"
-                       Margin="8,6"
-                       FontSize="14" />
-        </Border>
-    </DataTemplate>
-
-    <DataTemplate x:Key="DeleteButtonCellTemplate">
-        <Border Background="Transparent"
-                BorderBrush="{StaticResource DataGridCellBorderBrush}"
-                BorderThickness="0,0,1,1"
-                Width="40"
-                MinHeight="36"
-                HorizontalAlignment="Center">
-            <Button Background="Transparent"
-                    BorderThickness="0"
-                    Width="24"
-                    Height="24"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    ToolTipService.ToolTip="Delete row">
-                <FontIcon Glyph="&#xE74D;" 
-                         FontSize="12"
-                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
-            </Button>
-        </Border>
-    </DataTemplate>
-
-    <DataTemplate x:Key="ValidationAlertsCellTemplate">
-        <Border Background="Transparent"
-                BorderBrush="{StaticResource DataGridCellBorderBrush}"
-                BorderThickness="0,0,0,1"
-                MinWidth="200"
-                MinHeight="36"
-                HorizontalAlignment="Stretch">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                          HorizontalScrollBarVisibility="Disabled"
-                          MaxHeight="100"
-                          HorizontalAlignment="Stretch">
-                <TextBlock Text="{Binding ValidationErrors}"
-                           TextWrapping="Wrap"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Stretch"
-                           FontSize="12"
-                           Margin="8,6"
-                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
-            </ScrollViewer>
-        </Border>
-    </DataTemplate>
-
-    <!-- ✅ NOVÉ: Zebra row template -->
     <DataTemplate x:Key="ZebraRowCellTemplate">
         <Border Background="{Binding IsZebraRow, Converter={StaticResource ZebraRowConverter}}"
                 BorderBrush="{StaticResource DataGridCellBorderBrush}"
@@ -253,7 +185,7 @@
         </Border>
     </DataTemplate>
 
-    <!-- ✅ Header template -->
+    <!-- ✅ Header templates -->
     <DataTemplate x:Key="DataGridHeaderTemplate">
         <Border Background="{StaticResource DataGridHeaderBackgroundBrush}"
                 BorderBrush="{StaticResource DataGridCellBorderBrush}"
@@ -276,7 +208,6 @@
                            TextTrimming="CharacterEllipsis"
                            Foreground="{StaticResource DataGridHeaderTextBrush}"/>
 
-                <!-- Resize grip -->
                 <Border Grid.Column="1"
                         Width="4"
                         Background="Transparent"
@@ -286,7 +217,6 @@
         </Border>
     </DataTemplate>
 
-    <!-- ✅ NOVÉ: ValidAlerts stretching header template -->
     <DataTemplate x:Key="ValidAlertsHeaderTemplate">
         <Border Background="{StaticResource DataGridHeaderBackgroundBrush}"
                 BorderBrush="{StaticResource DataGridCellBorderBrush}"
@@ -303,46 +233,5 @@
                        Foreground="Orange"/>
         </Border>
     </DataTemplate>
-
-    <!-- ✅ NOVÉ: Resizable header template -->
-    <DataTemplate x:Key="ResizableHeaderTemplate">
-        <Border Background="{StaticResource DataGridHeaderBackgroundBrush}"
-                BorderBrush="{StaticResource DataGridCellBorderBrush}"
-                BorderThickness="0,0,1,1"
-                Padding="8,8"
-                MinHeight="40">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="4"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0"
-                           Text="{Binding}" 
-                           VerticalAlignment="Center"
-                           FontWeight="SemiBold"
-                           FontSize="14"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{StaticResource DataGridHeaderTextBrush}"/>
-
-                <!-- Resize grip -->
-                <Border Grid.Column="1"
-                        Background="Transparent"
-                        VerticalAlignment="Stretch"
-                        HorizontalAlignment="Stretch" />
-            </Grid>
-        </Border>
-    </DataTemplate>
-
-    <!-- ✅ NOVÉ: Responsive styles pre rôzne veľkosti -->
-    <Style x:Key="CompactDataGridStyle" TargetType="local:AdvancedDataGrid" BasedOn="{StaticResource {x:Type local:AdvancedDataGrid}}">
-        <Setter Property="MinWidth" Value="250" />
-        <Setter Property="MinHeight" Value="150" />
-    </Style>
-
-    <Style x:Key="ExpandedDataGridStyle" TargetType="local:AdvancedDataGrid" BasedOn="{StaticResource {x:Type local:AdvancedDataGrid}}">
-        <Setter Property="MinWidth" Value="600" />
-        <Setter Property="MinHeight" Value="400" />
-    </Style>
 
 </ResourceDictionary>
