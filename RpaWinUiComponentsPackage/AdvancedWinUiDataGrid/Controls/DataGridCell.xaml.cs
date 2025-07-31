@@ -1,4 +1,6 @@
-﻿// Controls/DataGridCell.xaml.cs
+﻿// Controls/DataGridCell.xaml.cs - ✅ ENHANCED s komplexným error logging
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -26,14 +28,49 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private Type _dataType = typeof(string);
         private string _columnName = string.Empty;
 
+        // ✅ NOVÉ: Logging support s nezávislou implementáciou
+        private readonly ILogger _logger;
+        private readonly string _cellInstanceId = Guid.NewGuid().ToString("N")[..8];
+        private int _editOperationCount = 0;
+        private int _valueChangeCount = 0;
+        private int _validationErrorCount = 0;
+
         #endregion
 
         #region Constructor
 
-        public DataGridCell()
+        /// <summary>
+        /// Vytvorí DataGridCell bez loggingu (NullLogger) - DEFAULT konštruktor
+        /// </summary>
+        public DataGridCell() : this(null)
         {
-            this.InitializeComponent();
-            this.DataContext = this;
+        }
+
+        /// <summary>
+        /// Vytvorí DataGridCell s voliteľným loggerom
+        /// </summary>
+        /// <param name="logger">ILogger pre logovanie (null = žiadne logovanie)</param>
+        public DataGridCell(ILogger? logger)
+        {
+            try
+            {
+                _logger = logger ?? NullLogger.Instance;
+                
+                _logger.LogDebug("🔧 DataGridCell Constructor START - InstanceId: {InstanceId}, LoggerType: {LoggerType}",
+                    _cellInstanceId, _logger.GetType().Name);
+
+                this.InitializeComponent();
+                this.DataContext = this;
+
+                _logger.LogDebug("✅ DataGridCell Constructor COMPLETED - InstanceId: {InstanceId}",
+                    _cellInstanceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ CRITICAL ERROR during DataGridCell construction - InstanceId: {InstanceId}",
+                    _cellInstanceId);
+                throw;
+            }
         }
 
         #endregion
@@ -279,15 +316,21 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
             try
             {
+                _logger.LogTrace("🔄 TryConvertValue START - InstanceId: {InstanceId}, Column: {ColumnName}, " +
+                    "InputValue: '{InputValue}', InputType: {InputType}, TargetType: {TargetType}",
+                    _cellInstanceId, ColumnName, inputValue, inputValue?.GetType().Name ?? "null", DataType.Name);
+
                 if (inputValue == null)
                 {
                     convertedValue = GetDefaultValueForType(DataType);
+                    _logger.LogTrace("✅ Null input converted to default value: '{DefaultValue}'", convertedValue);
                     return true;
                 }
 
                 if (DataType.IsAssignableFrom(inputValue.GetType()))
                 {
                     convertedValue = inputValue;
+                    _logger.LogTrace("✅ Direct assignment - no conversion needed");
                     return true;
                 }
 
@@ -295,6 +338,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (DataType == typeof(string))
                 {
                     convertedValue = inputValue.ToString();
+                    _logger.LogTrace("✅ Converted to string: '{StringValue}'", convertedValue);
                     return true;
                 }
 
@@ -303,7 +347,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     if (int.TryParse(inputValue.ToString(), out int intValue))
                     {
                         convertedValue = intValue;
+                        _logger.LogTrace("✅ Converted to int: {IntValue}", intValue);
                         return true;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ Failed to parse int from '{InputValue}'", inputValue);
                     }
                 }
 
@@ -312,16 +361,25 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     if (decimal.TryParse(inputValue.ToString(), out decimal decValue))
                     {
                         convertedValue = decValue;
+                        _logger.LogTrace("✅ Converted to decimal: {DecimalValue}", decValue);
                         return true;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ Failed to parse decimal from '{InputValue}'", inputValue);
                     }
                 }
 
                 // Fallback konverzia
                 convertedValue = Convert.ChangeType(inputValue, DataType);
+                _logger.LogTrace("✅ Fallback conversion successful: '{ConvertedValue}'", convertedValue);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "❌ Type conversion FAILED - Column: {ColumnName}, " +
+                    "InputValue: '{InputValue}', TargetType: {TargetType}",
+                    ColumnName, inputValue, DataType.Name);
                 return false;
             }
         }
@@ -341,54 +399,114 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         private void OnCellKeyDown(object sender, KeyRoutedEventArgs e)
         {
-            switch (e.Key)
+            try
             {
-                case Windows.System.VirtualKey.Tab:
-                    e.Handled = true;
-                    IsEditing = false;
-                    // TODO: Navigate to next cell
-                    break;
+                _logger.LogDebug("⌨️ CellKeyDown START - InstanceId: {InstanceId}, Key: {Key}, " +
+                    "IsEditing: {IsEditing}, Column: {ColumnName}",
+                    _cellInstanceId, e.Key, IsEditing, ColumnName);
 
-                case Windows.System.VirtualKey.Enter:
-                    e.Handled = true;
-                    if (IsShiftPressed())
-                    {
-                        // Insert new line
-                        InsertNewLine();
-                    }
-                    else
-                    {
+                switch (e.Key)
+                {
+                    case Windows.System.VirtualKey.Tab:
+                        e.Handled = true;
                         IsEditing = false;
-                        // TODO: Navigate to cell below
-                    }
-                    break;
+                        _logger.LogDebug("⌨️ Tab key - ending edit mode, Column: {ColumnName}", ColumnName);
+                        // TODO: Navigate to next cell
+                        break;
 
-                case Windows.System.VirtualKey.Escape:
-                    e.Handled = true;
-                    IsEditing = false;
-                    CancelEditing();
-                    break;
+                    case Windows.System.VirtualKey.Enter:
+                        e.Handled = true;
+                        if (IsShiftPressed())
+                        {
+                            _logger.LogDebug("⌨️ Shift+Enter - inserting new line, Column: {ColumnName}", ColumnName);
+                            InsertNewLine();
+                        }
+                        else
+                        {
+                            _logger.LogDebug("⌨️ Enter - ending edit mode, Column: {ColumnName}", ColumnName);
+                            IsEditing = false;
+                            // TODO: Navigate to cell below
+                        }
+                        break;
+
+                    case Windows.System.VirtualKey.Escape:
+                        e.Handled = true;
+                        _logger.LogDebug("⌨️ Escape - canceling edit, Column: {ColumnName}", ColumnName);
+                        IsEditing = false;
+                        CancelEditing();
+                        break;
+                }
+
+                _logger.LogTrace("✅ CellKeyDown COMPLETED - Key: {Key}, FinalEditState: {IsEditing}",
+                    e.Key, IsEditing);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnCellKeyDown - InstanceId: {InstanceId}, Key: {Key}",
+                    _cellInstanceId, e.Key);
             }
         }
 
         private void OnCellLostFocus(object sender, RoutedEventArgs e)
         {
-            if (IsEditing)
+            try
             {
-                IsEditing = false;
+                _logger.LogDebug("🎯 CellLostFocus - InstanceId: {InstanceId}, Column: {ColumnName}, " +
+                    "WasEditing: {WasEditing}", _cellInstanceId, ColumnName, IsEditing);
+
+                if (IsEditing)
+                {
+                    _editOperationCount++;
+                    IsEditing = false;
+                    _logger.LogDebug("📝 Edit mode ended on focus loss - Column: {ColumnName}, " +
+                        "TotalEditOps: {EditOps}", ColumnName, _editOperationCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnCellLostFocus - InstanceId: {InstanceId}",
+                    _cellInstanceId);
             }
         }
 
         private void OnCellGotFocus(object sender, RoutedEventArgs e)
         {
-            IsEditing = true;
+            try
+            {
+                _logger.LogDebug("🎯 CellGotFocus - InstanceId: {InstanceId}, Column: {ColumnName}, " +
+                    "CurrentValue: '{Value}'", _cellInstanceId, ColumnName, DisplayValue);
+
+                IsEditing = true;
+                _logger.LogDebug("📝 Edit mode started - Column: {ColumnName}", ColumnName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnCellGotFocus - InstanceId: {InstanceId}",
+                    _cellInstanceId);
+            }
         }
 
         private void OnCellTextChanged(object sender, TextChangedEventArgs e)
         {
-            if (IsEditing && sender is TextBox textBox)
+            try
             {
-                ValueChanged?.Invoke(this, new CellValueChangedEventArgs(OriginalValue, textBox.Text));
+                if (IsEditing && sender is TextBox textBox)
+                {
+                    var oldValue = OriginalValue;
+                    var newValue = textBox.Text;
+                    _valueChangeCount++;
+
+                    _logger.LogTrace("📝 CellTextChanged - InstanceId: {InstanceId}, Column: {ColumnName}, " +
+                        "OldValue: '{OldValue}' → NewValue: '{NewValue}', ChangeCount: {ChangeCount}",
+                        _cellInstanceId, ColumnName, oldValue, newValue, _valueChangeCount);
+
+                    ValueChanged?.Invoke(this, new CellValueChangedEventArgs(oldValue, newValue));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnCellTextChanged - InstanceId: {InstanceId}",
+                    _cellInstanceId);
             }
         }
 
