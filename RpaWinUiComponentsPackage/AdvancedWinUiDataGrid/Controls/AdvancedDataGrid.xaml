@@ -1,16 +1,16 @@
-<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ VŠETKY XAML CHYBY OPRAVENÉ -->
+<!-- AdvancedWinUiDataGrid/Controls/AdvancedDataGrid.xaml - ✅ VŠETKY CHYBY OPRAVENÉ + RESIZE + SCROLL -->
 <UserControl x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.AdvancedDataGrid"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid">
 
-    <!-- ✅ OPRAVENÉ: Resources pre realtime validáciu -->
+    <!-- ✅ OPRAVENÉ: Resources pre realtime validáciu - bez neexistujúcich transitions -->
     <UserControl.Resources>
         <!-- Converters pre validáciu -->
         <local:BoolToValidationBrushConverter x:Key="BoolToValidationBrushConverter" />
         <local:BoolToValidationThicknessConverter x:Key="BoolToValidationThicknessConverter" />
 
-        <!-- ✅ OPRAVENÉ: Style pre validačné TextBoxy bez neexistujúcich Transitions -->
+        <!-- ✅ OPRAVENÉ: Style pre validačné TextBoxy bez transitions -->
         <Style x:Key="ValidatedTextBoxStyle" TargetType="TextBox">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="4,2" />
@@ -18,17 +18,34 @@
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="FontSize" Value="14" />
-            <!-- ✅ OPRAVENÉ: Odstránené neexistujúce BorderThicknessTransition a BrushTransition -->
+        </Style>
+
+        <!-- ✅ NOVÉ: Style pre column resize grip -->
+        <Style x:Key="ColumnResizeGripStyle" TargetType="Border">
+            <Setter Property="Width" Value="4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Cursor" Value="SizeWE" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
+
+        <!-- ✅ NOVÉ: Style pre header s resize možnosťou -->
+        <Style x:Key="ResizableHeaderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{ThemeResource LayerFillColorAltBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="MinHeight" Value="40" />
         </Style>
     </UserControl.Resources>
 
+    <!-- ✅ OPRAVENÉ: Main border bez duplicitného Child -->
     <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1"
             CornerRadius="8">
 
         <Grid>
-            <!-- ✅ Main Content Grid - zobrazuje sa po inicializácii -->
+            <!-- ✅ OPRAVENÉ: Main Content Grid - zobrazuje sa po inicializácii -->
             <Grid x:Name="MainContentGrid" Visibility="Collapsed">
 
                 <Grid.RowDefinitions>
@@ -36,7 +53,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- ✅ Header Grid - zobrazenie stĺpcov -->
+                <!-- ✅ OPRAVENÉ: Header Grid s resize funkcionalitou -->
                 <Border x:Name="HeaderGrid" 
                         Grid.Row="0"
                         Background="{ThemeResource LayerFillColorAltBrush}"
@@ -44,102 +61,44 @@
                         BorderThickness="0,0,0,1"
                         MinHeight="40">
 
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto" 
+                    <!-- ✅ NOVÉ: ScrollViewer pre horizontálny scroll headerov -->
+                    <ScrollViewer x:Name="HeaderScrollViewer"
+                                  HorizontalScrollBarVisibility="Auto" 
                                   VerticalScrollBarVisibility="Disabled"
-                                  ZoomMode="Disabled">
-                        <ItemsRepeater x:Name="HeaderRepeater">
-                            <ItemsRepeater.Layout>
-                                <StackLayout Orientation="Horizontal"/>
-                            </ItemsRepeater.Layout>
-                            <ItemsRepeater.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{ThemeResource LayerFillColorAltBrush}"
-                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                            BorderThickness="0,0,1,0"
-                                            Width="{Binding Width}"
-                                            MinHeight="40"
-                                            Padding="8,6">
+                                  ZoomMode="Disabled"
+                                  HorizontalScrollMode="Auto">
 
-                                        <!-- ✅ Header s tooltip pre validačné info -->
-                                        <TextBlock Text="{Binding Header}" 
-                                                   FontWeight="SemiBold"
-                                                   FontSize="14"
-                                                   VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   ToolTipService.ToolTip="{Binding Header}"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsRepeater.ItemTemplate>
-                        </ItemsRepeater>
+                        <!-- ✅ NOVÉ: StackPanel s resizable headers -->
+                        <StackPanel x:Name="HeaderStackPanel" 
+                                    Orientation="Horizontal"
+                                    Background="Transparent">
+                            <!-- Headers sa budú pridávať dynamicky v code-behind -->
+                        </StackPanel>
                     </ScrollViewer>
                 </Border>
 
-                <!-- ✅ Data area - dynamické riadky s REALTIME VALIDÁCIOU -->
+                <!-- ✅ NOVÉ: Data area s kompletným scroll support -->
                 <ScrollViewer x:Name="DataGridScrollViewer"
                               Grid.Row="1"
                               HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto">
+                              VerticalScrollBarVisibility="Auto"
+                              ZoomMode="Disabled"
+                              HorizontalScrollMode="Auto"
+                              VerticalScrollMode="Auto"
+                              ScrollViewer.HorizontalScrollChaining="Auto"
+                              ScrollViewer.VerticalScrollChaining="Auto">
 
-                    <!-- ✅ OneWay binding pre ObservableCollection s realtime support -->
-                    <ItemsRepeater x:Name="DataRowsRepeater" 
-                                   ItemsSource="{x:Bind DisplayRows, Mode=OneWay}">
-                        <ItemsRepeater.Layout>
-                            <StackLayout Orientation="Vertical" Spacing="0"/>
-                        </ItemsRepeater.Layout>
-                        <ItemsRepeater.ItemTemplate>
-                            <DataTemplate x:DataType="local:DataRowViewModel">
-                                <!-- Single row -->
-                                <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="0,0,0,1">
-
-                                    <!-- ✅ OneWay binding pre realtime updates -->
-                                    <ItemsRepeater ItemsSource="{x:Bind Cells, Mode=OneWay}">
-                                        <ItemsRepeater.Layout>
-                                            <StackLayout Orientation="Horizontal"/>
-                                        </ItemsRepeater.Layout>
-                                        <ItemsRepeater.ItemTemplate>
-                                            <DataTemplate x:DataType="local:CellViewModel">
-                                                <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                        BorderThickness="0,0,1,0"
-                                                        Width="{x:Bind Width}"
-                                                        MinHeight="36"
-                                                        Padding="2">
-
-                                                    <!-- ✅ HLAVNÉ: TextBox s REALTIME VALIDÁCIOU a KEYBOARD HANDLING -->
-                                                    <TextBox Text="{x:Bind DisplayValue, Mode=TwoWay}" 
-                                                             Style="{StaticResource ValidatedTextBoxStyle}"
-                                                             BorderBrush="{x:Bind IsValid, Converter={StaticResource BoolToValidationBrushConverter}}"
-                                                             BorderThickness="{x:Bind IsValid, Converter={StaticResource BoolToValidationThicknessConverter}}"
-                                                             Tag="{x:Bind}"
-                                                             ToolTipService.ToolTip="{x:Bind ValidationErrors}"
-                                                             Loaded="OnCellTextBoxLoaded"/>
-
-                                                    <!-- ✅ OPRAVENÉ: Validačný indikátor bez neexistujúceho OpacityTransition -->
-                                                    <Border x:Name="ValidationIndicator"
-                                                            Width="4"
-                                                            HorizontalAlignment="Right"
-                                                            VerticalAlignment="Stretch"
-                                                            Background="{ThemeResource SystemFillColorCriticalBrush}"
-                                                            Visibility="{x:Bind HasValidationErrors, Mode=OneWay}"
-                                                            Opacity="0.8">
-                                                        <!-- ✅ OPRAVENÉ: Odstránené neexistujúce OpacityTransition -->
-                                                    </Border>
-
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsRepeater.ItemTemplate>
-                                    </ItemsRepeater>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsRepeater.ItemTemplate>
-                    </ItemsRepeater>
+                    <!-- ✅ NOVÉ: Main data container -->
+                    <StackPanel x:Name="DataRowsContainer" 
+                                Orientation="Vertical" 
+                                Background="Transparent">
+                        <!-- Data rows sa budú pridávať dynamicky -->
+                    </StackPanel>
 
                 </ScrollViewer>
             </Grid>
 
-            <!-- ✅ Loading Overlay - zobrazuje sa počas inicializácie -->
+            <!-- ✅ OPRAVENÉ: Loading Overlay - bez duplicitného Child -->
             <Border x:Name="LoadingOverlay"
                     Background="{ThemeResource LayerFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -164,7 +123,7 @@
                               MaxWidth="350"/>
 
                     <!-- ✅ Validačné info v loading -->
-                    <TextBlock Text="⚡ Realtime validation • ESC to cancel • ENTER to confirm • TAB to navigate"
+                    <TextBlock Text="⚡ Realtime validation • ESC to cancel • ENTER to confirm • TAB to navigate • Mouse resize columns"
                               FontSize="12"
                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                               HorizontalAlignment="Center"
@@ -174,7 +133,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- ✅ Validačný overlay (zobrazuje sa keď sú globálne validačné chyby) -->
+            <!-- ✅ OPRAVENÉ: Validačný overlay bez transitions -->
             <Border x:Name="ValidationOverlay"
                     Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
                     BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
