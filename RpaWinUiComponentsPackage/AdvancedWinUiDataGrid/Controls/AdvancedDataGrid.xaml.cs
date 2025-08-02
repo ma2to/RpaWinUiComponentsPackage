@@ -31,7 +31,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
     /// ✅ KOMPLETNE OPRAVENÉ: Všetky CS1061, CS0102, CS0103, CS0123, CS0229, CS0535 chyby
     /// ✅ KOMPLETNÉ IMPLEMENTÁCIE: Resize, Scroll, Stretch, Auto-Add, Search/Sort/Zebra
     /// </summary>
-    public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable
+    public sealed partial class AdvancedDataGrid : UserControl, INotifyPropertyChanged, IDisposable, INavigationCallback
     {
         #region Private Fields
 
@@ -52,6 +52,21 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         // Search and Sort service
         private SearchAndSortService? _searchAndSortService;
+
+        // Navigation service
+        private NavigationService? _navigationService;
+
+        // Copy/Paste service
+        private CopyPasteService? _copyPasteService;
+
+        // ✅ NOVÉ: Cell Selection State management
+        private readonly CellSelectionState _cellSelectionState = new();
+
+        // ✅ NOVÉ: Drag Selection State management  
+        private readonly DragSelectionState _dragSelectionState = new();
+
+        // ✅ NOVÉ: Advanced Validation Rules
+        private ValidationRuleSet? _advancedValidationRules;
 
         // Internal data pre AUTO-ADD a UI binding
         private readonly List<Dictionary<string, object?>> _gridData = new();
@@ -94,6 +109,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private int _totalCellsRendered = 0;
         private int _totalValidationErrors = 0;
         private DateTime _lastDataUpdate = DateTime.MinValue;
+
+        // ✅ NOVÉ: CheckBox Column Support
+        private bool _checkBoxColumnEnabled = false;
+        private string _checkBoxColumnName = "CheckBoxState";
+        private readonly Dictionary<int, bool> _checkBoxStates = new();
+        private SpecialColumns.CheckBoxColumnHeader? _checkBoxColumnHeader;
 
         #endregion
 
@@ -277,11 +298,18 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                _logger.LogDebug("🖱️ OnPointerCaptureLost - Resizing: {IsResizing}", _isResizing);
+                _logger.LogDebug("🖱️ OnPointerCaptureLost - Resizing: {IsResizing}, Dragging: {IsDragging}", 
+                    _isResizing, _dragSelectionState.IsDragging);
 
                 if (_isResizing)
                 {
                     EndResize();
+                }
+
+                // Handle drag selection cancellation
+                if (_dragSelectionState.IsDragging)
+                {
+                    _ = Task.Run(async () => await OnDragSelectionEnd());
                 }
             }
             catch (Exception ex)
@@ -290,9 +318,1219 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
         }
 
+        /// <summary>
+        /// ✅ ROZŠÍRENÉ: Column header click handler pre sortovanie s Multi-Sort podporou (Ctrl+klik)
+        /// </summary>
+        private async Task OnColumnHeaderClicked(string columnName, TextBlock sortIndicator)
+        {
+            try
+            {
+                // Zisti či je stlačený Ctrl
+                var coreWindow = Microsoft.UI.Xaml.Window.Current?.CoreWindow 
+                    ?? Microsoft.UI.Xaml.Application.Current.GetKeyboardDevice()?.GetCurrentKeyState(Windows.System.VirtualKey.Control);
+                var isCtrlPressed = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
+                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+                _logger.LogInformation("🔀 Column header clicked - Column: {ColumnName}, CtrlPressed: {CtrlPressed}, Instance: {InstanceId}",
+                    columnName, isCtrlPressed, _componentInstanceId);
+
+                if (_searchAndSortService == null)
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - cannot sort");
+                    return;
+                }
+
+                // Použij Multi-Sort ak je Ctrl stlačené, inak single sort
+                var multiSortResult = _searchAndSortService.AddOrUpdateMultiSort(columnName, isCtrlPressed);
+                
+                if (multiSortResult != null)
+                {
+                    // Multi-Sort je aktívne
+                    UpdateMultiSortIndicators();
+                    _logger.LogInformation("✅ Multi-Sort applied - Column: {ColumnName}, Direction: {Direction}, Priority: {Priority}",
+                        columnName, multiSortResult.Direction, multiSortResult.Priority);
+                }
+                else if (!isCtrlPressed)
+                {
+                    // Fallback na single sort
+                    var newDirection = _searchAndSortService.ToggleColumnSort(columnName);
+                    UpdateSortIndicator(columnName, newDirection);
+                    _logger.LogInformation("✅ Single-Sort applied - Column: {ColumnName}, Direction: {Direction}",
+                        columnName, newDirection);
+                }
+                else
+                {
+                    // Multi-Sort stĺpec bol odstránený
+                    UpdateMultiSortIndicators();
+                    _logger.LogInformation("✅ Multi-Sort column removed - Column: {ColumnName}", columnName);
+                }
+                
+                // Apply sorting and refresh display
+                await ApplySortAndRefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnColumnHeaderClicked - Column: {ColumnName}",
+                    columnName);
+            }
+        }
+
+        /// <summary>
+        /// Spracuje zmenu search textu v header search boxe
+        /// </summary>
+        private async void OnSearchTextChanged(string columnName, string searchText)
+        {
+            try
+            {
+                _logger.LogDebug("🔍 Search text changed - Column: {ColumnName}, Text: '{SearchText}'",
+                    columnName, searchText);
+
+                if (_searchAndSortService == null)
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - cannot apply search");
+                    return;
+                }
+
+                // Set search filter
+                _searchAndSortService.SetColumnSearchFilter(columnName, searchText);
+
+                // Apply search and refresh display
+                await ApplySearchAndRefreshAsync();
+
+                _logger.LogInformation("✅ Search applied - Column: {ColumnName}, Filter: '{SearchText}'",
+                    columnName, searchText);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnSearchTextChanged - Column: {ColumnName}, Text: '{SearchText}'",
+                    columnName, searchText);
+            }
+        }
+
+        /// <summary>
+        /// Aplikuje search filtre a obnoví zobrazenie
+        /// </summary>
+        private async Task ApplySearchAndRefreshAsync()
+        {
+            try
+            {
+                _logger.LogDebug("🔍 ApplySearchAndRefresh START");
+
+                if (_dataManagementService == null || _searchAndSortService == null)
+                {
+                    _logger.LogWarning("⚠️ Required services are null - cannot apply search");
+                    return;
+                }
+
+                // Get current data
+                var allData = await _dataManagementService.GetAllDataAsync();
+                
+                // Apply search and sort (empty rows will be at the end)
+                var processedData = await _searchAndSortService.ApplyAllFiltersAndStylingAsync(allData);
+                
+                await UIHelper.RunOnUIThreadAsync(() =>
+                {
+                    // Update display rows
+                    _displayRows.Clear();
+                    foreach (var rowInfo in processedData)
+                    {
+                        var rowViewModel = CreateRowViewModelFromRowInfo(rowInfo);
+                        _displayRows.Add(rowViewModel);
+                    }
+
+                    _totalCellsRendered = _displayRows.Sum(r => r.Cells.Count);
+                    _logger.LogDebug("✅ Search applied - Rows: {RowCount}, Cells: {CellCount}",
+                        _displayRows.Count, _totalCellsRendered);
+                }, _logger);
+
+                _logger.LogDebug("✅ ApplySearchAndRefresh COMPLETED");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ApplySearchAndRefreshAsync");
+            }
+        }
+
+        /// <summary>
+        /// Vytvorí RowViewModel z RowDisplayInfo
+        /// </summary>
+        private DataRowViewModel CreateRowViewModelFromRowInfo(RowDisplayInfo rowInfo)
+        {
+            var rowViewModel = new DataRowViewModel
+            {
+                RowIndex = rowInfo.RowIndex,
+                IsZebraRow = rowInfo.IsZebraRow
+            };
+
+            // Create cells from the row data
+            foreach (var column in _columns)
+            {
+                var cellValue = rowInfo.Data.TryGetValue(column.Name, out var value) ? value : null;
+                var cellViewModel = new CellViewModel
+                {
+                    ColumnName = column.Name,
+                    Value = cellValue,
+                    DataType = column.DataType,
+                    RowIndex = rowInfo.RowIndex,
+                    IsValid = true
+                };
+                rowViewModel.Cells.Add(cellViewModel);
+            }
+
+            return rowViewModel;
+        }
+
+        /// <summary>
+        /// Nastaví keyboard shortcuts pre copy/paste operácie
+        /// </summary>
+        private void SetupKeyboardShortcuts()
+        {
+            try
+            {
+                _logger.LogDebug("⌨️ SetupKeyboardShortcuts START");
+
+                // Add KeyDown event handler to the main UserControl
+                this.KeyDown += OnDataGridKeyDown;
+                this.IsTabStop = true; // Allow control to receive focus
+                this.TabFocusNavigation = KeyboardNavigationMode.Local;
+
+                _logger.LogDebug("✅ Keyboard shortcuts setup - Ctrl+C/V/X enabled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SetupKeyboardShortcuts");
+            }
+        }
+
+        /// <summary>
+        /// Spracuje keyboard shortcuts na úrovni DataGrid-u
+        /// </summary>
+        private async void OnDataGridKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            try
+            {
+                _logger.LogDebug("⌨️ DataGrid KeyDown - Key: {Key}, Ctrl: {Ctrl}, Shift: {Shift}",
+                    e.Key, IsCtrlPressed(), IsShiftPressed());
+
+                if (IsCtrlPressed())
+                {
+                    switch (e.Key)
+                    {
+                        case Windows.System.VirtualKey.C:
+                            e.Handled = true;
+                            await HandleCopyShortcut();
+                            break;
+
+                        case Windows.System.VirtualKey.V:
+                            e.Handled = true;
+                            await HandlePasteShortcut();
+                            break;
+
+                        case Windows.System.VirtualKey.X:
+                            e.Handled = true;
+                            await HandleCutShortcut();
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnDataGridKeyDown - Key: {Key}", e.Key);
+            }
+        }
+
+        /// <summary>
+        /// Spracuje Ctrl+C (copy) shortcut
+        /// </summary>
+        private async Task HandleCopyShortcut()
+        {
+            try
+            {
+                _logger.LogInformation("📋 Copy shortcut triggered (Ctrl+C)");
+
+                if (_copyPasteService == null)
+                {
+                    _logger.LogWarning("⚠️ CopyPasteService is null - cannot copy");
+                    return;
+                }
+
+                // Get currently selected cells
+                var selectedCells = GetSelectedCellsForCopy();
+                
+                await _copyPasteService.CopySelectedCellsAsync(selectedCells);
+
+                _logger.LogInformation("✅ Copy operation completed - Cells: {CellCount}", selectedCells.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in HandleCopyShortcut");
+            }
+        }
+
+        /// <summary>
+        /// Spracuje Ctrl+V (paste) shortcut
+        /// </summary>
+        private async Task HandlePasteShortcut()
+        {
+            try
+            {
+                _logger.LogInformation("📋 Paste shortcut triggered (Ctrl+V)");
+
+                if (_copyPasteService == null)
+                {
+                    _logger.LogWarning("⚠️ CopyPasteService is null - cannot paste");
+                    return;
+                }
+
+                // Get paste target position (for now, start at beginning)
+                var targetPosition = GetPasteTargetPosition();
+                
+                await _copyPasteService.PasteFromClipboardAsync(targetPosition.Row, targetPosition.Column);
+
+                // Refresh display after paste
+                await ApplySearchAndRefreshAsync();
+
+                _logger.LogInformation("✅ Paste operation completed");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in HandlePasteShortcut");
+            }
+        }
+
+        /// <summary>
+        /// Spracuje Ctrl+X (cut) shortcut  
+        /// </summary>
+        private async Task HandleCutShortcut()
+        {
+            try
+            {
+                _logger.LogInformation("📋 Cut shortcut triggered (Ctrl+X)");
+
+                if (_copyPasteService == null)
+                {
+                    _logger.LogWarning("⚠️ CopyPasteService is null - cannot cut");
+                    return;
+                }
+
+                // Get currently selected cells
+                var selectedCells = GetSelectedCellsForCopy();
+                
+                await _copyPasteService.CutSelectedCellsAsync(selectedCells);
+
+                // Refresh display after cut
+                await ApplySearchAndRefreshAsync();
+
+                _logger.LogInformation("✅ Cut operation completed - Cells: {CellCount}", selectedCells.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in HandleCutShortcut");
+            }
+        }
+
+        /// <summary>
+        /// Získa aktuálne označené bunky pre copy operáciu
+        /// </summary>
+        private List<CellSelection> GetSelectedCellsForCopy()
+        {
+            var selectedCells = new List<CellSelection>();
+
+            try
+            {
+                var selectedPositions = _cellSelectionState.GetSelectedCells();
+                
+                if (!selectedPositions.Any())
+                {
+                    _logger.LogDebug("📋 No cells selected - nothing to copy");
+                    return selectedCells;
+                }
+
+                // Convert selected positions to CellSelection objects with actual values
+                foreach (var position in selectedPositions)
+                {
+                    var row = _displayRows.FirstOrDefault(r => r.RowIndex == position.Row);
+                    var cell = row?.Cells.FirstOrDefault(c => c.ColumnName == position.ColumnName);
+                    
+                    if (cell != null)
+                    {
+                        selectedCells.Add(new CellSelection
+                        {
+                            RowIndex = cell.RowIndex,
+                            ColumnIndex = GetColumnIndex(cell.ColumnName),
+                            ColumnName = cell.ColumnName,
+                            Value = cell.Value
+                        });
+                    }
+                }
+
+                // Set copied state and update visual feedback
+                _cellSelectionState.SetCopiedCells(selectedPositions);
+                _ = Task.Run(async () => await UpdateCellVisualStates());
+
+                _logger.LogDebug("📋 Selected {CellCount} cells for copy operation", selectedCells.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetSelectedCellsForCopy");
+            }
+
+            return selectedCells;
+        }
+
+        /// <summary>
+        /// Získa target pozíciu pre paste operáciu
+        /// </summary>
+        private (int Row, int Column) GetPasteTargetPosition()
+        {
+            // For now, paste at the beginning of the first non-empty row
+            return (0, 0);
+        }
+
+        /// <summary>
+        /// Získa index stĺpca podľa názvu
+        /// </summary>
+        private int GetColumnIndex(string columnName)
+        {
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                if (_columns[i].Name == columnName)
+                    return i;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Kontroluje či je riadok prázdny
+        /// </summary>
+        private bool IsRowEmpty(DataRowViewModel row)
+        {
+            return row.Cells.All(c => c.Value == null || string.IsNullOrWhiteSpace(c.Value?.ToString()));
+        }
+
+        /// <summary>
+        /// Kontroluje či je stlačený Ctrl
+        /// </summary>
+        private bool IsCtrlPressed()
+        {
+            var coreWindow = Microsoft.UI.Xaml.Window.Current?.CoreWindow;
+            if (coreWindow == null) return false;
+            
+            var ctrlState = coreWindow.GetKeyState(Windows.System.VirtualKey.Control);
+            return (ctrlState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+        }
+
+        /// <summary>
+        /// Kontroluje či je stlačený Shift
+        /// </summary>
+        private bool IsShiftPressed()
+        {
+            var coreWindow = Microsoft.UI.Xaml.Window.Current?.CoreWindow;
+            if (coreWindow == null) return false;
+            
+            var shiftState = coreWindow.GetKeyState(Windows.System.VirtualKey.Shift);
+            return (shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Cell Selection Management
+
+        /// <summary>
+        /// Spracuje click na bunku s podporou Ctrl+Click pre multi-select
+        /// </summary>
+        private async Task OnCellClicked(int rowIndex, int columnIndex, string columnName, bool isCtrlPressed)
+        {
+            try
+            {
+                _logger.LogDebug("🎯 Cell clicked - Row: {Row}, Column: {Column} ({ColumnName}), Ctrl: {Ctrl}",
+                    rowIndex, columnIndex, columnName, isCtrlPressed);
+
+                // Neklikaj na special columns
+                var column = _columns.FirstOrDefault(c => c.Name == columnName);
+                if (column?.IsSpecialColumn == true)
+                {
+                    _logger.LogDebug("🎯 Ignoring click on special column: {ColumnName}", columnName);
+                    return;
+                }
+
+                if (isCtrlPressed)
+                {
+                    // Multi-select: pridaj/odobér z selection
+                    await HandleMultiSelectClick(rowIndex, columnIndex, columnName);
+                }
+                else
+                {
+                    // Single select: nastav new selection
+                    await HandleSingleSelectClick(rowIndex, columnIndex, columnName);
+                }
+
+                // Clear copied cells po novom selection (okrem ak nie je rovnaká bunka)
+                var copiedCells = _cellSelectionState.GetCopiedCells();
+                if (copiedCells.Any() && !copiedCells.Any(c => c.Row == rowIndex && c.Column == columnIndex))
+                {
+                    _cellSelectionState.ClearCopiedCells();
+                    await UpdateCellVisualStates();
+                }
+
+                _logger.LogInformation("✅ Cell selection updated - {SelectionInfo}",
+                    _cellSelectionState.GetDiagnosticInfo());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnCellClicked - Row: {Row}, Column: {Column}",
+                    rowIndex, columnIndex);
+            }
+        }
+
+        /// <summary>
+        /// Spracuje single cell click (bez Ctrl)
+        /// </summary>
+        private async Task HandleSingleSelectClick(int rowIndex, int columnIndex, string columnName)
+        {
+            // Clear previous selection
+            _cellSelectionState.SetSingleCellSelection(rowIndex, columnIndex, columnName);
+            
+            await UpdateCellVisualStates();
+            
+            _logger.LogDebug("🎯 Single cell selected - [{Row},{Column}]{ColumnName}",
+                rowIndex, columnIndex, columnName);
+        }
+
+        /// <summary>
+        /// Spracuje multi-select click (s Ctrl)
+        /// </summary>
+        private async Task HandleMultiSelectClick(int rowIndex, int columnIndex, string columnName)
+        {
+            if (_cellSelectionState.IsCellSelected(rowIndex, columnIndex))
+            {
+                // Odobér z selection
+                _cellSelectionState.RemoveCellFromSelection(rowIndex, columnIndex);
+                _logger.LogDebug("🎯 Cell removed from selection - [{Row},{Column}]{ColumnName}",
+                    rowIndex, columnIndex, columnName);
+            }
+            else
+            {
+                // Pridaj do selection
+                _cellSelectionState.AddCellToSelection(rowIndex, columnIndex, columnName);
+                _logger.LogDebug("🎯 Cell added to selection - [{Row},{Column}]{ColumnName}",
+                    rowIndex, columnIndex, columnName);
+            }
+
+            await UpdateCellVisualStates();
+        }
+
+        /// <summary>
+        /// Spracuje click mimo DataGrid (clear selection)
+        /// </summary>
+        private async Task OnOutsideClick()
+        {
+            try
+            {
+                _logger.LogDebug("🎯 Outside click - clearing selection");
+
+                _cellSelectionState.ClearSelection();
+                await UpdateCellVisualStates();
+
+                _logger.LogDebug("✅ Selection cleared");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnOutsideClick");
+            }
+        }
+
+        /// <summary>
+        /// Aktualizuje vizuálny stav všetkých buniek na base selection state
+        /// </summary>
+        private async Task UpdateCellVisualStates()
+        {
+            try
+            {
+                await UIHelper.RunOnUIThreadAsync(() =>
+                {
+                    var focusedCell = _cellSelectionState.FocusedCell;
+                    var selectedCells = _cellSelectionState.GetSelectedCells();
+                    var copiedCells = _cellSelectionState.GetCopiedCells();
+
+                    foreach (var row in _displayRows)
+                    {
+                        foreach (var cell in row.Cells)
+                        {
+                            // Update focus state
+                            cell.IsFocused = focusedCell?.Row == cell.RowIndex && 
+                                           focusedCell?.ColumnName == cell.ColumnName;
+
+                            // Update selected state
+                            cell.IsSelected = selectedCells.Any(c => c.Row == cell.RowIndex && 
+                                                                   c.ColumnName == cell.ColumnName);
+
+                            // Update copied state
+                            cell.IsCopied = copiedCells.Any(c => c.Row == cell.RowIndex && 
+                                                              c.ColumnName == cell.ColumnName);
+                        }
+                    }
+
+                    _logger.LogTrace("🎨 Updated visual states - Focus: {Focus}, Selected: {Selected}, Copied: {Copied}",
+                        focusedCell?.ToString() ?? "None", selectedCells.Count, copiedCells.Count);
+                }, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateCellVisualStates");
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Drag Selection Management
+
+        /// <summary>
+        /// Spracuje začiatok drag selection operácie
+        /// </summary>
+        private async Task OnDragSelectionStart(Point startPoint, CellPosition startCell)
+        {
+            try
+            {
+                _logger.LogDebug("🖱️ Drag selection started - Point: ({X},{Y}), Cell: [{Row},{Column}]",
+                    startPoint.X, startPoint.Y, startCell.Row, startCell.Column);
+
+                _dragSelectionState.StartDrag(startPoint, startCell);
+
+                // Clear current selection a začni nový
+                _cellSelectionState.ClearSelection();
+                _cellSelectionState.SetSingleCellSelection(startCell.Row, startCell.Column, startCell.ColumnName);
+
+                await UpdateCellVisualStates();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnDragSelectionStart");
+            }
+        }
+
+        /// <summary>
+        /// Spracuje update drag selection operácie
+        /// </summary>
+        private async Task OnDragSelectionUpdate(Point currentPoint, CellPosition? currentCell)
+        {
+            try
+            {
+                if (!_dragSelectionState.IsDragging || currentCell == null)
+                    return;
+
+                _dragSelectionState.UpdateDrag(currentPoint, currentCell);
+
+                // Ak je drag dostatočne veľký, aktualizuj selection
+                if (_dragSelectionState.IsValidDragDistance)
+                {
+                    await UpdateDragSelection();
+                    await ShowSelectionRectangle();
+                }
+
+                _logger.LogTrace("🖱️ Drag selection updated - Point: ({X},{Y}), Cell: [{Row},{Column}]",
+                    currentPoint.X, currentPoint.Y, currentCell.Row, currentCell.Column);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnDragSelectionUpdate");
+            }
+        }
+
+        /// <summary>
+        /// Spracuje koniec drag selection operácie
+        /// </summary>
+        private async Task OnDragSelectionEnd()
+        {
+            try
+            {
+                if (!_dragSelectionState.IsDragging)
+                    return;
+
+                var dragInfo = _dragSelectionState.GetDiagnosticInfo();
+                _logger.LogDebug("🖱️ Drag selection ended - {DragInfo}", dragInfo);
+
+                // Finalizuj selection ak bol drag dostatočne veľký
+                if (_dragSelectionState.IsValidDragDistance)
+                {
+                    await FinalizeDragSelection();
+                }
+
+                await HideSelectionRectangle();
+                _dragSelectionState.EndDrag();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnDragSelectionEnd");
+            }
+        }
+
+        /// <summary>
+        /// Aktualizuje selection na base drag state
+        /// </summary>
+        private async Task UpdateDragSelection()
+        {
+            try
+            {
+                var (startRow, startCol, endRow, endCol) = _dragSelectionState.GetSelectionRange();
+
+                // Clear current selection
+                _cellSelectionState.ClearSelection();
+
+                // Add all cells in drag range
+                for (int row = startRow; row <= endRow; row++)
+                {
+                    for (int col = startCol; col <= endCol; col++)
+                    {
+                        if (col < _columns.Count && !_columns[col].IsSpecialColumn)
+                        {
+                            _cellSelectionState.AddCellToSelection(row, col, _columns[col].Name);
+                        }
+                    }
+                }
+
+                // Set focus to current drag cell
+                if (_dragSelectionState.CurrentCell != null)
+                {
+                    var currentCell = _dragSelectionState.CurrentCell;
+                    _cellSelectionState.SetFocusedCell(currentCell.Row, currentCell.Column, currentCell.ColumnName);
+                }
+
+                await UpdateCellVisualStates();
+
+                _logger.LogTrace("🖱️ Drag selection updated - Range: [{StartRow},{StartCol}]-[{EndRow},{EndCol}]",
+                    startRow, startCol, endRow, endCol);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateDragSelection");
+            }
+        }
+
+        /// <summary>
+        /// Finalizuje drag selection
+        /// </summary>
+        private async Task FinalizeDragSelection()
+        {
+            try
+            {
+                var selectedCount = _cellSelectionState.SelectedCellCount;
+                _logger.LogInformation("🖱️ Drag selection finalized - Selected {SelectedCount} cells", selectedCount);
+
+                // Selection už je nastavenený v UpdateDragSelection, takže nie je potrebné robiť nič extra
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in FinalizeDragSelection");
+            }
+        }
+
+        /// <summary>
+        /// Zobrazí selection rectangle visualization
+        /// </summary>
+        private async Task ShowSelectionRectangle()
+        {
+            try
+            {
+                await UIHelper.RunOnUIThreadAsync(() =>
+                {
+                    if (SelectionRectangleOverlay != null && SelectionRectangle != null)
+                    {
+                        var rect = _dragSelectionState.SelectionRectangle;
+                        
+                        if (rect.Width > 0 && rect.Height > 0)
+                        {
+                            // Update rectangle position and size
+                            SelectionRectangle.Width = rect.Width;
+                            SelectionRectangle.Height = rect.Height;
+                            SelectionRectangle.Margin = new Thickness(rect.X, rect.Y, 0, 0);
+                            
+                            // Show overlay
+                            SelectionRectangleOverlay.Visibility = Visibility.Visible;
+                            
+                            _logger.LogTrace("🖱️ Selection rectangle shown - Position: ({X},{Y}), Size: {Width}x{Height}",
+                                rect.X, rect.Y, rect.Width, rect.Height);
+                        }
+                    }
+                }, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ShowSelectionRectangle");
+            }
+        }
+
+        /// <summary>
+        /// Skryje selection rectangle visualization  
+        /// </summary>
+        private async Task HideSelectionRectangle()
+        {
+            try
+            {
+                await UIHelper.RunOnUIThreadAsync(() =>
+                {
+                    if (SelectionRectangleOverlay != null)
+                    {
+                        SelectionRectangleOverlay.Visibility = Visibility.Collapsed;
+                        _logger.LogTrace("🖱️ Selection rectangle hidden");
+                    }
+                }, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in HideSelectionRectangle");
+            }
+        }
+
+        /// <summary>
+        /// Získa cell pozíciu z mouse pozície pomocou hit-testing
+        /// </summary>
+        private CellPosition? GetCellFromPoint(Point point)
+        {
+            try
+            {
+                // Adjust point relative to DataContainer if available
+                if (DataContainer != null && DataGridScrollViewer != null)
+                {
+                    // Get the transformed point relative to data container
+                    var transform = DataGridScrollViewer.TransformToVisual(DataContainer);
+                    point = transform.TransformPoint(point);
+                }
+
+                // Use visual tree hit testing to find TextBox elements
+                var elementsAtPoint = VisualTreeHelper.FindElementsInHostCoordinates(
+                    point, DataContainer ?? this, false);
+
+                // Look for TextBox in the hit elements
+                foreach (var element in elementsAtPoint)
+                {
+                    if (element is TextBox textBox && textBox.Tag is CellViewModel cellViewModel)
+                    {
+                        // Found exact cell via hit-testing
+                        return new CellPosition
+                        {
+                            Row = cellViewModel.RowIndex,
+                            Column = cellViewModel.ColumnIndex,
+                            ColumnName = cellViewModel.ColumnName
+                        };
+                    }
+                }
+
+                // Fallback to estimation if hit-testing doesn't find cell
+                var estimatedRow = Math.Max(0, (int)(point.Y / 36)); // Default row height 36px
+                var estimatedCol = 0;
+                double cumulativeWidth = 0;
+
+                // Calculate column based on actual column widths if available
+                for (int i = 0; i < _columns.Count; i++)
+                {
+                    var colWidth = _columns[i].ActualWidth > 0 ? _columns[i].ActualWidth : 150; // Default width
+                    if (point.X <= cumulativeWidth + colWidth)
+                    {
+                        estimatedCol = i;
+                        break;
+                    }
+                    cumulativeWidth += colWidth;
+                    estimatedCol = i + 1;
+                }
+
+                // Validate boundaries
+                estimatedRow = Math.Min(estimatedRow, _displayRows.Count - 1);
+                estimatedCol = Math.Max(0, Math.Min(estimatedCol, _columns.Count - 1));
+
+                if (estimatedCol < _columns.Count && !_columns[estimatedCol].IsSpecialColumn)
+                {
+                    var cellPosition = new CellPosition
+                    {
+                        Row = estimatedRow,
+                        Column = estimatedCol,
+                        ColumnName = _columns[estimatedCol].Name
+                    };
+
+                    _logger.LogTrace("🖱️ GetCellFromPoint - Point: ({X},{Y}), Cell: [{Row},{Column}] '{ColumnName}'",
+                        point.X, point.Y, cellPosition.Row, cellPosition.Column, cellPosition.ColumnName);
+
+                    return cellPosition;
+                }
+
+                _logger.LogTrace("🖱️ GetCellFromPoint - Point: ({X},{Y}), No valid cell found", point.X, point.Y);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetCellFromPoint - Point: ({X},{Y})", point.X, point.Y);
+                return null;
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: INavigationCallback Implementation
+
+        /// <summary>
+        /// Presunie focus na ďalšiu bunku (Tab)
+        /// </summary>
+        public async Task MoveToNextCellAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                var nextColumn = currentColumn + 1;
+                var nextRow = currentRow;
+
+                // Ak je na konci riadku, prejdi na začiatok ďalšieho riadku
+                if (nextColumn >= _columns.Count || _columns[nextColumn].IsSpecialColumn)
+                {
+                    nextColumn = 0;
+                    nextRow++;
+
+                    // Ak je na konci dát, zostať na poslednej bunke
+                    if (nextRow >= _displayRows.Count)
+                    {
+                        nextRow = _displayRows.Count - 1;
+                        nextColumn = GetLastEditableColumnIndex();
+                    }
+                }
+
+                await MoveToCellAsync(nextRow, nextColumn);
+                _logger.LogDebug("🎮 MoveToNext: [{CurrentRow},{CurrentColumn}] → [{NextRow},{NextColumn}]",
+                    currentRow, currentColumn, nextRow, nextColumn);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveToNextCellAsync");
+            }
+        }
+
+        /// <summary>
+        /// Presunie focus na predchádzajúcu bunku (Shift+Tab)
+        /// </summary>
+        public async Task MoveToPreviousCellAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                var prevColumn = currentColumn - 1;
+                var prevRow = currentRow;
+
+                // Ak je na začiatku riadku, prejdi na koniec predchádzajúceho riadku
+                if (prevColumn < 0 || (prevColumn > 0 && _columns[prevColumn].IsSpecialColumn))
+                {
+                    prevRow--;
+                    prevColumn = GetLastEditableColumnIndex();
+
+                    // Ak je na začiatku dát, zostať na prvej bunke
+                    if (prevRow < 0)
+                    {
+                        prevRow = 0;
+                        prevColumn = GetFirstEditableColumnIndex();
+                    }
+                }
+
+                await MoveToCellAsync(prevRow, prevColumn);
+                _logger.LogDebug("🎮 MoveToPrevious: [{CurrentRow},{CurrentColumn}] → [{PrevRow},{PrevColumn}]",
+                    currentRow, currentColumn, prevRow, prevColumn);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveToPreviousCellAsync");
+            }
+        }
+
+        /// <summary>
+        /// Presunie focus na bunku nižšie (Enter)
+        /// </summary>
+        public async Task MoveToCellBelowAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                var nextRow = currentRow + 1;
+
+                // Ak je na konci dát, zostať na aktuálnej bunke
+                if (nextRow >= _displayRows.Count)
+                {
+                    nextRow = _displayRows.Count - 1;
+                }
+
+                await MoveToCellAsync(nextRow, currentColumn);
+                _logger.LogDebug("🎮 MoveToCellBelow: [{CurrentRow},{CurrentColumn}] → [{NextRow},{CurrentColumn}]",
+                    currentRow, currentColumn, nextRow);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveToCellBelowAsync");
+            }
+        }
+
+        /// <summary>
+        /// Presunie focus na bunku vyššie (Arrow Up)
+        /// </summary>
+        public async Task MoveToCellAboveAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                var prevRow = currentRow - 1;
+
+                // Ak je na začiatku dát, zostať na aktuálnej bunke
+                if (prevRow < 0)
+                {
+                    prevRow = 0;
+                }
+
+                await MoveToCellAsync(prevRow, currentColumn);
+                _logger.LogDebug("🎮 MoveToCellAbove: [{CurrentRow},{CurrentColumn}] → [{PrevRow},{CurrentColumn}]",
+                    currentRow, currentColumn, prevRow);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveToCellAboveAsync");
+            }
+        }
+
+        /// <summary>
+        /// Presunie focus na bunku vľavo (Arrow Left)
+        /// </summary>
+        public async Task MoveToCellLeftAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                var prevColumn = currentColumn - 1;
+
+                // Nájdi predchádzajúci editable column
+                while (prevColumn >= 0 && _columns[prevColumn].IsSpecialColumn)
+                {
+                    prevColumn--;
+                }
+
+                // Ak nie je žiadny editable column vľavo, zostať na aktuálnej bunke
+                if (prevColumn < 0)
+                {
+                    prevColumn = currentColumn;
+                }
+
+                await MoveToCellAsync(currentRow, prevColumn);
+                _logger.LogDebug("🎮 MoveToCellLeft: [{CurrentRow},{CurrentColumn}] → [{CurrentRow},{PrevColumn}]",
+                    currentRow, currentColumn, prevColumn);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveToCellLeftAsync");
+            }
+        }
+
+        /// <summary>
+        /// Presunie focus na bunku vpravo (Arrow Right)
+        /// </summary>
+        public async Task MoveToCellRightAsync(int currentRow, int currentColumn)
+        {
+            try
+            {
+                var nextColumn = currentColumn + 1;
+
+                // Nájdi ďalší editable column
+                while (nextColumn < _columns.Count && _columns[nextColumn].IsSpecialColumn)
+                {
+                    nextColumn++;
+                }
+
+                // Ak nie je žiadny editable column vpravo, zostať na aktuálnej bunke
+                if (nextColumn >= _columns.Count)
+                {
+                    nextColumn = currentColumn;
+                }
+
+                await MoveToCellAsync(currentRow, nextColumn);
+                _logger.LogDebug("🎮 MoveToCellRight: [{CurrentRow},{CurrentColumn}] → [{CurrentRow},{NextColumn}]",
+                    currentRow, currentColumn, nextColumn);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveToCellRightAsync");
+            }
+        }
+
+        /// <summary>
+        /// Rozšíri selection s Shift+Arrow
+        /// </summary>
+        public async Task ExtendSelectionAsync(int fromRow, int fromColumn, int toRow, int toColumn)
+        {
+            try
+            {
+                // Validuj pozície
+                toRow = Math.Max(0, Math.Min(toRow, _displayRows.Count - 1));
+                toColumn = Math.Max(0, Math.Min(toColumn, _columns.Count - 1));
+
+                // Preskočí special columns
+                if (toColumn < _columns.Count && _columns[toColumn].IsSpecialColumn)
+                {
+                    return;
+                }
+
+                // Vytvor extended selection
+                var startRow = Math.Min(fromRow, toRow);
+                var endRow = Math.Max(fromRow, toRow);
+                var startCol = Math.Min(fromColumn, toColumn);
+                var endCol = Math.Max(fromColumn, toColumn);
+
+                // Clear current selection
+                _cellSelectionState.ClearSelection();
+
+                // Add all cells in range
+                for (int row = startRow; row <= endRow; row++)
+                {
+                    for (int col = startCol; col <= endCol; col++)
+                    {
+                        if (col < _columns.Count && !_columns[col].IsSpecialColumn)
+                        {
+                            _cellSelectionState.AddCellToSelection(row, col, _columns[col].Name);
+                        }
+                    }
+                }
+
+                // Set focus to target cell
+                if (toColumn < _columns.Count && !_columns[toColumn].IsSpecialColumn)
+                {
+                    _cellSelectionState.SetFocusedCell(toRow, toColumn, _columns[toColumn].Name);
+                }
+
+                await UpdateCellVisualStates();
+
+                _logger.LogDebug("🎮 ExtendSelection: [{FromRow},{FromColumn}] → [{ToRow},{ToColumn}], " +
+                    "Range: [{StartRow},{StartCol}]-[{EndRow},{EndCol}]",
+                    fromRow, fromColumn, toRow, toColumn, startRow, startCol, endRow, endCol);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ExtendSelectionAsync");
+            }
+        }
+
+        /// <summary>
+        /// Vyberie všetky bunky (Ctrl+A)
+        /// </summary>
+        public async Task SelectAllCellsAsync()
+        {
+            try
+            {
+                _cellSelectionState.ClearSelection();
+
+                // Select all non-special cells
+                foreach (var row in _displayRows)
+                {
+                    foreach (var cell in row.Cells)
+                    {
+                        var column = _columns.FirstOrDefault(c => c.Name == cell.ColumnName);
+                        if (column != null && !column.IsSpecialColumn)
+                        {
+                            _cellSelectionState.AddCellToSelection(cell.RowIndex, 
+                                GetColumnIndex(cell.ColumnName), cell.ColumnName);
+                        }
+                    }
+                }
+
+                await UpdateCellVisualStates();
+
+                var selectedCount = _cellSelectionState.SelectedCellCount;
+                _logger.LogInformation("🎮 SelectAllCells: Selected {SelectedCount} cells", selectedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SelectAllCellsAsync");
+            }
+        }
+
+        /// <summary>
+        /// Získa aktuálnu pozíciu bunky z UI elementu
+        /// </summary>
+        public (int Row, int Column) GetCellPosition(object uiElement)
+        {
+            // Pre jednoduchosť zatiaľ vráti (0,0) - v skutočnej implementácii by to parsovalo z UI
+            // V plnej implementácii by sa hľadal parent container bunky a získala pozícia
+            return (0, 0);
+        }
+
+        /// <summary>
+        /// Získa UI element pre bunku na pozícii
+        /// </summary>
+        public object? GetCellUIElement(int row, int column)
+        {
+            // Pre jednoduchosť zatiaľ vráti null - v skutočnej implementácii by to našlo UI element
+            return null;
+        }
+
+        /// <summary>
+        /// Presunie focus na bunku na pozícii
+        /// </summary>
+        private async Task MoveToCellAsync(int row, int column)
+        {
+            try
+            {
+                if (row < 0 || row >= _displayRows.Count || column < 0 || column >= _columns.Count)
+                {
+                    _logger.LogWarning("🎮 MoveToCellAsync: Invalid position [{Row},{Column}]", row, column);
+                    return;
+                }
+
+                var columnName = _columns[column].Name;
+                
+                // Update selection state
+                await OnCellClicked(row, column, columnName, false);
+
+                _logger.LogDebug("🎮 MovedToCell: [{Row},{Column}]{ColumnName}", row, column, columnName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveToCellAsync");
+            }
+        }
+
+        /// <summary>
+        /// Získa index prvého editable stĺpca
+        /// </summary>
+        private int GetFirstEditableColumnIndex()
+        {
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                if (!_columns[i].IsSpecialColumn)
+                {
+                    return i;
+                }
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Získa index posledného editable stĺpca
+        /// </summary>
+        private int GetLastEditableColumnIndex()
+        {
+            for (int i = _columns.Count - 1; i >= 0; i--)
+            {
+                if (!_columns[i].IsSpecialColumn)
+                {
+                    return i;
+                }
+            }
+            return _columns.Count - 1;
+        }
+
         #endregion
 
         #region ✅ PUBLIC API Methods s kompletným logovaním a metrics
+
+        /// <summary>
+        /// InitializeAsync s advanced validation rules - PUBLIC API
+        /// </summary>
+        public async Task InitializeAsync(
+            List<GridColumnDefinition> columns,
+            ValidationRuleSet? advancedValidationRules = null,
+            GridThrottlingConfig? throttlingConfig = null,
+            int emptyRowsCount = 15,
+            DataGridColorConfig? colorConfig = null)
+        {
+            // Convert advanced rules to legacy format and call main method
+            var legacyRules = ConvertAdvancedRulesToLegacy(advancedValidationRules);
+            await InitializeAsync(columns, legacyRules, throttlingConfig, emptyRowsCount, colorConfig, advancedValidationRules);
+        }
 
         /// <summary>
         /// InitializeAsync s realtime validáciou - PUBLIC API
@@ -303,7 +1541,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             List<GridValidationRule>? validationRules = null,
             GridThrottlingConfig? throttlingConfig = null,
             int emptyRowsCount = 15,
-            DataGridColorConfig? colorConfig = null)
+            DataGridColorConfig? colorConfig = null,
+            ValidationRuleSet? advancedValidationRules = null)
         {
             try
             {
@@ -325,6 +1564,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // ✅ ROZŠÍRENÉ: Detailné logovanie štruktúry stĺpcov
                 LogColumnStructure(columns);
 
+                // ✅ NOVÉ: Detekcia CheckBox column
+                DetectAndConfigureCheckBoxColumn(columns);
+
                 // ✅ ROZŠÍRENÉ: Detailné logovanie validačných pravidiel
                 LogValidationRules(validationRules);
 
@@ -335,12 +1577,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     _throttlingConfig.ValidationDebounceMs, _throttlingConfig.UIUpdateDebounceMs,
                     _throttlingConfig.SearchDebounceMs, _throttlingConfig.EnableRealtimeValidation);
 
+                // ✅ NOVÉ: Header deduplikácia pred uložením
+                var deduplicatedColumns = DeduplicateColumnHeaders(columns);
+                
                 // Store configuration
                 _columns.Clear();
-                _columns.AddRange(columns);
+                _columns.AddRange(deduplicatedColumns);
                 _unifiedRowCount = Math.Max(emptyRowsCount, 1);
                 _autoAddEnabled = true;
                 _individualColorConfig = colorConfig?.Clone();
+                _advancedValidationRules = advancedValidationRules;
 
                 // ✅ ROZŠÍRENÉ: Detailné logovanie color config
                 LogColorConfiguration(colorConfig);
@@ -489,7 +1735,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// ExportToDataTableAsync s detailným logovaním exportu
         /// </summary>
-        public async Task<DataTable> ExportToDataTableAsync()
+        public async Task<DataTable> ExportToDataTableAsync(bool includeValidAlerts = false)
         {
             try
             {
@@ -508,7 +1754,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     return new DataTable();
                 }
 
-                var result = await _exportService.ExportToDataTableAsync();
+                var result = await _exportService.ExportToDataTableAsync(includeValidAlerts);
                 var duration = EndOperation("ExportToDataTable");
 
                 // ✅ ROZŠÍRENÉ: Detailné logovanie exportu
@@ -566,6 +1812,1099 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _logger.LogError(ex, "❌ ERROR in ClearAllDataAsync - Instance: {ComponentInstanceId}",
                     _componentInstanceId);
                 throw;
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Multi-Sort PUBLIC API
+
+        /// <summary>
+        /// Nastaví Multi-Sort konfiguráciu - PUBLIC API
+        /// </summary>
+        public void SetMultiSortConfiguration(MultiSortConfiguration config)
+        {
+            try
+            {
+                _logger.LogInformation("🔢 SetMultiSortConfiguration called - Config: {ConfigDescription}",
+                    config?.GetDescription() ?? "null");
+
+                EnsureInitialized();
+
+                if (_searchAndSortService != null)
+                {
+                    _searchAndSortService.SetMultiSortConfiguration(config ?? MultiSortConfiguration.Default);
+                    _logger.LogInformation("✅ Multi-Sort configuration set successfully");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - cannot set Multi-Sort configuration");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SetMultiSortConfiguration");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Povolí/zakáže Multi-Sort režim - PUBLIC API
+        /// </summary>
+        public void SetMultiSortMode(bool enabled)
+        {
+            try
+            {
+                _logger.LogInformation("🔢 SetMultiSortMode called - Enabled: {Enabled}", enabled);
+
+                EnsureInitialized();
+
+                if (_searchAndSortService != null)
+                {
+                    _searchAndSortService.SetMultiSortMode(enabled);
+                    _logger.LogInformation("✅ Multi-Sort mode set to: {Enabled}", enabled);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - cannot set Multi-Sort mode");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SetMultiSortMode - Enabled: {Enabled}", enabled);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Pridá stĺpec do Multi-Sort (programaticky) - PUBLIC API
+        /// </summary>
+        public MultiSortColumn? AddMultiSortColumn(string columnName, SortDirection direction, int priority = 1)
+        {
+            try
+            {
+                _logger.LogInformation("🔢 AddMultiSortColumn called - Column: {ColumnName}, " +
+                    "Direction: {Direction}, Priority: {Priority}",
+                    columnName, direction, priority);
+
+                EnsureInitialized();
+
+                if (_searchAndSortService == null)
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - cannot add Multi-Sort column");
+                    return null;
+                }
+
+                // Programaticky pridaj stĺpec do Multi-Sort
+                var multiSortColumn = new MultiSortColumn(columnName, direction, priority);
+                var result = _searchAndSortService.AddOrUpdateMultiSort(columnName, true);
+
+                if (result != null)
+                {
+                    UpdateMultiSortIndicators();
+                    _logger.LogInformation("✅ Multi-Sort column added - Column: {ColumnName}, " +
+                        "Direction: {Direction}, Priority: {Priority}",
+                        result.ColumnName, result.Direction, result.Priority);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in AddMultiSortColumn - Column: {ColumnName}", columnName);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa všetky aktívne Multi-Sort stĺpce - PUBLIC API
+        /// </summary>
+        public List<MultiSortColumn> GetMultiSortColumns()
+        {
+            try
+            {
+                _logger.LogDebug("🔢 GetMultiSortColumns called");
+
+                EnsureInitialized();
+
+                if (_searchAndSortService != null)
+                {
+                    var result = _searchAndSortService.GetMultiSortColumns();
+                    _logger.LogDebug("✅ GetMultiSortColumns completed - Count: {Count}", result.Count);
+                    return result;
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - returning empty list");
+                    return new List<MultiSortColumn>();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetMultiSortColumns");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Vyčistí všetky Multi-Sort stavy - PUBLIC API
+        /// </summary>
+        public void ClearMultiSort()
+        {
+            try
+            {
+                _logger.LogInformation("🔢 ClearMultiSort called");
+
+                EnsureInitialized();
+
+                if (_searchAndSortService != null)
+                {
+                    _searchAndSortService.ClearMultiSort();
+                    UpdateMultiSortIndicators();
+                    _logger.LogInformation("✅ Multi-Sort cleared successfully");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - cannot clear Multi-Sort");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ClearMultiSort");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Aplikuje Multi-Sort na aktuálne dáta - PUBLIC API
+        /// </summary>
+        public async Task ApplyMultiSortAsync()
+        {
+            try
+            {
+                _logger.LogInformation("🔢 ApplyMultiSortAsync called");
+
+                EnsureInitialized();
+
+                if (_searchAndSortService == null)
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - cannot apply Multi-Sort");
+                    return;
+                }
+
+                await ApplySortAndRefreshAsync();
+                _logger.LogInformation("✅ Multi-Sort applied successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ApplyMultiSortAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Kontroluje či je Multi-Sort aktívne - PUBLIC API
+        /// </summary>
+        public bool HasActiveMultiSort()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                if (_searchAndSortService != null)
+                {
+                    var result = _searchAndSortService.HasActiveMultiSort;
+                    _logger.LogTrace("🔢 HasActiveMultiSort - Result: {Result}", result);
+                    return result;
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - returning false");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in HasActiveMultiSort");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Kontroluje či je Multi-Sort režim aktívny - PUBLIC API
+        /// </summary>
+        public bool IsMultiSortMode()
+        {
+            try
+            {
+                EnsureInitialized();
+
+                if (_searchAndSortService != null)
+                {
+                    var result = _searchAndSortService.IsMultiSortMode;
+                    _logger.LogTrace("🔢 IsMultiSortMode - Result: {Result}", result);
+                    return result;
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SearchAndSortService is null - returning false");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in IsMultiSortMode");
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Import/Export Enhancement PUBLIC API
+
+        /// <summary>
+        /// Importuje dáta zo súboru s komplexnou validáciou a loggingom - ✅ PUBLIC API
+        /// </summary>
+        public async Task<ImportResult> ImportFromFileAsync(string filePath, ImportExportConfiguration? config = null, bool[]? checkBoxStates = null)
+        {
+            try
+            {
+                _logger.LogInformation("📥 ImportFromFileAsync START - Instance: {ComponentInstanceId}, " +
+                    "FilePath: {FilePath}, HasConfig: {HasConfig}, HasCheckBoxStates: {HasCheckBoxStates}",
+                    _componentInstanceId, filePath, config != null, checkBoxStates != null);
+
+                var operationId = StartOperation("ImportFromFile");
+                IncrementOperationCounter("ImportFromFile");
+                EnsureInitialized();
+
+                if (_exportService == null)
+                {
+                    _logger.LogError("❌ ImportFromFileAsync: ExportService is null - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    var errorResult = new ImportResult
+                    {
+                        FilePath = filePath,
+                        IsSuccessful = false
+                    };
+                    errorResult.AddError("Export service nie je dostupný", severity: ErrorSeverity.Critical);
+                    errorResult.Finalize();
+                    return errorResult;
+                }
+
+                var result = await _exportService.ImportFromFileAsync(filePath, config);
+                
+                // Ak bol import úspešný, aktualizuj dáta v grid
+                if (result.IsSuccessful && result.ImportedData.Any())
+                {
+                    _logger.LogInformation("📥 Import successful - refreshing grid data with {RowCount} rows",
+                        result.ImportedData.Count);
+                    
+                    // Clear existing data first
+                    await ClearAllDataAsync();
+                    
+                    // Add imported data to data management service
+                    if (_dataManagementService != null)
+                    {
+                        foreach (var rowData in result.ImportedData)
+                        {
+                            await _dataManagementService.AddRowAsync(rowData);
+                        }
+                        
+                        // Apply CheckBox states if provided and CheckBox column is enabled
+                        if (checkBoxStates != null && _checkBoxColumnEnabled)
+                        {
+                            _logger.LogInformation("☑️ Applying CheckBox states - StatesCount: {StatesCount}", checkBoxStates.Length);
+                            SetCheckBoxStates(checkBoxStates);
+                        }
+                        
+                        // Refresh display
+                        await UpdateDisplayRowsWithRealtimeValidationAsync();
+                        await RefreshDataDisplayAsync();
+                    }
+                }
+
+                var duration = EndOperation(operationId);
+
+                _logger.LogInformation("✅ ImportFromFileAsync COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, ImportId: {ImportId}, Status: {Status}, " +
+                    "ProcessedRows: {ProcessedRows}, SuccessfulRows: {SuccessfulRows}, " +
+                    "ErrorRows: {ErrorRows}, SuccessRate: {SuccessRate:F1}%",
+                    _componentInstanceId, duration, result.ImportId, result.IsSuccessful ? "SUCCESS" : "FAILED",
+                    result.TotalRowsInFile, result.SuccessfullyImportedRows,
+                    result.ErrorRows, result.SuccessRate);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                IncrementOperationCounter("ImportFromFile-Error");
+                _logger.LogError(ex, "❌ ERROR in ImportFromFileAsync - Instance: {ComponentInstanceId}, " +
+                    "FilePath: {FilePath}", _componentInstanceId, filePath);
+                
+                var errorResult = new ImportResult
+                {
+                    FilePath = filePath,
+                    IsSuccessful = false
+                };
+                errorResult.AddError($"Kritická chyba pri importe: {ex.Message}", severity: ErrorSeverity.Critical);
+                errorResult.Finalize();
+                return errorResult;
+            }
+        }
+
+        /// <summary>
+        /// Exportuje dáta do súboru s konfiguráciou a loggingom - ✅ PUBLIC API
+        /// </summary>
+        public async Task<string> ExportToFileAsync(string filePath, ImportExportConfiguration? config = null)
+        {
+            try
+            {
+                _logger.LogInformation("📤 ExportToFileAsync START - Instance: {ComponentInstanceId}, " +
+                    "FilePath: {FilePath}, HasConfig: {HasConfig}, CurrentRowCount: {RowCount}",
+                    _componentInstanceId, filePath, config != null, _displayRows.Count);
+
+                var operationId = StartOperation("ExportToFile");
+                IncrementOperationCounter("ExportToFile");
+                EnsureInitialized();
+
+                if (_exportService == null)
+                {
+                    _logger.LogError("❌ ExportToFileAsync: ExportService is null - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    throw new InvalidOperationException("Export service nie je dostupný");
+                }
+
+                var result = await _exportService.ExportToFileAsync(filePath, config);
+                var duration = EndOperation(operationId);
+
+                _logger.LogInformation("✅ ExportToFileAsync COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, FilePath: {FilePath}, Format: {Format}",
+                    _componentInstanceId, duration, result, config?.Format ?? ExportFormat.CSV);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                IncrementOperationCounter("ExportToFile-Error");
+                _logger.LogError(ex, "❌ ERROR in ExportToFileAsync - Instance: {ComponentInstanceId}, " +
+                    "FilePath: {FilePath}", _componentInstanceId, filePath);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa import history z export service - ✅ PUBLIC API
+        /// </summary>
+        public Dictionary<string, ImportResult> GetImportHistory()
+        {
+            try
+            {
+                _logger.LogDebug("📋 GetImportHistory - Instance: {ComponentInstanceId}", _componentInstanceId);
+                
+                EnsureInitialized();
+                
+                if (_exportService == null)
+                {
+                    _logger.LogWarning("⚠️ GetImportHistory: ExportService is null - returning empty history");
+                    return new Dictionary<string, ImportResult>();
+                }
+
+                var history = _exportService.GetImportHistory();
+                
+                _logger.LogDebug("📋 GetImportHistory COMPLETED - Count: {HistoryCount}", history.Count);
+                
+                return history;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetImportHistory - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                return new Dictionary<string, ImportResult>();
+            }
+        }
+
+        /// <summary>
+        /// Získa export history z export service - ✅ PUBLIC API
+        /// </summary>
+        public Dictionary<string, string> GetExportHistory()
+        {
+            try
+            {
+                _logger.LogDebug("📋 GetExportHistory - Instance: {ComponentInstanceId}", _componentInstanceId);
+                
+                EnsureInitialized();
+                
+                if (_exportService == null)
+                {
+                    _logger.LogWarning("⚠️ GetExportHistory: ExportService is null - returning empty history");
+                    return new Dictionary<string, string>();
+                }
+
+                var history = _exportService.GetExportHistory();
+                
+                _logger.LogDebug("📋 GetExportHistory COMPLETED - Count: {HistoryCount}", history.Count);
+                
+                return history;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetExportHistory - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                return new Dictionary<string, string>();
+            }
+        }
+
+        /// <summary>
+        /// Vyčistí import/export history - ✅ PUBLIC API
+        /// </summary>
+        public void ClearImportExportHistory()
+        {
+            try
+            {
+                _logger.LogInformation("🧹 ClearImportExportHistory - Instance: {ComponentInstanceId}", _componentInstanceId);
+                
+                IncrementOperationCounter("ClearHistory");
+                EnsureInitialized();
+                
+                if (_exportService == null)
+                {
+                    _logger.LogWarning("⚠️ ClearImportExportHistory: ExportService is null");
+                    return;
+                }
+
+                _exportService.ClearHistory();
+                
+                _logger.LogInformation("✅ ClearImportExportHistory COMPLETED - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+            }
+            catch (Exception ex)
+            {
+                IncrementOperationCounter("ClearHistory-Error");
+                _logger.LogError(ex, "❌ ERROR in ClearImportExportHistory - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+            }
+        }
+
+        /// <summary>
+        /// Importuje z CSV súboru s predvolenou konfiguráciou - ✅ PUBLIC API HELPER
+        /// </summary>
+        public async Task<ImportResult> ImportFromCsvAsync(string filePath, bool includeHeaders = true, 
+            bool validateOnImport = true, bool continueOnErrors = false, bool[]? checkBoxStates = null)
+        {
+            var config = new ImportExportConfiguration
+            {
+                Format = ExportFormat.CSV,
+                IncludeHeaders = includeHeaders,
+                ValidateOnImport = validateOnImport,
+                ContinueOnErrors = continueOnErrors,
+                SkipEmptyRows = true,
+                Encoding = "UTF-8"
+            };
+
+            return await ImportFromFileAsync(filePath, config, checkBoxStates);
+        }
+
+        /// <summary>
+        /// Importuje z JSON súboru s predvolenou konfiguráciou - ✅ PUBLIC API HELPER
+        /// </summary>
+        public async Task<ImportResult> ImportFromJsonAsync(string filePath, bool validateOnImport = true, bool[]? checkBoxStates = null)
+        {
+            var config = new ImportExportConfiguration
+            {
+                Format = ExportFormat.JSON,
+                ValidateOnImport = validateOnImport,
+                ContinueOnErrors = false,
+                Encoding = "UTF-8"
+            };
+
+            return await ImportFromFileAsync(filePath, config, checkBoxStates);
+        }
+
+        /// <summary>
+        /// Exportuje do CSV súboru s predvolenou konfiguráciou - ✅ PUBLIC API HELPER
+        /// </summary>
+        public async Task<string> ExportToCsvFileAsync(string filePath, bool includeHeaders = true, 
+            bool backupExisting = true, bool autoOpen = false)
+        {
+            var config = new ImportExportConfiguration
+            {
+                Format = ExportFormat.CSV,
+                IncludeHeaders = includeHeaders,
+                BackupExistingFile = backupExisting,
+                AutoOpenFile = autoOpen,
+                Encoding = "UTF-8"
+            };
+
+            return await ExportToFileAsync(filePath, config);
+        }
+
+        /// <summary>
+        /// Exportuje do JSON súboru s predvolenou konfiguráciou - ✅ PUBLIC API HELPER
+        /// </summary>
+        public async Task<string> ExportToJsonFileAsync(string filePath, JsonFormatting formatting = JsonFormatting.Indented, 
+            bool backupExisting = true, bool autoOpen = false)
+        {
+            var config = new ImportExportConfiguration
+            {
+                Format = ExportFormat.JSON,
+                JsonFormatting = formatting,
+                BackupExistingFile = backupExisting,
+                AutoOpenFile = autoOpen,
+                Encoding = "UTF-8"
+            };
+
+            return await ExportToFileAsync(filePath, config);
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: CheckBox Column Management - PUBLIC API
+
+        /// <summary>
+        /// Detekuje a konfiguruje CheckBox column ak je prítomný v headers
+        /// </summary>
+        private void DetectAndConfigureCheckBoxColumn(List<GridColumnDefinition> columns)
+        {
+            try
+            {
+                var checkBoxColumn = columns.FirstOrDefault(c => c.Name == _checkBoxColumnName || 
+                    c.Name.Equals("CheckBoxState", StringComparison.OrdinalIgnoreCase));
+                
+                if (checkBoxColumn != null)
+                {
+                    _checkBoxColumnEnabled = true;
+                    _checkBoxColumnName = checkBoxColumn.Name;
+                    
+                    _logger.LogInformation("☑️ CheckBox column detected - Name: {ColumnName}, Enabled: {Enabled}",
+                        _checkBoxColumnName, _checkBoxColumnEnabled);
+                    
+                    // Inicializuj checkbox states
+                    _checkBoxStates.Clear();
+                }
+                else
+                {
+                    _checkBoxColumnEnabled = false;
+                    _logger.LogDebug("☐ CheckBox column not detected in headers");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in DetectAndConfigureCheckBoxColumn");
+                _checkBoxColumnEnabled = false;
+            }
+        }
+
+        /// <summary>
+        /// Aktualizuje checkbox state pre konkrétny riadok - INTERNAL
+        /// </summary>
+        public void UpdateCheckBoxState(int rowIndex, bool isChecked)
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled) return;
+                
+                _checkBoxStates[rowIndex] = isChecked;
+                
+                // Aktualizuj dáta v data management service
+                if (_dataManagementService != null && rowIndex >= 0 && rowIndex < _gridData.Count)
+                {
+                    _gridData[rowIndex][_checkBoxColumnName] = isChecked;
+                    
+                    _logger.LogTrace("☑️ CheckBox state updated - RowIndex: {RowIndex}, IsChecked: {IsChecked}",
+                        rowIndex, isChecked);
+                }
+                
+                // Aktualizuj header state
+                UpdateHeaderCheckBoxState();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateCheckBoxState - RowIndex: {RowIndex}, IsChecked: {IsChecked}",
+                    rowIndex, isChecked);
+            }
+        }
+
+        /// <summary>
+        /// Check all rows - PUBLIC API
+        /// </summary>
+        public void CheckAllRows()
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled) return;
+                
+                _logger.LogInformation("☑️ CheckAllRows START - TotalRows: {TotalRows}", _displayRows.Count);
+                
+                var checkedCount = 0;
+                
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    var row = _displayRows[i];
+                    
+                    // Skip empty rows (auto-add rows)
+                    if (IsRowEmpty(i))
+                        continue;
+                    
+                    _checkBoxStates[i] = true;
+                    
+                    // Update in grid data
+                    if (i < _gridData.Count)
+                    {
+                        _gridData[i][_checkBoxColumnName] = true;
+                    }
+                    
+                    checkedCount++;
+                }
+                
+                // Refresh display
+                _ = Task.Run(async () => await RefreshDataDisplayAsync());
+                
+                _logger.LogInformation("✅ CheckAllRows COMPLETED - CheckedRows: {CheckedCount}", checkedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in CheckAllRows");
+            }
+        }
+
+        /// <summary>
+        /// Uncheck all rows - PUBLIC API
+        /// </summary>
+        public void UncheckAllRows()
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled) return;
+                
+                _logger.LogInformation("☐ UncheckAllRows START - TotalRows: {TotalRows}", _displayRows.Count);
+                
+                var uncheckedCount = 0;
+                
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    if (_checkBoxStates.ContainsKey(i) && _checkBoxStates[i])
+                    {
+                        _checkBoxStates[i] = false;
+                        
+                        // Update in grid data
+                        if (i < _gridData.Count)
+                        {
+                            _gridData[i][_checkBoxColumnName] = false;
+                        }
+                        
+                        uncheckedCount++;
+                    }
+                }
+                
+                // Refresh display
+                _ = Task.Run(async () => await RefreshDataDisplayAsync());
+                
+                _logger.LogInformation("✅ UncheckAllRows COMPLETED - UncheckedRows: {UncheckedCount}", uncheckedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UncheckAllRows");
+            }
+        }
+
+        /// <summary>
+        /// Delete all checked rows - PUBLIC API
+        /// </summary>
+        public async Task DeleteAllCheckedRowsAsync()
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled)
+                {
+                    _logger.LogWarning("⚠️ DeleteAllCheckedRowsAsync: CheckBox column not enabled");
+                    return;
+                }
+                
+                var operationId = StartOperation("DeleteAllCheckedRows");
+                IncrementOperationCounter("DeleteAllCheckedRows");
+                
+                var checkedRows = _checkBoxStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key).OrderByDescending(i => i).ToList();
+                
+                _logger.LogInformation("🗑️ DeleteAllCheckedRowsAsync START - CheckedRows: {CheckedCount}, TotalRows: {TotalRows}",
+                    checkedRows.Count, _displayRows.Count);
+                
+                if (!checkedRows.Any())
+                {
+                    _logger.LogInformation("ℹ️ No checked rows to delete");
+                    return;
+                }
+                
+                // Delete rows from highest index to lowest to maintain correct indices
+                var deletedCount = 0;
+                foreach (var rowIndex in checkedRows)
+                {
+                    if (rowIndex >= 0 && rowIndex < _gridData.Count && !IsRowEmpty(rowIndex))
+                    {
+                        await _dataManagementService?.RemoveRowAsync(rowIndex)!;
+                        deletedCount++;
+                    }
+                }
+                
+                // Clear checkbox states for deleted rows
+                foreach (var rowIndex in checkedRows)
+                {
+                    _checkBoxStates.Remove(rowIndex);
+                }
+                
+                // Move empty rows to end and refresh
+                await MoveEmptyRowsToEndAsync();
+                await UpdateDisplayRowsWithRealtimeValidationAsync();
+                await RefreshDataDisplayAsync();
+                
+                var duration = EndOperation(operationId);
+                
+                _logger.LogInformation("✅ DeleteAllCheckedRowsAsync COMPLETED - Duration: {Duration}ms, " +
+                    "DeletedRows: {DeletedCount}, RemainingRows: {RemainingRows}",
+                    duration, deletedCount, _displayRows.Count);
+            }
+            catch (Exception ex)
+            {
+                IncrementOperationCounter("DeleteAllCheckedRows-Error");
+                _logger.LogError(ex, "❌ ERROR in DeleteAllCheckedRowsAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Export only checked rows - PUBLIC API
+        /// </summary>
+        public async Task<DataTable> ExportCheckedRowsOnlyAsync(bool includeValidAlerts = false)
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled)
+                {
+                    _logger.LogWarning("⚠️ ExportCheckedRowsOnlyAsync: CheckBox column not enabled - exporting all data");
+                    return await ExportToDataTableAsync();
+                }
+                
+                var operationId = StartOperation("ExportCheckedRowsOnly");
+                IncrementOperationCounter("ExportCheckedRowsOnly");
+                
+                var checkedRows = _checkBoxStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToList();
+                
+                _logger.LogInformation("📤 ExportCheckedRowsOnlyAsync START - CheckedRows: {CheckedCount}, " +
+                    "IncludeValidAlerts: {IncludeValidAlerts}", checkedRows.Count, includeValidAlerts);
+                
+                if (!checkedRows.Any())
+                {
+                    _logger.LogInformation("ℹ️ No checked rows to export - returning empty DataTable");
+                    return new DataTable("EmptyCheckedRowsExport");
+                }
+                
+                // Get full data table first
+                var fullDataTable = await ExportToDataTableAsync();
+                var filteredDataTable = fullDataTable.Clone();
+                
+                // Filter only checked rows
+                var exportedRowCount = 0;
+                foreach (var rowIndex in checkedRows.OrderBy(i => i))
+                {
+                    if (rowIndex >= 0 && rowIndex < fullDataTable.Rows.Count)
+                    {
+                        var sourceRow = fullDataTable.Rows[rowIndex];
+                        var targetRow = filteredDataTable.NewRow();
+                        
+                        // Copy data excluding CheckBoxState column and optionally ValidAlerts
+                        foreach (DataColumn column in fullDataTable.Columns)
+                        {
+                            if (column.ColumnName == _checkBoxColumnName) continue;
+                            if (!includeValidAlerts && column.ColumnName == "ValidAlerts") continue;
+                            
+                            if (filteredDataTable.Columns.Contains(column.ColumnName))
+                            {
+                                targetRow[column.ColumnName] = sourceRow[column.ColumnName];
+                            }
+                        }
+                        
+                        filteredDataTable.Rows.Add(targetRow);
+                        exportedRowCount++;
+                    }
+                }
+                
+                // Remove CheckBoxState column from schema if not needed
+                if (filteredDataTable.Columns.Contains(_checkBoxColumnName))
+                {
+                    filteredDataTable.Columns.Remove(_checkBoxColumnName);
+                }
+                
+                // Remove ValidAlerts column if not requested
+                if (!includeValidAlerts && filteredDataTable.Columns.Contains("ValidAlerts"))
+                {
+                    filteredDataTable.Columns.Remove("ValidAlerts");
+                }
+                
+                var duration = EndOperation(operationId);
+                
+                _logger.LogInformation("✅ ExportCheckedRowsOnlyAsync COMPLETED - Duration: {Duration}ms, " +
+                    "ExportedRows: {ExportedRows}, ExportedColumns: {ExportedColumns}",
+                    duration, exportedRowCount, filteredDataTable.Columns.Count);
+                
+                return filteredDataTable;
+            }
+            catch (Exception ex)
+            {
+                IncrementOperationCounter("ExportCheckedRowsOnly-Error");
+                _logger.LogError(ex, "❌ ERROR in ExportCheckedRowsOnlyAsync");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa počet checked rows - PUBLIC API
+        /// </summary>
+        public int GetCheckedRowsCount()
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled) return 0;
+                
+                return _checkBoxStates.Count(kvp => kvp.Value);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetCheckedRowsCount");
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Získa zoznam indices checked rows - PUBLIC API
+        /// </summary>
+        public List<int> GetCheckedRowIndices()
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled) return new List<int>();
+                
+                return _checkBoxStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key).OrderBy(i => i).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetCheckedRowIndices");
+                return new List<int>();
+            }
+        }
+
+        /// <summary>
+        /// Nastavuje checkbox states pre import - PUBLIC API
+        /// </summary>
+        public void SetCheckBoxStates(bool[] checkboxStates)
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled || checkboxStates == null) return;
+                
+                _logger.LogInformation("☑️ SetCheckBoxStates - ArrayLength: {ArrayLength}, EnabledRows: {EnabledCount}",
+                    checkboxStates.Length, checkboxStates.Count(b => b));
+                
+                _checkBoxStates.Clear();
+                
+                for (int i = 0; i < checkboxStates.Length && i < _gridData.Count; i++)
+                {
+                    _checkBoxStates[i] = checkboxStates[i];
+                    
+                    // Update in grid data
+                    _gridData[i][_checkBoxColumnName] = checkboxStates[i];
+                }
+                
+                // Update display
+                _ = Task.Run(async () => await RefreshDataDisplayAsync());
+                
+                _logger.LogDebug("✅ CheckBox states set successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SetCheckBoxStates");
+            }
+        }
+
+        /// <summary>
+        /// Aktualizuje header checkbox state na základe aktuálnych checked rows
+        /// </summary>
+        private void UpdateHeaderCheckBoxState()
+        {
+            try
+            {
+                if (!_checkBoxColumnEnabled || _checkBoxColumnHeader == null) return;
+                
+                var totalNonEmptyRows = 0;
+                var checkedRows = 0;
+                
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    if (!IsRowEmpty(i))
+                    {
+                        totalNonEmptyRows++;
+                        if (_checkBoxStates.ContainsKey(i) && _checkBoxStates[i])
+                        {
+                            checkedRows++;
+                        }
+                    }
+                }
+                
+                _checkBoxColumnHeader.UpdateHeaderState(totalNonEmptyRows, checkedRows);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateHeaderCheckBoxState");
+            }
+        }
+
+        /// <summary>
+        /// Checks if CheckBox column is enabled - PUBLIC API
+        /// </summary>
+        public bool IsCheckBoxColumnEnabled => _checkBoxColumnEnabled;
+
+        /// <summary>
+        /// Automaticky posúva prázdne riadky na koniec - INTERNAL
+        /// </summary>
+        private async Task MoveEmptyRowsToEndAsync()
+        {
+            try
+            {
+                var operationId = StartOperation("MoveEmptyRowsToEnd");
+                
+                _logger.LogDebug("🔄 MoveEmptyRowsToEndAsync START - TotalRows: {TotalRows}", _gridData.Count);
+                
+                if (_dataManagementService == null) return;
+                
+                var allData = await _dataManagementService.GetAllDataAsync();
+                if (allData == null || !allData.Any()) return;
+                
+                // Separate empty and non-empty rows
+                var nonEmptyRows = new List<Dictionary<string, object?>>();
+                var emptyRows = new List<Dictionary<string, object?>>();
+                
+                foreach (var row in allData)
+                {
+                    if (IsRowEmptyData(row))
+                    {
+                        emptyRows.Add(row);
+                    }
+                    else
+                    {
+                        nonEmptyRows.Add(row);
+                    }
+                }
+                
+                // Clear and re-add in correct order
+                await _dataManagementService.ClearAllDataAsync();
+                
+                // Add non-empty rows first
+                foreach (var row in nonEmptyRows)
+                {
+                    await _dataManagementService.AddRowAsync(row);
+                }
+                
+                // Add empty rows at the end
+                foreach (var row in emptyRows)
+                {
+                    await _dataManagementService.AddRowAsync(row);
+                }
+                
+                var duration = EndOperation(operationId);
+                
+                _logger.LogDebug("✅ MoveEmptyRowsToEndAsync COMPLETED - Duration: {Duration}ms, " +
+                    "NonEmptyRows: {NonEmptyRows}, EmptyRows: {EmptyRows}",
+                    duration, nonEmptyRows.Count, emptyRows.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in MoveEmptyRowsToEndAsync");
+            }
+        }
+
+        /// <summary>
+        /// Checks if row data is empty
+        /// </summary>
+        private bool IsRowEmptyData(Dictionary<string, object?> row)
+        {
+            return row.Where(kvp => kvp.Key != "DeleteRows" && kvp.Key != "ValidAlerts" && kvp.Key != _checkBoxColumnName)
+                     .All(kvp => kvp.Value == null || string.IsNullOrWhiteSpace(kvp.Value.ToString()));
+        }
+
+        /// <summary>
+        /// Checks if all non-empty exportable rows are valid - PUBLIC API
+        /// </summary>
+        public async Task<bool> AreAllNonEmptyRowsValidAsync()
+        {
+            try
+            {
+                var operationId = StartOperation("AreAllNonEmptyRowsValid");
+                IncrementOperationCounter("AreAllNonEmptyRowsValid");
+                
+                _logger.LogDebug("✅ AreAllNonEmptyRowsValidAsync START - CheckBoxEnabled: {CheckBoxEnabled}",
+                    _checkBoxColumnEnabled);
+                
+                // If no validation rules are set, all rows are considered valid
+                if (_validationService == null || 
+                    (_configuration?.ValidationRules == null || !_configuration.ValidationRules.Any()) &&
+                    (_advancedValidationRules == null || !_advancedValidationRules.HasRules))
+                {
+                    _logger.LogDebug("✅ No validation rules set - all rows considered valid");
+                    return true;
+                }
+                
+                var allData = await _dataManagementService?.GetAllDataAsync()!;
+                if (allData == null || !allData.Any())
+                {
+                    _logger.LogDebug("✅ No data to validate");
+                    return true;
+                }
+                
+                var validCount = 0;
+                var invalidCount = 0;
+                var checkedRowsOnly = _checkBoxColumnEnabled && _checkBoxStates.Any(kvp => kvp.Value);
+                
+                for (int i = 0; i < allData.Count; i++)
+                {
+                    var row = allData[i];
+                    
+                    // Skip empty rows
+                    if (IsRowEmptyData(row))
+                        continue;
+                    
+                    // If checkbox column is enabled, only validate checked rows
+                    if (checkedRowsOnly && (!_checkBoxStates.ContainsKey(i) || !_checkBoxStates[i]))
+                        continue;
+                    
+                    // Check if row has validation errors
+                    var validationErrors = row.ContainsKey("ValidAlerts") ? row["ValidAlerts"]?.ToString() : null;
+                    
+                    if (string.IsNullOrWhiteSpace(validationErrors))
+                    {
+                        validCount++;
+                    }
+                    else
+                    {
+                        invalidCount++;
+                        
+                        _logger.LogTrace("❌ Invalid row found - RowIndex: {RowIndex}, Errors: {Errors}",
+                            i, validationErrors);
+                    }
+                }
+                
+                var isAllValid = invalidCount == 0;
+                var duration = EndOperation(operationId);
+                
+                _logger.LogInformation("✅ AreAllNonEmptyRowsValidAsync COMPLETED - Duration: {Duration}ms, " +
+                    "ValidRows: {ValidRows}, InvalidRows: {InvalidRows}, AllValid: {AllValid}, " +
+                    "CheckedRowsOnly: {CheckedRowsOnly}",
+                    duration, validCount, invalidCount, isAllValid, checkedRowsOnly);
+                
+                return isAllValid;
+            }
+            catch (Exception ex)
+            {
+                IncrementOperationCounter("AreAllNonEmptyRowsValid-Error");
+                _logger.LogError(ex, "❌ ERROR in AreAllNonEmptyRowsValidAsync");
+                return false;
             }
         }
 
@@ -825,22 +3164,75 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     Background = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
                     BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                     BorderThickness = new Thickness(0, 0, 1, 1),
-                    MinHeight = 40,
+                    MinHeight = 65,
                     Width = column.Width,
                     MinWidth = column.MinWidth
                 };
 
-                // Vytvor header text
+                // ✅ NOVÉ: Vytvor header content s sort indikátorom a search box
+                var headerGrid = new Grid();
+                headerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                headerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                // Header text
                 var headerText = new TextBlock
                 {
                     Text = column.Header ?? column.Name,
                     FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    Margin = new Thickness(8, 0, 0, 0)
+                    Margin = new Thickness(8, 2, 4, 2),
+                    FontSize = 12
                 };
+                Grid.SetColumn(headerText, 0);
+                Grid.SetRow(headerText, 0);
 
-                // Vytvor resize grip (iba pre non-special columns)
+                // ✅ NOVÉ: Sort indikátor (šípka)
+                var sortIndicator = new TextBlock
+                {
+                    Text = "",
+                    FontSize = 10,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(2, 0, 4, 0),
+                    Visibility = Visibility.Collapsed
+                };
+                Grid.SetColumn(sortIndicator, 1);
+                Grid.SetRow(sortIndicator, 0);
+
+                // ✅ NOVÉ: Search box (iba pre non-special stĺpce)
+                TextBox? searchBox = null;
+                if (!column.IsSpecialColumn && column.Name != "ValidAlerts")
+                {
+                    searchBox = new TextBox
+                    {
+                        PlaceholderText = "🔍 Search...",
+                        FontSize = 10,
+                        Height = 22,
+                        Margin = new Thickness(4, 1, 4, 2),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Background = new SolidColorBrush(Microsoft.UI.Colors.White),
+                        BorderThickness = new Thickness(1),
+                        BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray)
+                    };
+                    Grid.SetColumn(searchBox, 0);
+                    Grid.SetRow(searchBox, 1);
+                    Grid.SetColumnSpan(searchBox, 2);
+
+                    // Add search event handler
+                    searchBox.TextChanged += (sender, e) => OnSearchTextChanged(column.Name, searchBox.Text);
+                }
+
+                headerGrid.Children.Add(headerText);
+                headerGrid.Children.Add(sortIndicator);
+                if (searchBox != null)
+                {
+                    headerGrid.Children.Add(searchBox);
+                }
+
+                // ✅ NOVÉ: Vytvor resize grip (iba pre non-special columns)
                 Border? resizeGrip = null;
                 if (!column.IsSpecialColumn && column.Name != "ValidAlerts")
                 {
@@ -853,26 +3245,31 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast)
                     };
 
-                    // Grid pre header obsah + resize grip
-                    var headerGrid = new Grid();
-                    headerGrid.Children.Add(headerText);
                     headerGrid.Children.Add(resizeGrip);
-                    headerBorder.Child = headerGrid;
                 }
-                else
+
+                // Set header content
+                headerBorder.Child = headerGrid;
+
+                // ✅ NOVÉ: Pridaj click handler pre sortovanie (iba pre non-special columns)
+                if (!column.IsSpecialColumn && column.Name != "ValidAlerts")
                 {
-                    headerBorder.Child = headerText;
+                    headerBorder.Tapped += async (sender, e) => await OnColumnHeaderClicked(column.Name, sortIndicator);
+                    headerBorder.Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Hand);
+                    
+                    _logger.LogTrace("🔀 Sort click handler added for column: {ColumnName}", column.Name);
                 }
 
                 // Pridaj do container
                 headerContainer.Children.Add(headerBorder);
 
-                // Zaregistruj resizable header
+                // ✅ NOVÉ: Zaregistruj resizable header s sort indikátorom
                 var resizableHeader = new ResizableColumnHeader
                 {
                     ColumnName = column.Name,
                     HeaderElement = headerBorder,
                     ResizeGrip = resizeGrip,
+                    SortIndicator = sortIndicator,
                     OriginalWidth = column.Width,
                     MinWidth = column.MinWidth,
                     MaxWidth = column.MaxWidth > 0 ? column.MaxWidth : 500
@@ -1195,11 +3592,25 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _logger.LogDebug("🔍 InitializeSearchSortZebra START");
 
                 // Vytvor SearchAndSortService
-                _searchAndSortService = new SearchAndSortService();
+                _searchAndSortService = new SearchAndSortService(_logger as ILogger<SearchAndSortService> ?? NullLogger<SearchAndSortService>.Instance);
 
                 // Nastav zebra rows ak sú povolené
                 var zebraEnabled = _individualColorConfig?.IsZebraRowsEnabled ?? false;
                 _searchAndSortService.SetZebraRowsEnabled(zebraEnabled);
+
+                // Vytvor NavigationService
+                _navigationService = new NavigationService(_logger as ILogger<NavigationService> ?? NullLogger<NavigationService>.Instance);
+                await _navigationService.InitializeAsync();
+                
+                // Nastav navigation callback
+                _navigationService.SetNavigationCallback(this);
+
+                // Vytvor CopyPasteService
+                _copyPasteService = new CopyPasteService(_logger as ILogger<CopyPasteService> ?? NullLogger<CopyPasteService>.Instance);
+                await _copyPasteService.InitializeAsync();
+
+                // Setup keyboard shortcuts for copy/paste
+                SetupKeyboardShortcuts();
 
                 _logger.LogDebug("✅ SearchAndSortZebra initialized - ZebraRows: {ZebraEnabled}", zebraEnabled);
             }
@@ -1504,7 +3915,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         #region ✅ RESIZE Event Handlers - KOMPLETNÁ IMPLEMENTÁCIA
 
         /// <summary>
-        /// Pointer pressed event handler pre resize
+        /// Pointer pressed event handler pre resize a drag selection
         /// </summary>
         private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
         {
@@ -1513,8 +3924,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _logger.LogTrace("🖱️ OnPointerPressed START");
 
                 var pointerPosition = e.GetCurrentPoint(this);
+                var isLeftButton = pointerPosition.Properties.IsLeftButtonPressed;
 
-                // Hľadaj resize grip pod kurzorom
+                // Priority 1: Hľadaj resize grip pod kurzorom
                 foreach (var header in _resizableHeaders)
                 {
                     if (header.ResizeGrip != null && IsPointerOverElement(pointerPosition, header.ResizeGrip))
@@ -1528,7 +3940,22 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                         _logger.LogDebug("🖱️ Resize started - Column: {ColumnName}, StartWidth: {Width}",
                             header.ColumnName, _resizeStartWidth);
-                        break;
+                        return; // Exit early for resize
+                    }
+                }
+
+                // Priority 2: Check for drag selection start (left button only)
+                if (isLeftButton && !_isResizing)
+                {
+                    var cellPosition = GetCellFromPoint(pointerPosition.Position);
+                    if (cellPosition != null)
+                    {
+                        // Start drag selection
+                        _ = Task.Run(async () => await OnDragSelectionStart(pointerPosition.Position, cellPosition));
+                        this.CapturePointer(e.Pointer);
+                        
+                        _logger.LogDebug("🖱️ Drag selection start - Cell: [{Row},{Column}] '{ColumnName}'",
+                            cellPosition.Row, cellPosition.Column, cellPosition.ColumnName);
                     }
                 }
             }
@@ -1539,35 +3966,45 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// Pointer moved event handler pre resize
+        /// Pointer moved event handler pre resize a drag selection
         /// </summary>
         private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
         {
             try
             {
-                if (!_isResizing || _currentResizingHeader == null)
-                    return;
-
                 var pointerPosition = e.GetCurrentPoint(this);
-                var deltaX = pointerPosition.Position.X - _resizeStartPosition;
-                var newWidth = Math.Max(_resizeStartWidth + deltaX, _currentResizingHeader.MinWidth);
-                newWidth = Math.Min(newWidth, _currentResizingHeader.MaxWidth);
 
-                // Aktualizuj šírku header elementu
-                if (_currentResizingHeader.HeaderElement != null)
+                // Priority 1: Handle resize operation
+                if (_isResizing && _currentResizingHeader != null)
                 {
-                    _currentResizingHeader.HeaderElement.Width = newWidth;
+                    var deltaX = pointerPosition.Position.X - _resizeStartPosition;
+                    var newWidth = Math.Max(_resizeStartWidth + deltaX, _currentResizingHeader.MinWidth);
+                    newWidth = Math.Min(newWidth, _currentResizingHeader.MaxWidth);
+
+                    // Aktualizuj šírku header elementu
+                    if (_currentResizingHeader.HeaderElement != null)
+                    {
+                        _currentResizingHeader.HeaderElement.Width = newWidth;
+                    }
+
+                    // Aktualizuj ColumnDefinition
+                    var column = _columns.FirstOrDefault(c => c.Name == _currentResizingHeader.ColumnName);
+                    if (column != null)
+                    {
+                        column.Width = newWidth;
+                    }
+
+                    _logger.LogTrace("🖱️ Resizing - Column: {ColumnName}, NewWidth: {Width}",
+                        _currentResizingHeader.ColumnName, newWidth);
+                    return;
                 }
 
-                // Aktualizuj ColumnDefinition
-                var column = _columns.FirstOrDefault(c => c.Name == _currentResizingHeader.ColumnName);
-                if (column != null)
+                // Priority 2: Handle drag selection update
+                if (_dragSelectionState.IsDragging)
                 {
-                    column.Width = newWidth;
+                    var currentCell = GetCellFromPoint(pointerPosition.Position);
+                    _ = Task.Run(async () => await OnDragSelectionUpdate(pointerPosition.Position, currentCell));
                 }
-
-                _logger.LogTrace("🖱️ Resizing - Column: {ColumnName}, NewWidth: {Width}",
-                    _currentResizingHeader.ColumnName, newWidth);
             }
             catch (Exception ex)
             {
@@ -1576,12 +4013,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// Pointer released event handler pre resize
+        /// Pointer released event handler pre resize a drag selection
         /// </summary>
         private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
         {
             try
             {
+                // Priority 1: Handle resize completion
                 if (_isResizing && _currentResizingHeader != null)
                 {
                     var finalWidth = _currentResizingHeader.HeaderElement?.Width ?? _resizeStartWidth;
@@ -1591,9 +4029,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                     // Aktualizuj layout po resize
                     _ = Task.Run(async () => await RecalculateValidAlertsWidthAsync());
+                    
+                    EndResize();
+                }
+                
+                // Priority 2: Handle drag selection end
+                if (_dragSelectionState.IsDragging)
+                {
+                    _ = Task.Run(async () => await OnDragSelectionEnd());
                 }
 
-                EndResize();
                 this.ReleasePointerCapture(e.Pointer);
             }
             catch (Exception ex)
@@ -1635,6 +4080,67 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         #region ✅ KOMPLETNÁ IMPLEMENTÁCIA: Helper Methods
 
         /// <summary>
+        /// Deduplikuje header názvy stĺpcov (meno, meno, priezvisko → meno_1, meno_2, priezvisko)
+        /// </summary>
+        private List<GridColumnDefinition> DeduplicateColumnHeaders(List<GridColumnDefinition> originalColumns)
+        {
+            try
+            {
+                _logger.LogDebug("🔄 DeduplicateColumnHeaders START - InputColumns: {ColumnCount}",
+                    originalColumns.Count);
+
+                var deduplicatedColumns = new List<GridColumnDefinition>();
+                var headerCounts = new Dictionary<string, int>();
+
+                foreach (var column in originalColumns)
+                {
+                    var originalHeader = column.Header ?? column.Name;
+                    var newColumn = new GridColumnDefinition
+                    {
+                        Name = column.Name,
+                        Header = originalHeader,
+                        DataType = column.DataType,
+                        Width = column.Width,
+                        MinWidth = column.MinWidth,
+                        MaxWidth = column.MaxWidth,
+                        IsVisible = column.IsVisible,
+                        IsEditable = column.IsEditable,
+                        IsSpecialColumn = column.IsSpecialColumn,
+                        DefaultValue = column.DefaultValue
+                    };
+
+                    // Kontrola deduplikácie header názvov
+                    if (headerCounts.ContainsKey(originalHeader))
+                    {
+                        headerCounts[originalHeader]++;
+                        newColumn.Header = $"{originalHeader}_{headerCounts[originalHeader]}";
+                        
+                        _logger.LogDebug("🔄 Header deduplicated: '{OriginalHeader}' → '{NewHeader}'",
+                            originalHeader, newColumn.Header);
+                    }
+                    else
+                    {
+                        headerCounts[originalHeader] = 1;
+                    }
+
+                    deduplicatedColumns.Add(newColumn);
+                }
+
+                var duplicatesFound = headerCounts.Count(kvp => kvp.Value > 1);
+                _logger.LogInformation("✅ Header deduplikácia COMPLETED - InputColumns: {InputCount}, " +
+                    "OutputColumns: {OutputCount}, DuplicatesFound: {Duplicates}",
+                    originalColumns.Count, deduplicatedColumns.Count, duplicatesFound);
+
+                return deduplicatedColumns;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in DeduplicateColumnHeaders");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Kontroluje či je komponent inicializovaný
         /// </summary>
         private void EnsureInitialized()
@@ -1644,6 +4150,193 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _logger.LogError("❌ Component not initialized - call InitializeAsync() first");
                 throw new InvalidOperationException("AdvancedDataGrid nie je inicializovaný. Zavolajte InitializeAsync() najprv.");
             }
+        }
+
+        /// <summary>
+        /// ✅ ROZŠÍRENÉ: Aktualizuje sort indikátor pre stĺpec (single sort)
+        /// </summary>
+        private void UpdateSortIndicator(string columnName, SortDirection direction)
+        {
+            try
+            {
+                foreach (var header in _resizableHeaders)
+                {
+                    if (header.SortIndicator != null)
+                    {
+                        if (header.ColumnName == columnName)
+                        {
+                            // Set sort indicator for active column
+                            if (direction != SortDirection.None)
+                            {
+                                header.SortIndicator.Visibility = Visibility.Visible;
+                                header.SortIndicator.Text = direction == SortDirection.Ascending ? "▲" : "▼";
+                                _logger.LogTrace("🔀 Single-Sort indicator updated - Column: {ColumnName}, Symbol: {Symbol}",
+                                    columnName, header.SortIndicator.Text);
+                            }
+                            else
+                            {
+                                header.SortIndicator.Visibility = Visibility.Collapsed;
+                            }
+                        }
+                        else
+                        {
+                            // Hide indicators for other columns
+                            header.SortIndicator.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateSortIndicator - Column: {ColumnName}",
+                    columnName);
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Aktualizuje Multi-Sort indikátory pre všetky aktívne stĺpce
+        /// </summary>
+        private void UpdateMultiSortIndicators()
+        {
+            try
+            {
+                if (_searchAndSortService == null) return;
+
+                var multiSortColumns = _searchAndSortService.GetMultiSortColumns();
+                var isMultiSortActive = multiSortColumns.Any();
+
+                _logger.LogTrace("🔢 Updating Multi-Sort indicators - ActiveColumns: {ActiveColumns}, " +
+                    "Columns: [{ColumnDetails}]",
+                    multiSortColumns.Count, 
+                    string.Join(", ", multiSortColumns.Select(c => $"{c.ColumnName}:{c.GetSortSymbol()}{c.Priority}")));
+
+                foreach (var header in _resizableHeaders)
+                {
+                    if (header.SortIndicator != null)
+                    {
+                        var multiSortColumn = multiSortColumns.FirstOrDefault(c => 
+                            c.ColumnName.Equals(header.ColumnName, StringComparison.OrdinalIgnoreCase));
+
+                        if (multiSortColumn != null)
+                        {
+                            // Zobraz Multi-Sort indikátor s prioritou
+                            header.SortIndicator.Visibility = Visibility.Visible;
+                            var symbol = multiSortColumn.GetSortSymbol();
+                            var priorityText = multiSortColumns.Count > 1 ? $"{multiSortColumn.Priority}" : "";
+                            header.SortIndicator.Text = $"{symbol}{priorityText}";
+
+                            _logger.LogTrace("🔢 Multi-Sort indicator set - Column: {ColumnName}, " +
+                                "Symbol: {Symbol}, Priority: {Priority}, DisplayText: '{DisplayText}'",
+                                header.ColumnName, symbol, multiSortColumn.Priority, header.SortIndicator.Text);
+                        }
+                        else
+                        {
+                            // Skry indikátor pre neaktívne stĺpce
+                            header.SortIndicator.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+
+                _logger.LogDebug("✅ Multi-Sort indicators updated - ActiveColumns: {ActiveColumns}, " +
+                    "IsMultiSortActive: {IsActive}", multiSortColumns.Count, isMultiSortActive);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateMultiSortIndicators");
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Aplikuje sortovanie a refresh display
+        /// </summary>
+        private async Task ApplySortAndRefreshAsync()
+        {
+            try
+            {
+                _logger.LogDebug("🔀 ApplySortAndRefresh START");
+
+                if (_dataManagementService == null || _searchAndSortService == null)
+                {
+                    _logger.LogWarning("⚠️ Required services are null - cannot apply sort");
+                    return;
+                }
+
+                // Get current data
+                var allData = await _dataManagementService.GetAllDataAsync();
+                
+                // Apply sorting (prázdne riadky budú na konci)
+                var sortedData = await _searchAndSortService.ApplySortingAsync(allData);
+                
+                await UIHelper.RunOnUIThreadAsync(() =>
+                {
+                    // Update display rows
+                    _displayRows.Clear();
+                    
+                    for (int i = 0; i < sortedData.Count; i++)
+                    {
+                        var rowData = sortedData[i];
+                        var rowViewModel = CreateRowViewModelFromData(i, rowData);
+                        _displayRows.Add(rowViewModel);
+                    }
+
+                    _totalCellsRendered = _displayRows.Sum(r => r.Cells.Count);
+                    _logger.LogDebug("✅ Sort applied - Rows: {RowCount}, Cells: {CellCount}",
+                        _displayRows.Count, _totalCellsRendered);
+                }, _logger);
+
+                _logger.LogDebug("✅ ApplySortAndRefresh COMPLETED");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ApplySortAndRefreshAsync");
+            }
+        }
+
+        /// <summary>
+        /// Konvertuje advanced validation rules na legacy format
+        /// </summary>
+        private List<GridValidationRule>? ConvertAdvancedRulesToLegacy(ValidationRuleSet? advancedRules)
+        {
+            if (advancedRules == null || !advancedRules.Rules.Any())
+                return null;
+
+            var legacyRules = new List<GridValidationRule>();
+
+            foreach (var advancedRule in advancedRules.Rules.Where(r => r.IsEnabled))
+            {
+                // Convert len basic validation rules do legacy formátu
+                if (advancedRule.ValidationFunction != null && 
+                    advancedRule.TargetColumns.Count == 1 &&
+                    advancedRule.CrossCellValidator == null &&
+                    advancedRule.AsyncValidationFunction == null)
+                {
+                    var legacyRule = new GridValidationRule
+                    {
+                        ColumnName = advancedRule.TargetColumns.First(),
+                        ValidationFunction = (value) =>
+                        {
+                            // Vytvor temporary validation context
+                            var context = new ValidationContext
+                            {
+                                ColumnName = advancedRule.TargetColumns.First(),
+                                CurrentValue = value,
+                                RowData = new Dictionary<string, object?> { { advancedRule.TargetColumns.First(), value } }
+                            };
+
+                            return advancedRule.ValidationFunction(context);
+                        },
+                        ErrorMessage = advancedRule.ErrorMessage,
+                        IsEnabled = advancedRule.IsEnabled
+                    };
+
+                    legacyRules.Add(legacyRule);
+                }
+            }
+
+            _logger.LogDebug("🔧 Converted {AdvancedCount} advanced rules to {LegacyCount} legacy rules",
+                advancedRules.Rules.Count, legacyRules.Count);
+
+            return legacyRules.Any() ? legacyRules : null;
         }
 
         /// <summary>
@@ -2072,13 +4765,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         #region ✅ KOMPLETNE IMPLEMENTOVANÉ: Helper Classes (CS0535 fix)
 
         /// <summary>
-        /// Resizable column header helper class
+        /// Resizable column header helper class s sort indikátorom
         /// </summary>
         internal class ResizableColumnHeader
         {
             public string ColumnName { get; set; } = string.Empty;
             public Border? HeaderElement { get; set; }
             public Border? ResizeGrip { get; set; }
+            public TextBlock? SortIndicator { get; set; }
             public double OriginalWidth { get; set; }
             public double MinWidth { get; set; } = 50;
             public double MaxWidth { get; set; } = 500;
@@ -2186,6 +4880,10 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             private object? _originalValue;
             private int _rowIndex;
 
+            // ✅ NOVÉ: Cell Selection states
+            private bool _isFocused;
+            private bool _isCopied;
+
             /// <summary>
             /// Index riadku ku ktorému bunka patrí
             /// </summary>
@@ -2270,6 +4968,24 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 get => _isEditing;
                 set => SetProperty(ref _isEditing, value);
+            }
+
+            /// <summary>
+            /// ✅ NOVÉ: Či má bunka focus
+            /// </summary>
+            public bool IsFocused
+            {
+                get => _isFocused;
+                set => SetProperty(ref _isFocused, value);
+            }
+
+            /// <summary>
+            /// ✅ NOVÉ: Či je bunka skopírovaná (Ctrl+C)
+            /// </summary>
+            public bool IsCopied
+            {
+                get => _isCopied;
+                set => SetProperty(ref _isCopied, value);
             }
 
             /// <summary>

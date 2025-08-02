@@ -1,5 +1,4 @@
 ﻿// Controls/DataGridCell.xaml.cs - ✅ ENHANCED s komplexným error logging
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

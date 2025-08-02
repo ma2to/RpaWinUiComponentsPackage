@@ -25,6 +25,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models
         private Color? _hoverColor;
         private Color? _editingCellColor;
 
+        // ✅ NOVÉ: Cell Selection farby
+        private Color? _focusedCellColor;
+        private Color? _copiedCellColor;
+        private Color? _validationErrorBorderColor;
+
         #endregion
 
         #region ✅ Individual Color Properties (null = default farba)
@@ -120,6 +125,33 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models
             set => SetProperty(ref _editingCellColor, value);
         }
 
+        /// <summary>
+        /// ✅ NOVÉ: Farba pozadia bunky ktorá má focus (null = default)
+        /// </summary>
+        public Color? FocusedCellColor
+        {
+            get => _focusedCellColor;
+            set => SetProperty(ref _focusedCellColor, value);
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Farba pozadia bunky ktorá bola skopírovaná (Ctrl+C) (null = default)
+        /// </summary>
+        public Color? CopiedCellColor
+        {
+            get => _copiedCellColor;
+            set => SetProperty(ref _copiedCellColor, value);
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Farba border pre bunky s validation error (null = default)
+        /// </summary>
+        public Color? ValidationErrorBorderColor
+        {
+            get => _validationErrorBorderColor;
+            set => SetProperty(ref _validationErrorBorderColor, value);
+        }
+
         #endregion
 
         #region ✅ Resolved Colors (vráti custom color alebo default)
@@ -173,6 +205,21 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models
         /// Vráti skutočnú farbu pre EditingCell (custom alebo default)
         /// </summary>
         public Color ResolvedEditingCellColor => EditingCellColor ?? Color.FromArgb(30, 255, 255, 0);
+
+        /// <summary>
+        /// ✅ NOVÉ: Vráti skutočnú farbu pre FocusedCell (custom alebo default)
+        /// </summary>
+        public Color ResolvedFocusedCellColor => FocusedCellColor ?? Color.FromArgb(80, 0, 120, 215);
+
+        /// <summary>
+        /// ✅ NOVÉ: Vráti skutočnú farbu pre CopiedCell (custom alebo default)
+        /// </summary>
+        public Color ResolvedCopiedCellColor => CopiedCellColor ?? Color.FromArgb(60, 34, 139, 34);
+
+        /// <summary>
+        /// ✅ NOVÉ: Vráti skutočnú farbu pre ValidationErrorBorder (custom alebo default)
+        /// </summary>
+        public Color ResolvedValidationErrorBorderColor => ValidationErrorBorderColor ?? Colors.Red;
 
         #endregion
 

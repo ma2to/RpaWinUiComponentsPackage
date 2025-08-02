@@ -1,5 +1,5 @@
 ﻿// Services/NavigationService.cs - ✅ OPRAVENÝ accessibility
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
@@ -15,6 +15,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
     {
         private readonly ILogger<NavigationService> _logger;
         private bool _isInitialized = false;
+        private INavigationCallback? _navigationCallback;
 
         // ✅ ROZŠÍRENÉ: UI state a performance tracking
         private readonly Dictionary<string, DateTime> _operationStartTimes = new();
@@ -38,6 +39,15 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
 
             _logger.LogInformation("🔧 NavigationService created - InstanceId: {InstanceId}, LoggerType: {LoggerType}",
                 _serviceInstanceId, _logger.GetType().Name);
+        }
+
+        /// <summary>
+        /// Nastaví navigation callback pre komunikáciu s DataGrid
+        /// </summary>
+        public void SetNavigationCallback(INavigationCallback callback)
+        {
+            _navigationCallback = callback;
+            _logger.LogDebug("🎮 Navigation callback set - Type: {CallbackType}", callback?.GetType().Name ?? "null");
         }
 
         /// <summary>
@@ -166,6 +176,93 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                         _logger.LogInformation("📋 Cut operation detected - allowing system to handle, " +
                             "TextLength: {TextLength}, SelectionLength: {SelectionLength}",
                             textBox.Text?.Length ?? 0, textBox.SelectionLength);
+                        break;
+
+                    // ✅ NOVÉ: Arrow keys navigation
+                    case Windows.System.VirtualKey.Up:
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            if (IsShiftPressed())
+                            {
+                                // Extend selection upward
+                                await _navigationCallback.ExtendSelectionAsync(row, column, row - 1, column);
+                                _logger.LogDebug("🎮 Shift+Up: Extending selection upward");
+                            }
+                            else
+                            {
+                                await _navigationCallback.MoveToCellAboveAsync(row, column);
+                                _logger.LogDebug("🎮 Up: Moving to cell above");
+                            }
+                        }
+                        break;
+
+                    case Windows.System.VirtualKey.Down:
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            if (IsShiftPressed())
+                            {
+                                // Extend selection downward
+                                await _navigationCallback.ExtendSelectionAsync(row, column, row + 1, column);
+                                _logger.LogDebug("🎮 Shift+Down: Extending selection downward");
+                            }
+                            else
+                            {
+                                await _navigationCallback.MoveToCellBelowAsync(row, column);
+                                _logger.LogDebug("🎮 Down: Moving to cell below");
+                            }
+                        }
+                        break;
+
+                    case Windows.System.VirtualKey.Left:
+                        if (_navigationCallback != null && textBox.SelectionStart == 0)
+                        {
+                            e.Handled = true;
+                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            if (IsShiftPressed())
+                            {
+                                // Extend selection left
+                                await _navigationCallback.ExtendSelectionAsync(row, column, row, column - 1);
+                                _logger.LogDebug("🎮 Shift+Left: Extending selection left");
+                            }
+                            else
+                            {
+                                await _navigationCallback.MoveToCellLeftAsync(row, column);
+                                _logger.LogDebug("🎮 Left: Moving to cell left");
+                            }
+                        }
+                        break;
+
+                    case Windows.System.VirtualKey.Right:
+                        if (_navigationCallback != null && textBox.SelectionStart == textBox.Text?.Length)
+                        {
+                            e.Handled = true;
+                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            if (IsShiftPressed())
+                            {
+                                // Extend selection right
+                                await _navigationCallback.ExtendSelectionAsync(row, column, row, column + 1);
+                                _logger.LogDebug("🎮 Shift+Right: Extending selection right");
+                            }
+                            else
+                            {
+                                await _navigationCallback.MoveToCellRightAsync(row, column);
+                                _logger.LogDebug("🎮 Right: Moving to cell right");
+                            }
+                        }
+                        break;
+
+                    // ✅ NOVÉ: Ctrl+A pre Select All
+                    case Windows.System.VirtualKey.A when IsCtrlPressed():
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            await _navigationCallback.SelectAllCellsAsync();
+                            _logger.LogDebug("🎮 Ctrl+A: Selecting all cells");
+                        }
                         break;
                 }
 
@@ -488,22 +585,49 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         private async Task HandleTabAsync(TextBox textBox)
         {
             await FinishCellEditAsync(textBox);
-            // TODO: Presun na ďalšiu bunku
-            _logger.LogDebug("Tab: Presúvam na ďalšiu bunku");
+            
+            if (_navigationCallback != null)
+            {
+                var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                await _navigationCallback.MoveToNextCellAsync(row, column);
+                _logger.LogDebug("🎮 Tab: Moved to next cell from [{Row},{Column}]", row, column);
+            }
+            else
+            {
+                _logger.LogWarning("🎮 Tab: Navigation callback not set");
+            }
         }
 
         private async Task HandleShiftTabAsync(TextBox textBox)
         {
             await FinishCellEditAsync(textBox);
-            // TODO: Presun na predchádzajúcu bunku
-            _logger.LogDebug("Shift+Tab: Presúvam na predchádzajúcu bunku");
+            
+            if (_navigationCallback != null)
+            {
+                var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                await _navigationCallback.MoveToPreviousCellAsync(row, column);
+                _logger.LogDebug("🎮 Shift+Tab: Moved to previous cell from [{Row},{Column}]", row, column);
+            }
+            else
+            {
+                _logger.LogWarning("🎮 Shift+Tab: Navigation callback not set");
+            }
         }
 
         private async Task HandleEnterAsync(TextBox textBox)
         {
             await FinishCellEditAsync(textBox);
-            // TODO: Presun na bunku nižšie
-            _logger.LogDebug("Enter: Presúvam na bunku nižšie");
+            
+            if (_navigationCallback != null)
+            {
+                var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                await _navigationCallback.MoveToCellBelowAsync(row, column);
+                _logger.LogDebug("🎮 Enter: Moved to cell below from [{Row},{Column}]", row, column);
+            }
+            else
+            {
+                _logger.LogWarning("🎮 Enter: Navigation callback not set");
+            }
         }
 
         private async Task HandleShiftEnterAsync(TextBox textBox)

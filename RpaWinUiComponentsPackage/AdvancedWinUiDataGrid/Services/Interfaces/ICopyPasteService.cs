@@ -1,6 +1,7 @@
 ﻿// Services/Interfaces/ICopyPasteService.cs - ✅ OPRAVENÝ - len ICopyPasteService
 using Microsoft.UI.Xaml.Input;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -35,6 +36,21 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces
         /// Spracuje klávesové skratky (Ctrl+C, Ctrl+V, Ctrl+X)
         /// </summary>
         Task HandleKeyboardShortcutAsync(KeyRoutedEventArgs e);
+
+        /// <summary>
+        /// Skopíruje cell range do clipboardu
+        /// </summary>
+        Task CopyRangeAsync(CellRange range, List<Dictionary<string, object?>> allData, List<string> columnNames);
+
+        /// <summary>
+        /// Vloží range data zo clipboardu
+        /// </summary>
+        Task PasteRangeAsync(CellRange targetRange, List<Dictionary<string, object?>> allData, List<string> columnNames);
+
+        /// <summary>
+        /// Vystrihne cell range (copy + clear)
+        /// </summary>
+        Task CutRangeAsync(CellRange range, List<Dictionary<string, object?>> allData, List<string> columnNames);
 
         /// <summary>
         /// Kontroluje či je možné vložiť dáta z clipboardu

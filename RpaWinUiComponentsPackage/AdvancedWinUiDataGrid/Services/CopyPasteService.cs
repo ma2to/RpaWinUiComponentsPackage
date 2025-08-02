@@ -1,5 +1,5 @@
 ﻿// Services/CopyPasteService.cs - ✅ OPRAVENÝ accessibility
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml.Input;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities;

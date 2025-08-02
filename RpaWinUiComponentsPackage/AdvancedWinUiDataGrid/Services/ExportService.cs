@@ -1,5 +1,5 @@
 ﻿// Services/ExportService.cs - ✅ OPRAVENÝ accessibility
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using System;
@@ -23,8 +23,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         private readonly Dictionary<string, DateTime> _operationStartTimes = new();
         private readonly Dictionary<string, int> _operationCounters = new();
         private int _totalExportOperations = 0;
+        private int _totalImportOperations = 0;
         private long _totalBytesExported = 0;
+        private long _totalBytesImported = 0;
         private readonly string _serviceInstanceId = Guid.NewGuid().ToString("N")[..8];
+
+        // ✅ NOVÉ: Import/Export enhancement
+        private readonly Dictionary<string, ImportResult> _importHistory = new();
+        private readonly Dictionary<string, string> _exportHistory = new();
 
         public ExportService(ILogger<ExportService> logger, IDataManagementService dataManagementService)
         {
@@ -90,7 +96,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Exportuje všetky dáta do DataTable s kompletným data analysis logovaním (bez DeleteRows stĺpca, s ValidAlerts)
         /// </summary>
-        public async Task<DataTable> ExportToDataTableAsync()
+        public async Task<DataTable> ExportToDataTableAsync(bool includeValidAlerts = false)
         {
             var operationId = StartOperation("ExportToDataTableAsync");
             
@@ -107,9 +113,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
 
                 var dataTable = new DataTable("ExportedData");
 
-                // Vytvor štruktúru stĺpcov (bez DeleteRows, s ValidAlerts)
-                _logger.LogDebug("📊 Creating DataTable structure");
-                CreateDataTableStructure(dataTable);
+                // Vytvor štruktúru stĺpcov (bez DeleteRows, s ValidAlerts podľa parametra)
+                _logger.LogDebug("📊 Creating DataTable structure - IncludeValidAlerts: {IncludeValidAlerts}", includeValidAlerts);
+                CreateDataTableStructure(dataTable, includeValidAlerts);
                 
                 var columnsCreated = dataTable.Columns.Count;
                 _logger.LogInformation("📊 DataTable structure created - Columns: {ColumnsCreated}, " +
@@ -152,7 +158,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
 
                 // Naplň dáta
                 _logger.LogDebug("📊 Populating DataTable with {InputRows} rows", inputRowCount);
-                await Task.Run(() => PopulateDataTable(dataTable, allData));
+                await Task.Run(() => PopulateDataTable(dataTable, allData, includeValidAlerts));
 
                 var finalRowCount = dataTable.Rows.Count;
                 var finalColumnCount = dataTable.Columns.Count;
@@ -206,7 +212,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Exportuje len validné riadky do DataTable s komplexným validation filtering logovaním
         /// </summary>
-        public async Task<DataTable> ExportValidRowsOnlyAsync()
+        public async Task<DataTable> ExportValidRowsOnlyAsync(bool includeValidAlerts = false)
         {
             var operationId = StartOperation("ExportValidRowsOnlyAsync");
             
@@ -215,7 +221,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 _logger.LogInformation("✅ ExportValidRowsOnly START - InstanceId: {InstanceId}, TotalExportOps: {TotalOps}",
                     _serviceInstanceId, _totalExportOperations);
 
-                var fullDataTable = await ExportToDataTableAsync();
+                var fullDataTable = await ExportToDataTableAsync(includeValidAlerts);
                 var validDataTable = fullDataTable.Clone();
                 
                 var totalRows = fullDataTable.Rows.Count;
@@ -310,7 +316,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Exportuje len nevalidné riadky do DataTable s komplexnou error analysis
         /// </summary>
-        public async Task<DataTable> ExportInvalidRowsOnlyAsync()
+        public async Task<DataTable> ExportInvalidRowsOnlyAsync(bool includeValidAlerts = true)
         {
             var operationId = StartOperation("ExportInvalidRowsOnlyAsync");
             
@@ -319,7 +325,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 _logger.LogInformation("❌ ExportInvalidRowsOnly START - InstanceId: {InstanceId}, TotalExportOps: {TotalOps}",
                     _serviceInstanceId, _totalExportOperations);
 
-                var fullDataTable = await ExportToDataTableAsync();
+                var fullDataTable = await ExportToDataTableAsync(includeValidAlerts);
                 var invalidDataTable = fullDataTable.Clone();
                 
                 var totalRows = fullDataTable.Rows.Count;
@@ -457,7 +463,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Exportuje len špecifické stĺpce s komplexnou column mapping a data transformation analýzou
         /// </summary>
-        public async Task<DataTable> ExportSpecificColumnsAsync(string[] columnNames)
+        public async Task<DataTable> ExportSpecificColumnsAsync(string[] columnNames, bool includeValidAlerts = false)
         {
             var operationId = StartOperation("ExportSpecificColumnsAsync");
             
@@ -473,7 +479,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                     return new DataTable("EmptySpecificColumnsExport");
                 }
 
-                var fullDataTable = await ExportToDataTableAsync();
+                var fullDataTable = await ExportToDataTableAsync(includeValidAlerts);
                 var specificDataTable = new DataTable("SpecificColumnsExport");
                 
                 var totalRows = fullDataTable.Rows.Count;
@@ -605,17 +611,17 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Exportuje dáta do CSV formátu s komplexnou format conversion a encoding analýzou
         /// </summary>
-        public async Task<string> ExportToCsvAsync(bool includeHeaders = true)
+        public async Task<string> ExportToCsvAsync(bool includeHeaders = true, bool includeValidAlerts = false)
         {
             var operationId = StartOperation("ExportToCsvAsync");
             
             try
             {
                 _logger.LogInformation("📄 ExportToCsv START - InstanceId: {InstanceId}, " +
-                    "IncludeHeaders: {IncludeHeaders}, TotalExportOps: {TotalOps}",
-                    _serviceInstanceId, includeHeaders, _totalExportOperations);
+                    "IncludeHeaders: {IncludeHeaders}, IncludeValidAlerts: {IncludeValidAlerts}, TotalExportOps: {TotalOps}",
+                    _serviceInstanceId, includeHeaders, includeValidAlerts, _totalExportOperations);
 
-                var dataTable = await ExportToDataTableAsync();
+                var dataTable = await ExportToDataTableAsync(includeValidAlerts);
                 
                 var totalRows = dataTable.Rows.Count;
                 var totalColumns = dataTable.Columns.Count;
@@ -733,11 +739,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Získa štatistiky exportovaných dát
         /// </summary>
-        public async Task<ExportStatistics> GetExportStatisticsAsync()
+        public async Task<ExportStatistics> GetExportStatisticsAsync(bool includeValidAlerts = false)
         {
             try
             {
-                var dataTable = await ExportToDataTableAsync();
+                var dataTable = await ExportToDataTableAsync(includeValidAlerts);
                 var statistics = await Task.Run(() => CalculateStatistics(dataTable));
                 return statistics;
             }
@@ -747,6 +753,610 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 throw;
             }
         }
+
+        #region ✅ NOVÉ: Import/Export Enhancement Methods
+
+        /// <summary>
+        /// Importuje dáta zo súboru s komplexným file format detection a validation - ✅ PUBLIC API
+        /// </summary>
+        public async Task<ImportResult> ImportFromFileAsync(string filePath, ImportExportConfiguration? config = null)
+        {
+            var operationId = StartOperation("ImportFromFileAsync");
+            var result = new ImportResult
+            {
+                FilePath = filePath,
+                StartTime = DateTime.UtcNow
+            };
+
+            try
+            {
+                _logger.LogInformation("📥 ImportFromFile START - InstanceId: {InstanceId}, " +
+                    "FilePath: {FilePath}, TotalImportOps: {TotalOps}",
+                    _serviceInstanceId, filePath, _totalImportOperations);
+
+                config ??= ImportExportConfiguration.DefaultCsv;
+                result.Format = config.Format;
+
+                // Validation of file
+                if (!System.IO.File.Exists(filePath))
+                {
+                    result.AddError($"Súbor sa nenašiel: {filePath}", severity: ErrorSeverity.Critical);
+                    result.Finalize();
+                    return result;
+                }
+
+                var fileInfo = new System.IO.FileInfo(filePath);
+                result.FileSizeBytes = fileInfo.Length;
+
+                _logger.LogInformation("📥 File validated - Size: {FileSizeKB:F1} KB, " +
+                    "LastModified: {LastModified}, Format: {Format}",
+                    result.FileSizeBytes / 1024.0, fileInfo.LastWriteTime, config.Format);
+
+                // Format detection if auto-detect
+                var detectedFormat = DetectFileFormat(filePath, config.Format);
+                if (detectedFormat != config.Format)
+                {
+                    _logger.LogInformation("📥 Format detection - Requested: {RequestedFormat}, " +
+                        "Detected: {DetectedFormat}, Using: {UsingFormat}",
+                        config.Format, detectedFormat, detectedFormat);
+                    result.Format = detectedFormat;
+                }
+
+                // Import based on format
+                switch (result.Format)
+                {
+                    case ExportFormat.CSV:
+                        await ImportFromCsvAsync(filePath, config, result);
+                        break;
+                    case ExportFormat.TSV:
+                        var tsvConfig = new ImportExportConfiguration
+                        {
+                            Format = ExportFormat.TSV,
+                            CsvSeparator = "\t",
+                            IncludeHeaders = config.IncludeHeaders,
+                            SkipEmptyRows = config.SkipEmptyRows,
+                            ValidateOnImport = config.ValidateOnImport
+                        };
+                        await ImportFromCsvAsync(filePath, tsvConfig, result);
+                        break;
+                    case ExportFormat.JSON:
+                        await ImportFromJsonAsync(filePath, config, result);
+                        break;
+                    case ExportFormat.Excel:
+                        result.AddError("Excel import nie je v tejto verzii podporovaný", severity: ErrorSeverity.Critical);
+                        break;
+                    case ExportFormat.XML:
+                        result.AddError("XML import nie je v tejto verzii podporovaný", severity: ErrorSeverity.Critical);
+                        break;
+                }
+
+                // Backup if requested
+                if (config.BackupExistingFile && System.IO.File.Exists(filePath))
+                {
+                    await CreateFileBackupAsync(filePath);
+                }
+
+                // Store in import history
+                _importHistory[result.ImportId] = result;
+                TrackBytesImported(result.FileSizeBytes);
+
+                result.Finalize();
+                var duration = EndOperation(operationId);
+
+                _logger.LogInformation("✅ ImportFromFile COMPLETED - Duration: {Duration}ms, " +
+                    "ImportId: {ImportId}, Status: {Status}, " +
+                    "ProcessedRows: {ProcessedRows}, SuccessfulRows: {SuccessfulRows}, " +
+                    "ErrorRows: {ErrorRows}, SuccessRate: {SuccessRate:F1}%",
+                    duration, result.ImportId, result.IsSuccessful ? "SUCCESS" : "FAILED",
+                    result.TotalRowsInFile, result.SuccessfullyImportedRows,
+                    result.ErrorRows, result.SuccessRate);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ CRITICAL ERROR in ImportFromFileAsync - InstanceId: {InstanceId}, " +
+                    "FilePath: {FilePath}", _serviceInstanceId, filePath);
+                result.AddError($"Kritická chyba pri importe: {ex.Message}", severity: ErrorSeverity.Critical);
+                result.Finalize();
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Exportuje dáta do súboru s komplexnou configuration a format handling - ✅ PUBLIC API
+        /// </summary>
+        public async Task<string> ExportToFileAsync(string filePath, ImportExportConfiguration? config = null)
+        {
+            var operationId = StartOperation("ExportToFileAsync");
+            
+            try
+            {
+                _logger.LogInformation("📤 ExportToFile START - InstanceId: {InstanceId}, " +
+                    "FilePath: {FilePath}, TotalExportOps: {TotalOps}",
+                    _serviceInstanceId, filePath, _totalExportOperations);
+
+                config ??= ImportExportConfiguration.DefaultCsv;
+
+                // Backup existing file if requested
+                if (config.BackupExistingFile && System.IO.File.Exists(filePath))
+                {
+                    await CreateFileBackupAsync(filePath);
+                }
+
+                string exportedContent;
+                long estimatedBytes = 0;
+
+                // Export based on format
+                switch (config.Format)
+                {
+                    case ExportFormat.CSV:
+                    case ExportFormat.TSV:
+                        exportedContent = await ExportToCsvAsync(config.IncludeHeaders);
+                        if (config.Format == ExportFormat.TSV)
+                        {
+                            exportedContent = exportedContent.Replace(",", "\t");
+                        }
+                        break;
+                    case ExportFormat.JSON:
+                        exportedContent = await ExportToJsonAsync(config);
+                        break;
+                    case ExportFormat.Excel:
+                        throw new NotSupportedException("Excel export nie je v tejto verzii podporovaný");
+                    case ExportFormat.XML:
+                        throw new NotSupportedException("XML export nie je v tejto verzii podporovaný");
+                    default:
+                        exportedContent = await ExportToCsvAsync(config.IncludeHeaders);
+                        break;
+                }
+
+                // Write to file
+                await System.IO.File.WriteAllTextAsync(filePath, exportedContent, 
+                    System.Text.Encoding.GetEncoding(config.Encoding));
+                
+                estimatedBytes = System.Text.Encoding.GetEncoding(config.Encoding).GetByteCount(exportedContent);
+                TrackBytesExported(estimatedBytes);
+
+                // Store in export history
+                _exportHistory[DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")] = filePath;
+
+                // Auto-open if requested
+                if (config.AutoOpenFile && System.IO.File.Exists(filePath))
+                {
+                    try
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = filePath,
+                            UseShellExecute = true
+                        });
+                        _logger.LogDebug("📤 File auto-opened - FilePath: {FilePath}", filePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "📤 Failed to auto-open file - FilePath: {FilePath}", filePath);
+                    }
+                }
+
+                var duration = EndOperation(operationId);
+
+                _logger.LogInformation("✅ ExportToFile COMPLETED - Duration: {Duration}ms, " +
+                    "FilePath: {FilePath}, Format: {Format}, Size: {SizeKB:F1} KB, " +
+                    "Encoding: {Encoding}, AutoOpened: {AutoOpened}",
+                    duration, filePath, config.Format, estimatedBytes / 1024.0,
+                    config.Encoding, config.AutoOpenFile);
+
+                return filePath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ CRITICAL ERROR in ExportToFileAsync - InstanceId: {InstanceId}, " +
+                    "FilePath: {FilePath}", _serviceInstanceId, filePath);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa import history - ✅ PUBLIC API
+        /// </summary>
+        public Dictionary<string, ImportResult> GetImportHistory()
+        {
+            return new Dictionary<string, ImportResult>(_importHistory);
+        }
+
+        /// <summary>
+        /// Získa export history - ✅ PUBLIC API
+        /// </summary>
+        public Dictionary<string, string> GetExportHistory()
+        {
+            return new Dictionary<string, string>(_exportHistory);
+        }
+
+        /// <summary>
+        /// Vyčistí import/export history - ✅ PUBLIC API
+        /// </summary>
+        public void ClearHistory()
+        {
+            _importHistory.Clear();
+            _exportHistory.Clear();
+            _logger.LogInformation("🧹 Import/Export history cleared - InstanceId: {InstanceId}", _serviceInstanceId);
+        }
+
+        #endregion
+
+        #region ✅ PRIVATE Import/Export Helper Methods
+
+        /// <summary>
+        /// Detekuje formát súboru na základe extension a obsahu
+        /// </summary>
+        private ExportFormat DetectFileFormat(string filePath, ExportFormat requestedFormat)
+        {
+            try
+            {
+                var extension = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
+                
+                // Automatic detection based on extension
+                var detectedFormat = extension switch
+                {
+                    ".csv" => ExportFormat.CSV,
+                    ".tsv" => ExportFormat.TSV,
+                    ".json" => ExportFormat.JSON,
+                    ".xlsx" or ".xls" => ExportFormat.Excel,
+                    ".xml" => ExportFormat.XML,
+                    _ => requestedFormat
+                };
+
+                // Content-based validation for text files
+                if (detectedFormat == ExportFormat.CSV || detectedFormat == ExportFormat.TSV)
+                {
+                    var sampleContent = System.IO.File.ReadLines(filePath).Take(3).ToList();
+                    if (sampleContent.Any())
+                    {
+                        var firstLine = sampleContent.First();
+                        var tabCount = firstLine.Count(c => c == '\t');
+                        var commaCount = firstLine.Count(c => c == ',');
+                        
+                        if (tabCount > commaCount && tabCount > 0)
+                        {
+                            detectedFormat = ExportFormat.TSV;
+                        }
+                        else if (commaCount > 0)
+                        {
+                            detectedFormat = ExportFormat.CSV;
+                        }
+                    }
+                }
+
+                return detectedFormat;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "📥 File format detection failed - using requested format: {RequestedFormat}", 
+                    requestedFormat);
+                return requestedFormat;
+            }
+        }
+
+        /// <summary>
+        /// Importuje z CSV súboru
+        /// </summary>
+        private async Task ImportFromCsvAsync(string filePath, ImportExportConfiguration config, ImportResult result)
+        {
+            var lines = await System.IO.File.ReadAllLinesAsync(filePath, System.Text.Encoding.GetEncoding(config.Encoding));
+            result.TotalRowsInFile = lines.Length;
+
+            if (config.IncludeHeaders && lines.Length > 0)
+            {
+                result.TotalRowsInFile--; // Subtract header row
+                lines = lines.Skip(1).ToArray();
+            }
+
+            var separator = config.CsvSeparator;
+            var headers = new List<string>();
+
+            // Parse headers if available
+            if (config.IncludeHeaders && result.TotalRowsInFile >= 0)
+            {
+                var headerLine = await System.IO.File.ReadAllLinesAsync(filePath, System.Text.Encoding.GetEncoding(config.Encoding));
+                if (headerLine.Length > 0)
+                {
+                    headers = ParseCsvLine(headerLine[0], separator).ToList();
+                    result.ColumnsCount = headers.Count;
+                }
+            }
+
+            var rowIndex = 0;
+            foreach (var line in lines)
+            {
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        if (config.SkipEmptyRows)
+                        {
+                            result.SkippedRows++;
+                            continue;
+                        }
+                    }
+
+                    var fields = ParseCsvLine(line, separator).ToList();
+                    var rowData = new Dictionary<string, object?>();
+
+                    // Map fields to headers or use generic column names
+                    for (int i = 0; i < fields.Count; i++)
+                    {
+                        var columnName = headers.Count > i ? headers[i] : $"Column{i + 1}";
+                        rowData[columnName] = fields[i];
+                    }
+
+                    if (result.ColumnsCount == 0)
+                        result.ColumnsCount = fields.Count;
+
+                    // Validation if enabled
+                    if (config.ValidateOnImport)
+                    {
+                        var validationErrors = ValidateImportRow(rowData, rowIndex);
+                        if (validationErrors.Any())
+                        {
+                            result.ErrorRows++;
+                            foreach (var error in validationErrors)
+                            {
+                                result.AddError(error, rowIndex);
+                            }
+                            
+                            if (!config.ContinueOnErrors)
+                            {
+                                result.AddError($"Import zastavený kvôli chybám na riadku {rowIndex}", 
+                                    severity: ErrorSeverity.Critical);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            result.SuccessfullyImportedRows++;
+                            result.ImportedData.Add(rowData);
+                        }
+                    }
+                    else
+                    {
+                        result.SuccessfullyImportedRows++;
+                        result.ImportedData.Add(rowData);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.ErrorRows++;
+                    result.AddError($"Chyba pri parsovaní riadku: {ex.Message}", rowIndex);
+                    
+                    if (!config.ContinueOnErrors)
+                    {
+                        result.AddError($"Import zastavený kvôli kritickej chybe na riadku {rowIndex}", 
+                            severity: ErrorSeverity.Critical);
+                        break;
+                    }
+                }
+
+                rowIndex++;
+            }
+        }
+
+        /// <summary>
+        /// Importuje z JSON súboru
+        /// </summary>
+        private async Task ImportFromJsonAsync(string filePath, ImportExportConfiguration config, ImportResult result)
+        {
+            var jsonContent = await System.IO.File.ReadAllTextAsync(filePath, System.Text.Encoding.GetEncoding(config.Encoding));
+            
+            try
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(jsonContent);
+                
+                if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    result.TotalRowsInFile = document.RootElement.GetArrayLength();
+                    var rowIndex = 0;
+
+                    foreach (var item in document.RootElement.EnumerateArray())
+                    {
+                        try
+                        {
+                            var rowData = new Dictionary<string, object?>();
+                            
+                            foreach (var property in item.EnumerateObject())
+                            {
+                                object? value = property.Value.ValueKind switch
+                                {
+                                    System.Text.Json.JsonValueKind.String => property.Value.GetString(),
+                                    System.Text.Json.JsonValueKind.Number => property.Value.GetDecimal(),
+                                    System.Text.Json.JsonValueKind.True => true,
+                                    System.Text.Json.JsonValueKind.False => false,
+                                    System.Text.Json.JsonValueKind.Null => null,
+                                    _ => property.Value.ToString()
+                                };
+                                
+                                rowData[property.Name] = value;
+                            }
+
+                            if (result.ColumnsCount == 0)
+                                result.ColumnsCount = rowData.Count;
+
+                            // Validation if enabled
+                            if (config.ValidateOnImport)
+                            {
+                                var validationErrors = ValidateImportRow(rowData, rowIndex);
+                                if (validationErrors.Any())
+                                {
+                                    result.ErrorRows++;
+                                    foreach (var error in validationErrors)
+                                    {
+                                        result.AddError(error, rowIndex);
+                                    }
+                                }
+                                else
+                                {
+                                    result.SuccessfullyImportedRows++;
+                                    result.ImportedData.Add(rowData);
+                                }
+                            }
+                            else
+                            {
+                                result.SuccessfullyImportedRows++;
+                                result.ImportedData.Add(rowData);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            result.ErrorRows++;
+                            result.AddError($"Chyba pri parsovaní JSON objektu: {ex.Message}", rowIndex);
+                        }
+
+                        rowIndex++;
+                    }
+                }
+                else
+                {
+                    result.AddError("JSON súbor neobsahuje array objektov", severity: ErrorSeverity.Critical);
+                }
+            }
+            catch (Exception ex)
+            {
+                result.AddError($"Chyba pri parsovaní JSON súboru: {ex.Message}", severity: ErrorSeverity.Critical);
+            }
+        }
+
+        /// <summary>
+        /// Exportuje do JSON formátu
+        /// </summary>
+        private async Task<string> ExportToJsonAsync(ImportExportConfiguration config)
+        {
+            var dataTable = await ExportToDataTableAsync();
+            var jsonArray = new List<Dictionary<string, object?>>();
+
+            foreach (DataRow row in dataTable.Rows)
+            {
+                var jsonObject = new Dictionary<string, object?>();
+                
+                foreach (DataColumn column in dataTable.Columns)
+                {
+                    var value = row[column.ColumnName];
+                    jsonObject[column.ColumnName] = value == DBNull.Value ? null : value;
+                }
+                
+                jsonArray.Add(jsonObject);
+            }
+
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = config.JsonFormatting == JsonFormatting.Indented,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            return System.Text.Json.JsonSerializer.Serialize(jsonArray, options);
+        }
+
+        /// <summary>
+        /// Parsuje CSV riadok s rešpektovaním quoted fields
+        /// </summary>
+        private IEnumerable<string> ParseCsvLine(string line, string separator)
+        {
+            var fields = new List<string>();
+            var currentField = new System.Text.StringBuilder();
+            var inQuotes = false;
+            var i = 0;
+
+            while (i < line.Length)
+            {
+                var c = line[i];
+
+                if (c == '"')
+                {
+                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        // Escaped quote
+                        currentField.Append('"');
+                        i += 2;
+                    }
+                    else
+                    {
+                        // Toggle quote state
+                        inQuotes = !inQuotes;
+                        i++;
+                    }
+                }
+                else if (!inQuotes && line.Substring(i).StartsWith(separator))
+                {
+                    // Field separator
+                    fields.Add(currentField.ToString());
+                    currentField.Clear();
+                    i += separator.Length;
+                }
+                else
+                {
+                    currentField.Append(c);
+                    i++;
+                }
+            }
+
+            // Add last field
+            fields.Add(currentField.ToString());
+            return fields;
+        }
+
+        /// <summary>
+        /// Validuje importovaný riadok
+        /// </summary>
+        private List<string> ValidateImportRow(Dictionary<string, object?> rowData, int rowIndex)
+        {
+            var errors = new List<string>();
+
+            // Basic validation - can be extended based on configuration
+            foreach (var kvp in rowData)
+            {
+                if (kvp.Value == null || string.IsNullOrWhiteSpace(kvp.Value.ToString()))
+                {
+                    // Only validate if column seems required (contains "id", "name", etc.)
+                    var columnName = kvp.Key.ToLowerInvariant();
+                    if (columnName.Contains("id") || columnName.Contains("name") || columnName.Contains("email"))
+                    {
+                        errors.Add($"{kvp.Key}: Pole je povinné");
+                    }
+                }
+            }
+
+            return errors;
+        }
+
+        /// <summary>
+        /// Vytvorí backup súboru
+        /// </summary>
+        private async Task CreateFileBackupAsync(string filePath)
+        {
+            try
+            {
+                var backupPath = $"{filePath}.backup_{DateTime.Now:yyyyMMdd_HHmmss}";
+                await Task.Run(() => System.IO.File.Copy(filePath, backupPath, overwrite: true));
+                
+                _logger.LogDebug("💾 File backup created - Original: {OriginalPath}, Backup: {BackupPath}", 
+                    filePath, backupPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "💾 Failed to create file backup - FilePath: {FilePath}", filePath);
+            }
+        }
+
+        /// <summary>
+        /// Aktualizuje počítadlo importovaných bajtov
+        /// </summary>
+        private void TrackBytesImported(long bytes)
+        {
+            _totalBytesImported += bytes;
+            _totalImportOperations++;
+            _logger.LogTrace("📥 Bytes imported tracked - Current: {CurrentBytes}, Total: {TotalBytes}, TotalImportOps: {TotalOps}", 
+                bytes, _totalBytesImported, _totalImportOperations);
+        }
+
+        #endregion
 
         #region ✅ Performance Tracking Helper Methods
 
@@ -892,23 +1502,27 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             return "Low";
         }
 
-        private void CreateDataTableStructure(DataTable dataTable)
+        private void CreateDataTableStructure(DataTable dataTable, bool includeValidAlerts = false)
         {
             if (_configuration?.Columns == null) return;
 
             foreach (var column in _configuration.Columns)
             {
-                // Preskač DeleteRows stĺpec
+                // Preskač DeleteRows stĺpec a CheckBoxState (ak nie je explicitne požadovaný)
                 if (column.Name == "DeleteRows") continue;
+                if (column.Name == "CheckBoxState") continue;
 
                 dataTable.Columns.Add(column.Name, column.DataType);
             }
 
-            // Pridaj ValidAlerts stĺpec
-            dataTable.Columns.Add("ValidAlerts", typeof(string));
+            // Pridaj ValidAlerts stĺpec len ak je požadovaný
+            if (includeValidAlerts)
+            {
+                dataTable.Columns.Add("ValidAlerts", typeof(string));
+            }
         }
 
-        private void PopulateDataTable(DataTable dataTable, List<Dictionary<string, object?>> allData)
+        private void PopulateDataTable(DataTable dataTable, List<Dictionary<string, object?>> allData, bool includeValidAlerts = false)
         {
             foreach (var rowData in allData)
             {
@@ -916,6 +1530,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
 
                 foreach (DataColumn column in dataTable.Columns)
                 {
+                    // Skip ValidAlerts if not included
+                    if (!includeValidAlerts && column.ColumnName == "ValidAlerts") continue;
+                    
                     if (rowData.ContainsKey(column.ColumnName))
                     {
                         var value = rowData[column.ColumnName];

@@ -210,6 +210,31 @@
                 </StackPanel>
             </Border>
 
+            <!-- ✅ NOVÉ: Selection Rectangle Overlay -->
+            <Border x:Name="SelectionRectangleOverlay"
+                    Grid.Row="0"
+                    Background="Transparent"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False">
+                
+                <Border x:Name="SelectionRectangle"
+                        Background="{ThemeResource SystemAccentColorLight2}"
+                        BorderBrush="{ThemeResource SystemAccentColor}"
+                        BorderThickness="2"
+                        Opacity="0.3"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Width="0"
+                        Height="0"
+                        Margin="0">
+                    
+                    <!-- Dashed border effect -->
+                    <Border.BorderBrush>
+                        <SolidColorBrush Color="{ThemeResource SystemAccentColor}" />
+                    </Border.BorderBrush>
+                </Border>
+            </Border>
+
             <!-- ✅ OPRAVENÉ: Validačný overlay -->
             <Border x:Name="ValidationOverlay"
                     Grid.Row="0"

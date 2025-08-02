@@ -1,5 +1,5 @@
 ﻿// Services/DataManagementService.cs - ✅ OPRAVENÉ CS4032, CS0029 chyby
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities;

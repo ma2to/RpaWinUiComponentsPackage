@@ -1,5 +1,5 @@
 ﻿// Services/LoggingServiceAdapter.cs
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using System;
 

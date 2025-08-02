@@ -1,5 +1,5 @@
 ﻿// AdvancedWinUiDataGrid/Utilities/UIHelper.cs - ✅ NOVÝ SÚBOR
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

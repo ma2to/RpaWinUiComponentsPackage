@@ -1,0 +1,24 @@
+<!-- Controls/SpecialColumns/CheckBoxColumn.xaml - ✅ NOVÝ: CheckBox Column -->
+<UserControl x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumns.CheckBoxColumn"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumns">
+
+    <Grid x:Name="CheckBoxContainer" 
+          Background="Transparent"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          MinWidth="40"
+          MinHeight="30">
+        
+        <!-- CheckBox pre bunku -->
+        <CheckBox x:Name="CellCheckBox"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  IsEnabled="True"
+                  Checked="OnCellCheckBoxChecked"
+                  Unchecked="OnCellCheckBoxUnchecked"
+                  Margin="8,4"/>
+        
+    </Grid>
+</UserControl>
