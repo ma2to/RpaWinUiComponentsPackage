@@ -1,6 +1,6 @@
 <!-- Controls/SpecialColumns/DeleteRowColumn.xaml - ✅ OPRAVENÝ -->
 <UserControl
-    x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.DeleteRowColumn"
+    x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumns.DeleteRowColumn"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"

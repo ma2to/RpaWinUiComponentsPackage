@@ -1,6 +1,6 @@
 ﻿// Services/Interfaces/IDataManagementService.cs - ✅ OPRAVENÝ - len IDataManagementService
 
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -14,7 +14,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces
         /// <summary>
         /// Inicializuje dátovú službu s konfiguráciou
         /// </summary>
-        Task InitializeAsync(GridConfiguration configuration);
+        Task InitializeAsync(Models.Grid.GridConfiguration configuration);
 
         /// <summary>
         /// Načíta dáta do gridu

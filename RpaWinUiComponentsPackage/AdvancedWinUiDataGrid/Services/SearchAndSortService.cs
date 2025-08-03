@@ -1,12 +1,13 @@
 ﻿// Services/SearchAndSortService.cs - ✅ ROZŠÍRENÉ o Multi-Sort funkcionalitu
 using Microsoft.Extensions.Logging.Abstractions;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Row;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Operations
 {
     /// <summary>
     /// Služba pre Search, Sort a Zebra Rows funkcionalitu - ✅ INTERNAL s kompletným logovaním
@@ -582,7 +583,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 _logger.LogTrace("🔍 Regex search - Pattern: '{Pattern}', Text: '{TextSample}', Matches: {MatchCount}",
                     searchTerm, text.Length > 30 ? text.Substring(0, 30) + "..." : text, matches.Count);
             }
-            catch (System.Text.RegularExpressions.RegexException regexEx)
+            catch (ArgumentException regexEx)
             {
                 _logger.LogTrace("🔍 Invalid regex pattern - Pattern: '{Pattern}', Error: {Error}",
                     searchTerm, regexEx.Message);
@@ -866,11 +867,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                     SetActiveFilterSet(defaultSetName);
                 }
 
-                var filter = new AdvancedFilter
+                var filter = new Models.Search.AdvancedFilter
                 {
                     Name = $"{columnName}_{filterOperator}_{Guid.NewGuid():N}"[..16],
                     ColumnName = columnName,
-                    Operator = filterOperator,
+                    Operator = (Models.Search.FilterOperator)filterOperator,
                     Value = value,
                     SecondValue = secondValue,
                     CaseSensitive = caseSensitive,
@@ -2359,30 +2360,4 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         #endregion
     }
 
-    /// <summary>
-    /// ✅ NOVÁ: Informácie o zobrazení riadku s zebra styling
-    /// </summary>
-    internal class RowDisplayInfo
-    {
-        public int RowIndex { get; set; }
-        public Dictionary<string, object?> Data { get; set; } = new();
-        public bool IsEmpty { get; set; }
-        public bool IsZebraRow { get; set; }
-        public bool IsEvenNonEmptyRow { get; set; }
-
-        /// <summary>
-        /// CSS class alebo style name pre tento riadok
-        /// </summary>
-        public string GetRowStyleClass()
-        {
-            if (IsEmpty) return "empty-row";
-            if (IsZebraRow) return "zebra-row";
-            return "normal-row";
-        }
-
-        public override string ToString()
-        {
-            return $"Row {RowIndex}: {(IsEmpty ? "Empty" : "Data")}, Zebra: {IsZebraRow}";
-        }
-    }
 }

@@ -13,7 +13,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumn
     {
         #region Private Fields
 
-        private readonly ILogger _logger;
+        private readonly NullLogger _logger;
         private readonly string _componentInstanceId = Guid.NewGuid().ToString("N")[..8];
         
         // Parent reference

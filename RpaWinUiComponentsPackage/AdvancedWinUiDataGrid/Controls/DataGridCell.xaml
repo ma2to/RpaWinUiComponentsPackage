@@ -1,6 +1,6 @@
 <!-- Controls/DataGridCell.xaml - ✅ OPRAVENÝ -->
 <UserControl
-    x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.DataGridCell"
+    x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.DataGridCell"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -14,7 +14,7 @@
             Padding="8,6"
             MinHeight="36">
 
-        <!-- ✅ OPRAVENÉ: Text Editor s potrebnými eventmi -->
+        <!-- ✅ OPRAVENÉ: Text Editor s potrebnými eventmi + SizeChanged pre per-row height -->
         <TextBox x:Name="CellTextBox"
                  Background="Transparent"
                  BorderThickness="0"
@@ -25,7 +25,8 @@
                  KeyDown="OnCellKeyDown"
                  LostFocus="OnCellLostFocus"
                  GotFocus="OnCellGotFocus"
-                 TextChanged="OnCellTextChanged"/>
+                 TextChanged="OnCellTextChanged"
+                 SizeChanged="OnCellTextBoxSizeChanged"/>
 
     </Border>
 </UserControl>

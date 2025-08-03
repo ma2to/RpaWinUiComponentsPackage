@@ -8,9 +8,21 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
 using Microsoft.UI.Input;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Cell;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Row;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ImportExport;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Operations;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumns;
+using Windows.Foundation;
+using CellPosition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Cell.CellPosition;
+using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid.ColumnDefinition;
+using RowDisplayInfo = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Row.RowDisplayInfo;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -19,10 +31,9 @@ using System.Data;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using GridColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ColumnDefinition;
-using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ThrottlingConfig;
-using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ValidationRule;
-using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.DataGridColorConfig;
+using GridThrottlingConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid.ThrottlingConfig;
+using GridValidationRule = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation.ValidationRule;
+using GridDataGridColorConfig = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid.DataGridColorConfig;
 
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
@@ -35,6 +46,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
     {
         #region Private Fields
 
+        // ✅ NOVÉ: DataGridController - centrálny koordinátor services
+        private Core.DataGridController? _controller;
+        private Core.DataGridConfiguration? _configuration;
+
+        // ✅ NOVÉ: Service instances pre modularitu
+        private Services.UI.DataGridCoreService? _coreService;
+        private Services.UI.DataGridLayoutService? _layoutService;
+        private Services.UI.DataGridEventService? _eventService;
+        private Services.Operations.DataGridBindingService? _bindingService;
+        
         private IServiceProvider? _serviceProvider;
         private IDataManagementService? _dataManagementService;
         private IValidationService? _validationService;
@@ -114,7 +135,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private bool _checkBoxColumnEnabled = false;
         private string _checkBoxColumnName = "CheckBoxState";
         private readonly Dictionary<int, bool> _checkBoxStates = new();
-        private SpecialColumns.CheckBoxColumnHeader? _checkBoxColumnHeader;
+        private CheckBoxColumnHeader? _checkBoxColumnHeader = null;
 
         #endregion
 
@@ -150,13 +171,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 this.InitializeComponent();
                 _logger.LogDebug("✅ Constructor - XAML successfully loaded");
 
-                // ✅ ROZŠÍRENÉ: Detailná inicializácia s logovaním každého kroku
+                // ✅ NOVÉ: Inicializácia cez services (async)
+                _ = Task.Run(async () => await InitializeServicesAsync());
+                InitializeController(); // ✅ NOVÉ: Inicializácia DataGridController
                 InitializeDependencyInjection();
-                InitializeResizeSupport();
-                InitializeScrollSupport();
-                InitializeLayoutManagement();
                 InitializePerformanceTracking();
-                InitializeEventHandlers(); // ✅ NOVÉ: Inicializácia event handlers
 
                 _logger.LogInformation("✅ Constructor - Complete initialization with resize, scroll, stretch");
 
@@ -172,8 +191,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ CRITICAL CONSTRUCTOR ERROR - Instance: {ComponentInstanceId}, " +
-                    "LoggerType: {LoggerType}", _componentInstanceId, _logger.GetType().Name);
+                _logger?.LogError(ex, "❌ CRITICAL CONSTRUCTOR ERROR - Instance: {ComponentInstanceId}, " +
+                    "LoggerType: {LoggerType}", _componentInstanceId, _logger?.GetType().Name ?? "Unknown");
                 throw;
             }
         }
@@ -197,28 +216,69 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
+        #region ✅ NOVÉ: Services Inicializácia
+
+        /// <summary>
+        /// Inicializuje všetky services pre modulárnu architektúru
+        /// </summary>
+        private async Task InitializeServicesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("🚀 InitializeServicesAsync START - InstanceId: {InstanceId}", _componentInstanceId);
+
+                // Vytvor konfiguráciu
+                _configuration = new Core.DataGridConfiguration
+                {
+                    AutoAddEnabled = _autoAddEnabled,
+                    UnifiedRowCount = _unifiedRowCount,
+                    CheckBoxColumnEnabled = _checkBoxColumnEnabled,
+                    ValidAlertsMinWidth = _validAlertsMinWidth
+                };
+
+                // Inicializuj Core Service
+                _coreService = new Services.UI.DataGridCoreService();
+                await _coreService.InitializeAsync(this, _configuration);
+
+                // Inicializuj Layout Service
+                _layoutService = new Services.UI.DataGridLayoutService();
+                await _layoutService.InitializeAsync(this, _columns);
+
+                // Inicializuj Event Service
+                _eventService = new Services.UI.DataGridEventService();
+                await _eventService.InitializeAsync(this);
+
+                // Inicializuj Binding Service
+                _bindingService = new Services.Operations.DataGridBindingService();
+                await _bindingService.InitializeAsync(this, _columns);
+
+                _logger.LogInformation("✅ All services initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ CRITICAL ERROR during services initialization");
+                throw;
+            }
+        }
+
+        #endregion
+
         #region ✅ NOVÉ: Event Handlers Inicializácia a Implementácia
 
         /// <summary>
-        /// Inicializuje všetky event handlers
+        /// Inicializuje všetky event handlers - deleguje na services
         /// </summary>
         private void InitializeEventHandlers()
         {
             try
             {
-                _logger.LogDebug("🔧 InitializeEventHandlers START");
-
-                // UI event handlers
-                this.SizeChanged += OnDataGridSizeChanged;
-                this.LayoutUpdated += OnLayoutUpdated;
-
-                // Pointer event handlers pre resize
-                this.PointerPressed += OnPointerPressed;
-                this.PointerMoved += OnPointerMoved;
-                this.PointerReleased += OnPointerReleased;
-                this.PointerCaptureLost += OnPointerCaptureLost; // ✅ OPRAVENÉ: Správny signature
-
-                _logger.LogDebug("✅ InitializeEventHandlers COMPLETED");
+                _logger.LogDebug("🔧 InitializeEventHandlers START - delegating to services");
+                
+                // Event handlers sú teraz spravované services
+                // Layout Service spravuje SizeChanged a LayoutUpdated
+                // Event Service spravuje Pointer events
+                
+                _logger.LogDebug("✅ InitializeEventHandlers COMPLETED - services handle events");
             }
             catch (Exception ex)
             {
@@ -228,19 +288,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// ✅ IMPLEMENTOVANÉ: OnDataGridSizeChanged event handler
+        /// ✅ IMPLEMENTOVANÉ: OnDataGridSizeChanged event handler - deleguje na Layout Service
         /// </summary>
         private void OnDataGridSizeChanged(object sender, SizeChangedEventArgs e)
         {
             try
             {
-                _logger.LogDebug("📐 OnDataGridSizeChanged - OldSize: {OldSize}, NewSize: {NewSize}",
-                    e.PreviousSize, e.NewSize);
-
-                _totalAvailableWidth = e.NewSize.Width;
-
-                // Update layout after size change
-                _ = Task.Run(async () => await UpdateLayoutAfterSizeChangeAsync());
+                _logger.LogDebug("📐 OnDataGridSizeChanged - delegating to Layout Service");
+                
+                // Deleguj na Layout Service
+                _layoutService?.OnDataGridSizeChanged(sender, e);
             }
             catch (Exception ex)
             {
@@ -294,7 +351,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// ✅ OPRAVENÉ CS0123: OnPointerCaptureLost s správnym signature
         /// </summary>
-        private void OnPointerCaptureLost(object sender, PointerEventArgs e)
+        private void OnPointerCaptureLost(object sender, PointerRoutedEventArgs e)
         {
             try
             {
@@ -325,9 +382,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                // Zisti či je stlačený Ctrl
-                var coreWindow = Microsoft.UI.Xaml.Window.Current?.CoreWindow 
-                    ?? Microsoft.UI.Xaml.Application.Current.GetKeyboardDevice()?.GetCurrentKeyState(Windows.System.VirtualKey.Control);
+                // Zisti či je stlačený Ctrl - WinUI3 approach
                 var isCtrlPressed = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control)
                     .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
@@ -1100,7 +1155,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                 // Use visual tree hit testing to find TextBox elements
                 var elementsAtPoint = VisualTreeHelper.FindElementsInHostCoordinates(
-                    point, DataContainer ?? this, false);
+                    point, (UIElement)(DataContainer ?? (object)this), false);
 
                 // Look for TextBox in the hit elements
                 foreach (var element in elementsAtPoint)
@@ -1125,7 +1180,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Calculate column based on actual column widths if available
                 for (int i = 0; i < _columns.Count; i++)
                 {
-                    var colWidth = _columns[i].ActualWidth > 0 ? _columns[i].ActualWidth : 150; // Default width
+                    var colWidth = _columns[i].Width > 0 ? _columns[i].Width : 150; // Default width
                     if (point.X <= cumulativeWidth + colWidth)
                     {
                         estimatedCol = i;
@@ -1252,8 +1307,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
 
                 await MoveToCellAsync(nextRow, currentColumn);
-                _logger.LogDebug("🎮 MoveToCellBelow: [{CurrentRow},{CurrentColumn}] → [{NextRow},{CurrentColumn}]",
-                    currentRow, currentColumn, nextRow);
+                _logger.LogDebug("🎮 MoveToCellBelow: [{CurrentRow},{CurrentColumn}] → [{NextRow},{NextColumn}]",
+                    currentRow, currentColumn, nextRow, currentColumn);
             }
             catch (Exception ex)
             {
@@ -1277,8 +1332,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
 
                 await MoveToCellAsync(prevRow, currentColumn);
-                _logger.LogDebug("🎮 MoveToCellAbove: [{CurrentRow},{CurrentColumn}] → [{PrevRow},{CurrentColumn}]",
-                    currentRow, currentColumn, prevRow);
+                _logger.LogDebug("🎮 MoveToCellAbove: [{CurrentRow},{CurrentColumn}] → [{PrevRow},{PrevColumn}]",
+                    currentRow, currentColumn, prevRow, currentColumn);
             }
             catch (Exception ex)
             {
@@ -1308,8 +1363,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
 
                 await MoveToCellAsync(currentRow, prevColumn);
-                _logger.LogDebug("🎮 MoveToCellLeft: [{CurrentRow},{CurrentColumn}] → [{CurrentRow},{PrevColumn}]",
-                    currentRow, currentColumn, prevColumn);
+                _logger.LogDebug("🎮 MoveToCellLeft: [{CurrentRow},{CurrentColumn}] → [{NextRow},{PrevColumn}]",
+                    currentRow, currentColumn, currentRow, prevColumn);
             }
             catch (Exception ex)
             {
@@ -1339,8 +1394,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 }
 
                 await MoveToCellAsync(currentRow, nextColumn);
-                _logger.LogDebug("🎮 MoveToCellRight: [{CurrentRow},{CurrentColumn}] → [{CurrentRow},{NextColumn}]",
-                    currentRow, currentColumn, nextColumn);
+                _logger.LogDebug("🎮 MoveToCellRight: [{CurrentRow},{CurrentColumn}] → [{NextRow},{NextColumn}]",
+                    currentRow, currentColumn, currentRow, nextColumn);
             }
             catch (Exception ex)
             {
@@ -1525,11 +1580,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             ValidationRuleSet? advancedValidationRules = null,
             GridThrottlingConfig? throttlingConfig = null,
             int emptyRowsCount = 15,
-            DataGridColorConfig? colorConfig = null)
+            DataGridColorConfig? colorConfig = null,
+            ILogger? logger = null,
+            bool enableBatchValidation = false)
         {
             // Convert advanced rules to legacy format and call main method
             var legacyRules = ConvertAdvancedRulesToLegacy(advancedValidationRules);
-            await InitializeAsync(columns, legacyRules, throttlingConfig, emptyRowsCount, colorConfig, advancedValidationRules);
+            await InitializeAsync(columns, legacyRules, throttlingConfig, emptyRowsCount, colorConfig, advancedValidationRules, logger, enableBatchValidation);
         }
 
         /// <summary>
@@ -1542,11 +1599,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             GridThrottlingConfig? throttlingConfig = null,
             int emptyRowsCount = 15,
             DataGridColorConfig? colorConfig = null,
-            ValidationRuleSet? advancedValidationRules = null)
+            ValidationRuleSet? advancedValidationRules = null,
+            ILogger? logger = null,
+            bool enableBatchValidation = false)
         {
             try
             {
-                _logger.LogInformation("🚀 InitializeAsync START - Instance: {ComponentInstanceId}, " +
+                // If external logger provided, use it; otherwise use internal logger
+                var effectiveLogger = logger ?? _logger;
+                
+                effectiveLogger.LogInformation("🚀 InitializeAsync START - Instance: {ComponentInstanceId}, " +
                     "Columns: {ColumnCount}, Rules: {RuleCount}, EmptyRows: {EmptyRows}, HasColors: {HasColors}",
                     _componentInstanceId, columns?.Count ?? 0, validationRules?.Count ?? 0, emptyRowsCount,
                     colorConfig?.HasAnyCustomColors ?? false);
@@ -1560,6 +1622,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         _componentInstanceId);
                     throw new ArgumentException("Columns parameter cannot be null or empty", nameof(columns));
                 }
+
+                // ✅ NOVÉ: Vytvor a nastav DataGridConfiguration
+                await ConfigureControllerAsync(columns, validationRules, throttlingConfig, emptyRowsCount, colorConfig);
 
                 // ✅ ROZŠÍRENÉ: Detailné logovanie štruktúry stĺpcov
                 LogColumnStructure(columns);
@@ -1592,11 +1657,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 LogColorConfiguration(colorConfig);
 
                 // Initialize services
-                await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), _throttlingConfig, emptyRowsCount);
+                await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), _throttlingConfig, emptyRowsCount, enableBatchValidation);
 
                 // ✅ UI setup s resize, scroll a stretch funkcionalitou
                 ApplyIndividualColorsToUI();
-                InitializeSearchSortZebra();
+                await InitializeSearchSortZebra();
                 await CreateInitialEmptyRowsAsync();
                 await CreateResizableHeadersAsync();
                 SetupValidAlertsStretching();
@@ -2073,7 +2138,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     "FilePath: {FilePath}, HasConfig: {HasConfig}, HasCheckBoxStates: {HasCheckBoxStates}",
                     _componentInstanceId, filePath, config != null, checkBoxStates != null);
 
-                var operationId = StartOperation("ImportFromFile");
+                string operationId = StartOperation("ImportFromFile");
                 IncrementOperationCounter("ImportFromFile");
                 EnsureInitialized();
 
@@ -2087,7 +2152,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         IsSuccessful = false
                     };
                     errorResult.AddError("Export service nie je dostupný", severity: ErrorSeverity.Critical);
-                    errorResult.Finalize();
+                    errorResult.FinalizeImport();
                     return errorResult;
                 }
 
@@ -2147,7 +2212,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     IsSuccessful = false
                 };
                 errorResult.AddError($"Kritická chyba pri importe: {ex.Message}", severity: ErrorSeverity.Critical);
-                errorResult.Finalize();
+                errorResult.FinalizeImport();
                 return errorResult;
             }
         }
@@ -2163,7 +2228,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     "FilePath: {FilePath}, HasConfig: {HasConfig}, CurrentRowCount: {RowCount}",
                     _componentInstanceId, filePath, config != null, _displayRows.Count);
 
-                var operationId = StartOperation("ExportToFile");
+                string operationId = StartOperation("ExportToFile");
                 IncrementOperationCounter("ExportToFile");
                 EnsureInitialized();
 
@@ -2442,7 +2507,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     var row = _displayRows[i];
                     
                     // Skip empty rows (auto-add rows)
-                    if (IsRowEmpty(i))
+                    if (IsRowEmpty(row))
                         continue;
                     
                     _checkBoxStates[i] = true;
@@ -2520,7 +2585,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     return;
                 }
                 
-                var operationId = StartOperation("DeleteAllCheckedRows");
+                string operationId = StartOperation("DeleteAllCheckedRows");
                 IncrementOperationCounter("DeleteAllCheckedRows");
                 
                 var checkedRows = _checkBoxStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key).OrderByDescending(i => i).ToList();
@@ -2538,9 +2603,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 var deletedCount = 0;
                 foreach (var rowIndex in checkedRows)
                 {
-                    if (rowIndex >= 0 && rowIndex < _gridData.Count && !IsRowEmpty(rowIndex))
+                    if (rowIndex >= 0 && rowIndex < _gridData.Count && !IsRowEmpty(_displayRows[rowIndex]))
                     {
-                        await _dataManagementService?.RemoveRowAsync(rowIndex)!;
+                        // await _dataManagementService?.RemoveRowAsync(rowIndex)!; // Method doesn't exist
+                        _gridData.RemoveAt(rowIndex);
+                        _displayRows.RemoveAt(rowIndex);
                         deletedCount++;
                     }
                 }
@@ -2583,7 +2650,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     return await ExportToDataTableAsync();
                 }
                 
-                var operationId = StartOperation("ExportCheckedRowsOnly");
+                string operationId = StartOperation("ExportCheckedRowsOnly");
                 IncrementOperationCounter("ExportCheckedRowsOnly");
                 
                 var checkedRows = _checkBoxStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToList();
@@ -2738,7 +2805,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 
                 for (int i = 0; i < _displayRows.Count; i++)
                 {
-                    if (!IsRowEmpty(i))
+                    if (!IsRowEmpty(_displayRows[i]))
                     {
                         totalNonEmptyRows++;
                         if (_checkBoxStates.ContainsKey(i) && _checkBoxStates[i])
@@ -2768,7 +2835,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                var operationId = StartOperation("MoveEmptyRowsToEnd");
+                string operationId = StartOperation("MoveEmptyRowsToEnd");
                 
                 _logger.LogDebug("🔄 MoveEmptyRowsToEndAsync START - TotalRows: {TotalRows}", _gridData.Count);
                 
@@ -2836,7 +2903,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
-                var operationId = StartOperation("AreAllNonEmptyRowsValid");
+                string operationId = StartOperation("AreAllNonEmptyRowsValid");
                 IncrementOperationCounter("AreAllNonEmptyRowsValid");
                 
                 _logger.LogDebug("✅ AreAllNonEmptyRowsValidAsync START - CheckBoxEnabled: {CheckBoxEnabled}",
@@ -2845,7 +2912,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // If no validation rules are set, all rows are considered valid
                 if (_validationService == null || 
                     (_configuration?.ValidationRules == null || !_configuration.ValidationRules.Any()) &&
-                    (_advancedValidationRules == null || !_advancedValidationRules.HasRules))
+                    (_advancedValidationRules == null || _advancedValidationRules.Rules.Count == 0))
                 {
                     _logger.LogDebug("✅ No validation rules set - all rows considered valid");
                     return true;
@@ -2907,6 +2974,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 return false;
             }
         }
+
+        // ✅ REMOVED: Background Validation API - replaced with unified InitializeAsync with enableBatchValidation parameter
 
         #endregion
 
@@ -2995,6 +3064,79 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         #endregion
 
+        #region ✅ NOVÉ: DataGridController Initialization
+
+        /// <summary>
+        /// Inicializuje DataGridController pre koordináciu services
+        /// </summary>
+        private void InitializeController()
+        {
+            try
+            {
+                _logger.LogDebug("🎛️ InitializeController START");
+
+                // Vytvor DataGridController
+                _controller = new Core.DataGridController();
+
+                _logger.LogDebug("✅ InitializeController COMPLETED - Controller ready for configuration");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in InitializeController");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Konfiguruje DataGridController s poskytnutými parametrami
+        /// </summary>
+        private async Task ConfigureControllerAsync(
+            List<GridColumnDefinition> columns,
+            List<GridValidationRule>? validationRules,
+            GridThrottlingConfig? throttlingConfig,
+            int emptyRowsCount,
+            DataGridColorConfig? colorConfig)
+        {
+            try
+            {
+                _logger.LogDebug("🎛️ ConfigureControllerAsync START");
+
+                if (_controller == null)
+                {
+                    throw new InvalidOperationException("DataGridController is not initialized");
+                }
+
+                // Vytvor DataGridConfiguration
+                _configuration = new Core.DataGridConfiguration
+                {
+                    Columns = columns.Cast<Models.Grid.ColumnDefinition>().ToList(),
+                    EmptyRowsCount = emptyRowsCount,
+                    ValidationRules = validationRules?.Cast<Models.Validation.ValidationRule>().ToList() ?? new(),
+                    ColorConfig = colorConfig,
+                    ThrottlingConfig = throttlingConfig,
+                    EnableVirtualScrolling = true,
+                    EnableZebraRows = true,
+                    EnableColumnResize = true,
+                    EnableSorting = true,
+                    EnableSearch = true,
+                    EnableCopyPaste = true,
+                    EnableExportImport = true
+                };
+
+                // Inicializuj controller s konfiguráciou
+                await _controller.InitializeAsync(_configuration);
+
+                _logger.LogDebug("✅ ConfigureControllerAsync COMPLETED - Controller configured and initialized");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ConfigureControllerAsync");
+                throw;
+            }
+        }
+
+        #endregion
+
         #region ✅ KOMPLETNÁ IMPLEMENTÁCIA: Dependency Injection Setup
 
         /// <summary>
@@ -3040,7 +3182,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             List<GridColumnDefinition> columns,
             List<GridValidationRule> rules,
             GridThrottlingConfig throttling,
-            int emptyRows)
+            int emptyRows,
+            bool enableBatchValidation = false)
         {
             try
             {
@@ -3061,6 +3204,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     EmptyRowsCount = emptyRows,
                     AutoAddNewRow = _autoAddEnabled,
                     EnableRealtimeValidation = throttling.EnableRealtimeValidation,
+                    EnableBatchValidation = enableBatchValidation,
                     GridName = $"AdvancedDataGrid-{_componentInstanceId}"
                 };
 
@@ -3158,6 +3302,46 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             try
             {
+                // Calculate width settings based on column type
+                double actualWidth;
+                double actualMinWidth;
+                double actualMaxWidth;
+                
+                if (column.IsSpecialColumn)
+                {
+                    switch (column.SpecialColumnType)
+                    {
+                        case SpecialColumnType.ValidationAlerts:
+                            // ValidAlerts: MinWidth respected, MaxWidth ignored (stretch)
+                            actualWidth = Math.Max(column.Width, column.MinWidth);
+                            actualMinWidth = column.MinWidth;
+                            actualMaxWidth = double.PositiveInfinity; // Stretch to remaining space
+                            break;
+                            
+                        case SpecialColumnType.DeleteButton:
+                        case SpecialColumnType.Checkbox:
+                            // CheckBox/DeleteRows: Auto width, ignore user settings
+                            actualWidth = 40; // Fixed width for buttons/checkboxes
+                            actualMinWidth = 40;
+                            actualMaxWidth = 40;
+                            break;
+                            
+                        default:
+                            // Other special columns use standard logic
+                            actualWidth = column.Width;
+                            actualMinWidth = column.MinWidth;
+                            actualMaxWidth = column.MaxWidth > 0 ? column.MaxWidth : double.PositiveInfinity;
+                            break;
+                    }
+                }
+                else
+                {
+                    // Normal columns: respect all width settings
+                    actualWidth = column.Width;
+                    actualMinWidth = column.MinWidth;
+                    actualMaxWidth = column.MaxWidth > 0 ? column.MaxWidth : double.PositiveInfinity;
+                }
+
                 // Vytvor header border
                 var headerBorder = new Border
                 {
@@ -3165,16 +3349,17 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                     BorderThickness = new Thickness(0, 0, 1, 1),
                     MinHeight = 65,
-                    Width = column.Width,
-                    MinWidth = column.MinWidth
+                    Width = actualWidth,
+                    MinWidth = actualMinWidth,
+                    MaxWidth = actualMaxWidth
                 };
 
                 // ✅ NOVÉ: Vytvor header content s sort indikátorom a search box
                 var headerGrid = new Grid();
                 headerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                 headerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                headerGrid.ColumnDefinitions.Add(new Microsoft.UI.Xaml.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                headerGrid.ColumnDefinitions.Add(new Microsoft.UI.Xaml.Controls.ColumnDefinition { Width = GridLength.Auto });
 
                 // Header text
                 var headerText = new TextBlock
@@ -3242,7 +3427,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
                         HorizontalAlignment = HorizontalAlignment.Right,
                         VerticalAlignment = VerticalAlignment.Stretch,
-                        Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast)
+                        // Cursor sa v WinUI3 nastavuje cez ProtectedCursor property
+                        // Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast)
                     };
 
                     headerGrid.Children.Add(resizeGrip);
@@ -3255,7 +3441,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 if (!column.IsSpecialColumn && column.Name != "ValidAlerts")
                 {
                     headerBorder.Tapped += async (sender, e) => await OnColumnHeaderClicked(column.Name, sortIndicator);
-                    headerBorder.Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Hand);
+                    // WinUI3: Cursor sa nastavuje cez UI element properties
+                    // headerBorder.Cursor = Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Hand);
                     
                     _logger.LogTrace("🔀 Sort click handler added for column: {ColumnName}", column.Name);
                 }
@@ -3270,9 +3457,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     HeaderElement = headerBorder,
                     ResizeGrip = resizeGrip,
                     SortIndicator = sortIndicator,
-                    OriginalWidth = column.Width,
-                    MinWidth = column.MinWidth,
-                    MaxWidth = column.MaxWidth > 0 ? column.MaxWidth : 500
+                    OriginalWidth = actualWidth,
+                    MinWidth = actualMinWidth,
+                    MaxWidth = actualMaxWidth == double.PositiveInfinity ? 500 : actualMaxWidth
                 };
 
                 _resizableHeaders.Add(resizableHeader);
@@ -3585,7 +3772,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Inicializuje search, sort a zebra rows funkcionalitu
         /// </summary>
-        private void InitializeSearchSortZebra()
+        private async Task InitializeSearchSortZebra()
         {
             try
             {
@@ -3606,7 +3793,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _navigationService.SetNavigationCallback(this);
 
                 // Vytvor CopyPasteService
-                _copyPasteService = new CopyPasteService(_logger as ILogger<CopyPasteService> ?? NullLogger<CopyPasteService>.Instance);
+                _copyPasteService = new CopyPasteService();
                 await _copyPasteService.InitializeAsync();
 
                 // Setup keyboard shortcuts for copy/paste
@@ -4105,7 +4292,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         MaxWidth = column.MaxWidth,
                         IsVisible = column.IsVisible,
                         IsEditable = column.IsEditable,
-                        IsSpecialColumn = column.IsSpecialColumn,
+                        // IsSpecialColumn = column.IsSpecialColumn, // Read-only property
                         DefaultValue = column.DefaultValue
                     };
 
@@ -4313,7 +4500,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     var legacyRule = new GridValidationRule
                     {
                         ColumnName = advancedRule.TargetColumns.First(),
-                        ValidationFunction = (value) =>
+                        CustomValidator = (value) =>
                         {
                             // Vytvor temporary validation context
                             var context = new ValidationContext
@@ -4425,6 +4612,13 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                 _searchAndSortService?.Dispose();
 
+                // ✅ NOVÉ: Dispose controller
+                if (_controller != null)
+                {
+                    _ = Task.Run(async () => await _controller.DisposeAsync());
+                    _controller = null;
+                }
+
                 if (_serviceProvider is IDisposable disposableProvider)
                     disposableProvider.Dispose();
             }
@@ -4491,10 +4685,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Začne meranie operácie
         /// </summary>
-        private void StartOperation(string operationName)
+        private string StartOperation(string operationName)
         {
             _operationStartTimes[operationName] = DateTime.UtcNow;
             _logger.LogTrace("⏱️ StartOperation: {Operation}", operationName);
+            return operationName;
         }
 
         /// <summary>
@@ -4879,6 +5074,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             private bool _isEditing;
             private object? _originalValue;
             private int _rowIndex;
+            private int _columnIndex;
 
             // ✅ NOVÉ: Cell Selection states
             private bool _isFocused;
@@ -4891,6 +5087,15 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             {
                 get => _rowIndex;
                 set => SetProperty(ref _rowIndex, value);
+            }
+
+            /// <summary>
+            /// Index stĺpca ku ktorému bunka patrí
+            /// </summary>
+            public int ColumnIndex
+            {
+                get => _columnIndex;
+                set => SetProperty(ref _columnIndex, value);
             }
 
             /// <summary>

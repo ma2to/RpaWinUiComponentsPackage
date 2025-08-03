@@ -219,7 +219,6 @@
                 
                 <Border x:Name="SelectionRectangle"
                         Background="{ThemeResource SystemAccentColorLight2}"
-                        BorderBrush="{ThemeResource SystemAccentColor}"
                         BorderThickness="2"
                         Opacity="0.3"
                         HorizontalAlignment="Left"
@@ -227,8 +226,6 @@
                         Width="0"
                         Height="0"
                         Margin="0">
-                    
-                    <!-- Dashed border effect -->
                     <Border.BorderBrush>
                         <SolidColorBrush Color="{ThemeResource SystemAccentColor}" />
                     </Border.BorderBrush>

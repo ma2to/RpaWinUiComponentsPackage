@@ -10,7 +10,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumns
 {
     /// <summary>
     /// Špeciálny stĺpec pre zobrazovanie validačných upozornení
@@ -312,14 +312,4 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
     }
 
-    /// <summary>
-    /// Závažnosť validačného alertu
-    /// </summary>
-    public enum ValidationSeverity
-    {
-        Info,
-        Warning,
-        Error,
-        Critical
-    }
 }

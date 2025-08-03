@@ -27,8 +27,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         private readonly string _serviceInstanceId = Guid.NewGuid().ToString("N")[..8];
 
         // UI State tracking
-        private CellPosition? _currentFocusedCell;
-        private CellPosition? _previousFocusedCell;
+        private Models.Cell.CellPosition? _currentFocusedCell;
+        private Models.Cell.CellPosition? _previousFocusedCell;
         private string? _currentEditValue;
         private string? _originalEditValue;
         private DateTime _lastNavigationTime = DateTime.MinValue;
@@ -183,7 +183,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                         if (_navigationCallback != null)
                         {
                             e.Handled = true;
-                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            int row = position.Row;
+                            int column = position.Column;
                             if (IsShiftPressed())
                             {
                                 // Extend selection upward
@@ -202,7 +204,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                         if (_navigationCallback != null)
                         {
                             e.Handled = true;
-                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            int row = position.Row;
+                            int column = position.Column;
                             if (IsShiftPressed())
                             {
                                 // Extend selection downward
@@ -221,7 +225,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                         if (_navigationCallback != null && textBox.SelectionStart == 0)
                         {
                             e.Handled = true;
-                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            int row = position.Row;
+                            int column = position.Column;
                             if (IsShiftPressed())
                             {
                                 // Extend selection left
@@ -240,7 +246,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                         if (_navigationCallback != null && textBox.SelectionStart == textBox.Text?.Length)
                         {
                             e.Handled = true;
-                            var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            int row = position.Row;
+                            int column = position.Column;
                             if (IsShiftPressed())
                             {
                                 // Extend selection right
@@ -325,7 +333,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 }
 
                 // Update current focused cell
-                _currentFocusedCell = new CellPosition 
+                _currentFocusedCell = new Models.Cell.CellPosition 
                 { 
                     Row = nextRow, 
                     Column = nextColumn, 
@@ -588,7 +596,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             
             if (_navigationCallback != null)
             {
-                var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                var position = _navigationCallback.GetCellPosition(textBox);
+                int row = position.Row;
+                int column = position.Column;
                 await _navigationCallback.MoveToNextCellAsync(row, column);
                 _logger.LogDebug("🎮 Tab: Moved to next cell from [{Row},{Column}]", row, column);
             }
@@ -604,7 +614,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             
             if (_navigationCallback != null)
             {
-                var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                var position = _navigationCallback.GetCellPosition(textBox);
+                int row = position.Row;
+                int column = position.Column;
                 await _navigationCallback.MoveToPreviousCellAsync(row, column);
                 _logger.LogDebug("🎮 Shift+Tab: Moved to previous cell from [{Row},{Column}]", row, column);
             }
@@ -620,7 +632,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             
             if (_navigationCallback != null)
             {
-                var (row, column) = _navigationCallback.GetCellPosition(textBox);
+                var position = _navigationCallback.GetCellPosition(textBox);
+                int row = position.Row;
+                int column = position.Column;
                 await _navigationCallback.MoveToCellBelowAsync(row, column);
                 _logger.LogDebug("🎮 Enter: Moved to cell below from [{Row},{Column}]", row, column);
             }
@@ -850,20 +864,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         public DateTime Timestamp { get; set; }
     }
 
-    /// <summary>
-    /// Cell position data - INTERNAL
-    /// </summary>
-    internal class CellPosition
-    {
-        public int Row { get; set; }
-        public int Column { get; set; }
-        public string ColumnName { get; set; } = string.Empty;
-
-        public override string ToString()
-        {
-            return $"[{Row},{Column}] {ColumnName}";
-        }
-    }
 
     /// <summary>
     /// Edit validation result - INTERNAL

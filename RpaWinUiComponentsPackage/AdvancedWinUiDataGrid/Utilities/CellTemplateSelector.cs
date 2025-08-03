@@ -1,7 +1,8 @@
 ﻿// Utilities/CellTemplateSelector.cs - ✅ NOVÝ SÚBOR
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Cell;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Row;
 
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 {
@@ -27,7 +28,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
         protected override DataTemplate? SelectTemplateCore(object item)
         {
-            if (item is CellDataModel cell)
+            if (item is CellData cell)
             {
                 return cell.ColumnName switch
                 {
@@ -51,14 +52,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
     /// </summary>
     internal class CellSelectionManager
     {
-        private readonly List<CellDataModel> _selectedCells = new();
-        private CellDataModel? _lastSelectedCell;
+        private readonly List<CellData> _selectedCells = new();
+        private CellData? _lastSelectedCell;
         private bool _isSelecting = false;
 
         /// <summary>
         /// Označené bunky
         /// </summary>
-        public IReadOnlyList<CellDataModel> SelectedCells => _selectedCells.AsReadOnly();
+        public IReadOnlyList<CellData> SelectedCells => _selectedCells.AsReadOnly();
 
         /// <summary>
         /// Event pre zmenu označenia
@@ -68,7 +69,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Začne označovanie buniek
         /// </summary>
-        public void StartSelection(CellDataModel cell)
+        public void StartSelection(CellData cell)
         {
             _isSelecting = true;
             _selectedCells.Clear();
@@ -82,7 +83,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Rozšíri označenie na ďalšiu bunku
         /// </summary>
-        public void ExtendSelection(CellDataModel cell)
+        public void ExtendSelection(CellData cell)
         {
             if (!_isSelecting) return;
 
@@ -121,7 +122,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Označí rozsah buniek (pre Shift+Click)
         /// </summary>
-        public void SelectRange(CellDataModel startCell, CellDataModel endCell, List<RowDataModel> allRows)
+        public void SelectRange(CellData startCell, CellData endCell, List<RowDataModel> allRows)
         {
             if (startCell == null || endCell == null) return;
 
@@ -232,7 +233,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             return result;
         }
 
-        private int GetColumnIndex(CellDataModel cell, List<RowDataModel>? allRows)
+        private int GetColumnIndex(CellData cell, List<RowDataModel>? allRows)
         {
             // Pre jednoduchosť vrátime hash, v reálnej implementácii by sme
             // potrebovali skutočný column index

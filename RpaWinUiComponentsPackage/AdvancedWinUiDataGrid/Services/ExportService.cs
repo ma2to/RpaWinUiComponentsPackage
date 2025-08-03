@@ -1,6 +1,7 @@
 ﻿// Services/ExportService.cs - ✅ OPRAVENÝ accessibility
 using Microsoft.Extensions.Logging.Abstractions;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ImportExport;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Operations
 {
     /// <summary>
     /// Služba pre export dát z DataGrid s kompletným logovaním - INTERNAL
@@ -683,8 +684,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 var conversionAccuracy = csvConversion.ExpectedLineCount > 0 ? 
                     (double)csvConversion.ActualLineCount / csvConversion.ExpectedLineCount * 100 : 0;
                 var avgBytesPerRow = totalRows > 0 ? (double)csvConversion.CsvSizeBytes / totalRows : 0;
-                var compressionRatio = dataTable.Rows.Count * dataTable.Columns.Count * 10; // Rough estimate
-                compressionRatio = compressionRatio > 0 ? (double)csvConversion.CsvSizeBytes / compressionRatio : 1;
+                var compressionRatio = (double)(dataTable.Rows.Count * dataTable.Columns.Count * 10); // Rough estimate
+                compressionRatio = compressionRatio > 0 ? (double)csvConversion.CsvSizeBytes / compressionRatio : 1.0;
                 
                 TrackBytesExported(csvConversion.CsvSizeBytes);
 
@@ -739,7 +740,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         /// <summary>
         /// Získa štatistiky exportovaných dát
         /// </summary>
-        public async Task<ExportStatistics> GetExportStatisticsAsync(bool includeValidAlerts = false)
+        public async Task<Models.ImportExport.ExportStatistics> GetExportStatisticsAsync(bool includeValidAlerts = false)
         {
             try
             {
@@ -781,7 +782,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 if (!System.IO.File.Exists(filePath))
                 {
                     result.AddError($"Súbor sa nenašiel: {filePath}", severity: ErrorSeverity.Critical);
-                    result.Finalize();
+                    result.FinalizeImport();
                     return result;
                 }
 
@@ -840,7 +841,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 _importHistory[result.ImportId] = result;
                 TrackBytesImported(result.FileSizeBytes);
 
-                result.Finalize();
+                result.FinalizeImport();
                 var duration = EndOperation(operationId);
 
                 _logger.LogInformation("✅ ImportFromFile COMPLETED - Duration: {Duration}ms, " +
@@ -858,7 +859,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 _logger.LogError(ex, "❌ CRITICAL ERROR in ImportFromFileAsync - InstanceId: {InstanceId}, " +
                     "FilePath: {FilePath}", _serviceInstanceId, filePath);
                 result.AddError($"Kritická chyba pri importe: {ex.Message}", severity: ErrorSeverity.Critical);
-                result.Finalize();
+                result.FinalizeImport();
                 return result;
             }
         }
@@ -1586,9 +1587,9 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             return field;
         }
 
-        private ExportStatistics CalculateStatistics(DataTable dataTable)
+        private Models.ImportExport.ExportStatistics CalculateStatistics(DataTable dataTable)
         {
-            var statistics = new ExportStatistics
+            var statistics = new Models.ImportExport.ExportStatistics
             {
                 TotalRows = dataTable.Rows.Count,
                 TotalColumns = dataTable.Columns.Count,
@@ -1638,9 +1639,10 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 {
                     ColumnName = column.ColumnName,
                     DataType = column.DataType.Name,
-                    NonNullCount = 0,
+                    ValueCount = 0,
                     NullCount = 0,
-                    UniqueValueCount = 0
+                    UniqueCount = 0,
+                    EmptyCount = 0
                 };
 
                 var uniqueValues = new HashSet<object>();
@@ -1654,12 +1656,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                     }
                     else
                     {
-                        columnStats.NonNullCount++;
+                        columnStats.ValueCount++;
                         uniqueValues.Add(value);
                     }
                 }
 
-                columnStats.UniqueValueCount = uniqueValues.Count;
+                columnStats.UniqueCount = uniqueValues.Count;
                 statistics.ColumnStatistics[column.ColumnName] = columnStats;
             }
 
@@ -1687,20 +1689,4 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         }
     }
 
-    /// <summary>
-    /// ✅ OPRAVENÉ: Štatistiky stĺpca - INTERNAL (nie PUBLIC)
-    /// </summary>
-    internal class ColumnStatistics
-    {
-        public string ColumnName { get; set; } = string.Empty;
-        public string DataType { get; set; } = string.Empty;
-        public int NonNullCount { get; set; }
-        public int NullCount { get; set; }
-        public int UniqueValueCount { get; set; }
-
-        public override string ToString()
-        {
-            return $"{ColumnName}: {NonNullCount} non-null, {NullCount} null, {UniqueValueCount} unique";
-        }
-    }
 }

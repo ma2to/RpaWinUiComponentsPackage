@@ -1,6 +1,7 @@
 ﻿// Services/Interfaces/IExportService.cs - ✅ OPRAVENÝ - len IExportService
 
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ImportExport;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
 using System.Data;
 using System.Threading.Tasks;

@@ -1,5 +1,6 @@
 ﻿// Services/Interfaces/IValidationService.cs - ✅ OPRAVENÝ - len IValidationService
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

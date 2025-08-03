@@ -1,5 +1,5 @@
 ﻿// AdvancedWinUiDataGrid/Utilities/Extensions/ValidationExtensions.cs - ✅ PRESUNUTO
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation;
 using System;
 using System.Collections.Generic;
 using System.Linq;

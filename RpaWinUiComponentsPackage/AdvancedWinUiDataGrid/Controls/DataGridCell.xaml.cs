@@ -9,7 +9,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls
 {
     /// <summary>
     /// Reprezentuje jednu bunku v DataGrid
@@ -66,7 +66,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ CRITICAL ERROR during DataGridCell construction - InstanceId: {InstanceId}",
+                _logger?.LogError(ex, "❌ CRITICAL ERROR during DataGridCell construction - InstanceId: {InstanceId}",
                     _cellInstanceId);
                 throw;
             }
@@ -223,6 +223,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// Event ktorý sa spustí pri zrušení editácie
         /// </summary>
         public event EventHandler? EditingCancelled;
+
+        /// <summary>
+        /// Event ktorý sa spustí pri zmene výšky bunky (pre per-row height management)
+        /// </summary>
+        public event EventHandler<CellHeightChangedEventArgs>? HeightChanged;
 
         #endregion
 
@@ -528,6 +533,29 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             return (shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
         }
 
+        /// <summary>
+        /// ✅ NOVÉ: SizeChanged handler pre per-row height management
+        /// </summary>
+        private void OnCellTextBoxSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            try
+            {
+                if (sender is TextBox textBox && e.NewSize.Height != e.PreviousSize.Height)
+                {
+                    _logger.LogTrace("📏 CellTextBoxSizeChanged - InstanceId: {InstanceId}, Column: {ColumnName}, " +
+                        "OldHeight: {OldHeight} → NewHeight: {NewHeight}",
+                        _cellInstanceId, ColumnName, e.PreviousSize.Height, e.NewSize.Height);
+
+                    HeightChanged?.Invoke(this, new CellHeightChangedEventArgs(ColumnName, e.NewSize.Height, e.PreviousSize.Height));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in OnCellTextBoxSizeChanged - InstanceId: {InstanceId}",
+                    _cellInstanceId);
+            }
+        }
+
         #endregion
 
         #region Public Methods
@@ -616,6 +644,23 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         {
             OldValue = oldValue;
             NewValue = newValue;
+        }
+    }
+
+    /// <summary>
+    /// ✅ NOVÉ: Event args pre HeightChanged event
+    /// </summary>
+    public class CellHeightChangedEventArgs : EventArgs
+    {
+        public string ColumnName { get; }
+        public double NewHeight { get; }
+        public double OldHeight { get; }
+
+        public CellHeightChangedEventArgs(string columnName, double newHeight, double oldHeight)
+        {
+            ColumnName = columnName;
+            NewHeight = newHeight;
+            OldHeight = oldHeight;
         }
     }
 }

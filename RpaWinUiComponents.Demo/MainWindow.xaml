@@ -154,6 +154,212 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ✅ NOVÉ: Background Validation Testing -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="⏳ Background Validation Testing"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="TestEmailDuplicateButton"
+                                    Content="🔍 Test Email Duplicate"
+                                    Click="OnTestEmailDuplicateClick"
+                                    ToolTipService.ToolTip="Adds 'test@duplicate.sk' to trigger background validation"/>
+
+                            <Button x:Name="TestTaxNumberButton"
+                                    Content="🏢 Test Tax Number"
+                                    Click="OnTestTaxNumberClick"
+                                    ToolTipService.ToolTip="Adds valid/invalid tax numbers"/>
+
+                            <Button x:Name="AddBgValidationRuleButton"
+                                    Content="➕ Add BG Rule"
+                                    Click="OnAddBgValidationRuleClick"/>
+
+                            <Button x:Name="GetBgDiagnosticsButton"
+                                    Content="📊 BG Diagnostics"
+                                    Click="OnGetBgDiagnosticsClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ✅ NOVÉ: Search & Filter Testing -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="🔍 Search & Filter Testing"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="SearchNameAnnaButton"
+                                    Content="🔍 Search 'Anna'"
+                                    Click="OnSearchNameAnnaClick"/>
+
+                            <Button x:Name="SearchEmailTestButton"
+                                    Content="📧 Search 'test'"
+                                    Click="OnSearchEmailTestClick"/>
+
+                            <Button x:Name="ClearSearchButton"
+                                    Content="🗑️ Clear Search"
+                                    Click="OnClearSearchClick"/>
+
+                            <Button x:Name="SortByAgeButton"
+                                    Content="🔢 Sort by Age"
+                                    Click="OnSortByAgeClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ✅ NOVÉ: CheckBox Operations Testing -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="☑️ CheckBox Operations Testing"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="CheckAllRowsButton"
+                                    Content="☑️ Check All"
+                                    Click="OnCheckAllRowsClick"/>
+
+                            <Button x:Name="UncheckAllRowsButton"
+                                    Content="☐ Uncheck All"
+                                    Click="OnUncheckAllRowsClick"/>
+
+                            <Button x:Name="GetCheckedCountButton"
+                                    Content="📊 Get Checked Count"
+                                    Click="OnGetCheckedCountClick"/>
+
+                            <Button x:Name="DeleteCheckedButton"
+                                    Content="🗑️ Delete Checked"
+                                    Click="OnDeleteCheckedClick"/>
+
+                            <Button x:Name="ExportCheckedButton"
+                                    Content="📤 Export Checked"
+                                    Click="OnExportCheckedClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ✅ NOVÉ: Navigation Testing -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="🧭 Navigation Testing"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="MoveToCell00Button"
+                                    Content="🎯 Move to [0,0]"
+                                    Click="OnMoveToCell00Click"/>
+
+                            <Button x:Name="MoveToNextCellButton"
+                                    Content="➡️ Move Next"
+                                    Click="OnMoveToNextCellClick"/>
+
+                            <Button x:Name="MoveToPrevCellButton"
+                                    Content="⬅️ Move Previous"
+                                    Click="OnMoveToPrevCellClick"/>
+
+                            <Button x:Name="SelectAllCellsButton"
+                                    Content="🎯 Select All Cells"
+                                    Click="OnSelectAllCellsClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ✅ NOVÉ: Import/Export Testing -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="📁 Import/Export Testing"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="ExportCsvButton"
+                                    Content="📄 Export CSV"
+                                    Click="OnExportCsvClick"/>
+
+                            <Button x:Name="ExportJsonButton"
+                                    Content="📄 Export JSON"
+                                    Click="OnExportJsonClick"/>
+
+                            <Button x:Name="ImportCsvButton"
+                                    Content="📥 Import CSV"
+                                    Click="OnImportCsvClick"/>
+
+                            <Button x:Name="GetExportHistoryButton"
+                                    Content="📊 Export History"
+                                    Click="OnGetExportHistoryClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ✅ NOVÉ: LoggerComponent Testing -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="📝 LoggerComponent Testing"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="LogInfoButton"
+                                    Content="ℹ️ Log Info"
+                                    Click="OnLogInfoClick"/>
+
+                            <Button x:Name="LogWarningButton"
+                                    Content="⚠️ Log Warning"
+                                    Click="OnLogWarningClick"/>
+
+                            <Button x:Name="LogErrorButton"
+                                    Content="❌ Log Error"
+                                    Click="OnLogErrorClick"/>
+
+                            <Button x:Name="GetLoggerDiagnosticsButton"
+                                    Content="📊 Logger Diagnostics"
+                                    Click="OnGetLoggerDiagnosticsClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ✅ NOVÉ: Advanced Testing -->
+                <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                        CornerRadius="8"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="🧪 Advanced Testing"
+                                  FontWeight="SemiBold"
+                                  FontSize="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="LoadLargeDatasetButton"
+                                    Content="📊 Load Large Dataset (100 rows)"
+                                    Click="OnLoadLargeDatasetClick"
+                                    Style="{StaticResource AccentButtonStyle}"/>
+
+                            <Button x:Name="TestAllValidationButton"
+                                    Content="✅ Test All Validation"
+                                    Click="OnTestAllValidationClick"/>
+
+                            <Button x:Name="StressTestButton"
+                                    Content="⚡ Stress Test"
+                                    Click="OnStressTestClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 

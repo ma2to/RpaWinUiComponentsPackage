@@ -1,6 +1,6 @@
 <!-- Controls/SearchAndSortHeader.xaml - ✅ OPRAVENÝ XLS0414 chybu -->
 <UserControl
-    x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.SearchAndSortHeader"
+    x:Class="RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SearchAndSortHeader"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 

@@ -3,12 +3,12 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls
 {
     /// <summary>
     /// Header komponent s Search/Sort funkciou - ✅ PUBLIC (kvôli XAML parser, ale NIE oficiálne API)

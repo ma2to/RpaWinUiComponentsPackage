@@ -34,24 +34,26 @@
                                 Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
                                 CornerRadius="2">
                             
-                            <!-- Check mark -->
-                            <FontIcon x:Name="CheckGlyph"
-                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                      Glyph="&#xE73E;"
-                                      FontSize="12"
-                                      Foreground="{ThemeResource SystemControlHighlightAltBaseHighBrush}"
-                                      Visibility="Collapsed"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"/>
-                            
-                            <!-- Indeterminate mark -->
-                            <Rectangle x:Name="IndeterminateGlyph"
-                                       Width="10"
-                                       Height="2"
-                                       Fill="{ThemeResource SystemControlHighlightAltBaseHighBrush}"
-                                       Visibility="Collapsed"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                            <Grid>
+                                <!-- Check mark -->
+                                <FontIcon x:Name="CheckGlyph"
+                                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE73E;"
+                                          FontSize="12"
+                                          Foreground="{ThemeResource SystemControlHighlightAltBaseHighBrush}"
+                                          Visibility="Collapsed"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                                
+                                <!-- Indeterminate mark -->
+                                <Rectangle x:Name="IndeterminateGlyph"
+                                           Width="10"
+                                           Height="2"
+                                           Fill="{ThemeResource SystemControlHighlightAltBaseHighBrush}"
+                                           Visibility="Collapsed"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
                         </Border>
                         
                         <VisualStateManager.VisualStateGroups>

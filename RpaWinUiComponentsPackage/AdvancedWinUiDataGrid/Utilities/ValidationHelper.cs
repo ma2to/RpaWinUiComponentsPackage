@@ -1,6 +1,6 @@
 ﻿// AdvancedWinUiDataGrid/Utilities/ValidationHelper.cs - ✅ NOVÝ SÚBOR
 using Microsoft.Extensions.Logging.Abstractions;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation;
 using System;
 using System.Collections.Generic;
 using System.Linq;

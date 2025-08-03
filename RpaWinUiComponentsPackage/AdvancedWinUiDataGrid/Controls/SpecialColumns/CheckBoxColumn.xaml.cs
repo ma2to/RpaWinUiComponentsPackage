@@ -1,4 +1,4 @@
-// Controls/SpecialColumns/CheckBoxColumn.xaml.cs - ✅ NOVÝ: CheckBox Column Component
+// Controls/SpecialColumns/CheckBoxColumn.xaml.cs - ✅ NOVÝ: CheckBox Column Component  
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -14,7 +14,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumn
     {
         #region Private Fields
 
-        private readonly ILogger _logger;
+        private readonly NullLogger _logger;
         private readonly string _componentInstanceId = Guid.NewGuid().ToString("N")[..8];
         
         // Row identifikácia

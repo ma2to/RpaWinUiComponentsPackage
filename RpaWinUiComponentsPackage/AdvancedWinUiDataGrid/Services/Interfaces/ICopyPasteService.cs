@@ -1,7 +1,7 @@
 ﻿// Services/Interfaces/ICopyPasteService.cs - ✅ OPRAVENÝ - len ICopyPasteService
 using Microsoft.UI.Xaml.Input;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Cell;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

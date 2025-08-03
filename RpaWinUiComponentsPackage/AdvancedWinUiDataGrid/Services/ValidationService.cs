@@ -1,6 +1,7 @@
 ﻿// Services/ValidationService.cs - ✅ NEZÁVISLÝ s ILogger<T>
 using Microsoft.Extensions.Logging.Abstractions;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities;
 using System;
@@ -8,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Operations
 {
     /// <summary>
     /// Implementácia validačnej služby pre DataGrid - ✅ NEZÁVISLÝ s ILogger<ValidationService>  

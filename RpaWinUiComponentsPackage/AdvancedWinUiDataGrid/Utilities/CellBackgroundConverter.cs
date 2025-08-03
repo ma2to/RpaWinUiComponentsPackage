@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
 using System;
 
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities
@@ -17,7 +18,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities
         {
             try
             {
-                if (value is not CellViewModel cell) 
+                if (value is not AdvancedDataGrid.CellViewModel cell) 
                     return new SolidColorBrush(Colors.White);
 
                 // Získaj color config z parameter
@@ -74,7 +75,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities
         {
             try
             {
-                if (value is not CellViewModel cell) 
+                if (value is not AdvancedDataGrid.CellViewModel cell) 
                     return new SolidColorBrush(Colors.LightGray);
 
                 var colorConfig = parameter as DataGridColorConfig;
@@ -116,7 +117,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities
         {
             try
             {
-                if (value is not CellViewModel cell) 
+                if (value is not AdvancedDataGrid.CellViewModel cell) 
                     return new Thickness(1);
 
                 // Validation error má hrubší border

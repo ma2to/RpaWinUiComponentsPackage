@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using ColumnDefinition = RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid.ColumnDefinition;
 
 namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities.Extensions
 {

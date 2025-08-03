@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(copy:*)",
+      "Bash(find:*)",
+      "Bash(rm:*)",
+      "Bash(dotnet build:*)",
+      "Bash(mv:*)",
+      "Bash(for file in *.cs)",
+      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Cell/' \"$file\")",
+      "Bash(done)",
+      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid/' \"$file\")",
+      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Row/' \"$file\")",
+      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation/' \"$file\")",
+      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search/' \"$file\")",
+      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ImportExport/' \"$file\")"
+    ],
+    "deny": []
+  }
+}

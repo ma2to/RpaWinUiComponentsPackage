@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
 
-namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
+namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumns
 {
     /// <summary>
     /// Špeciálny stĺpec pre mazanie riadkov

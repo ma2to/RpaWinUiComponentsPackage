@@ -1,5 +1,4 @@
 ﻿// LoggerComponent/Core/LoggerComponent.cs - ✅ AKTUALIZOVANÝ - priame metódy pre log levely
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions; // ✅ POUZE Abstractions
 using System;
 using System.IO;

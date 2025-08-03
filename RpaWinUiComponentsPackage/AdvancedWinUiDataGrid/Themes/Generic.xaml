@@ -2,7 +2,9 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid">
+    xmlns:local="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid"
+    xmlns:controls="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls"
+    xmlns:specialColumns="using:RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Controls.SpecialColumns">
 
     <!-- ✅ OPRAVENÉ: Converters - bez x:Type (WinUI3 syntax) -->
     <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -29,7 +31,7 @@
     </Style>
 
     <!-- ✅ Default styles pre komponenty -->
-    <Style TargetType="local:DataGridCell">
+    <Style TargetType="controls:DataGridCell">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="0,0,1,1" />
@@ -41,7 +43,7 @@
         <Setter Property="UseSystemFocusVisuals" Value="True" />
     </Style>
 
-    <Style TargetType="local:SearchAndSortHeader">
+    <Style TargetType="controls:SearchAndSortHeader">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorAltBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="0,0,1,1" />
@@ -50,7 +52,7 @@
         <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
 
-    <Style TargetType="local:DeleteRowColumn">
+    <Style TargetType="specialColumns:DeleteRowColumn">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="0,0,1,1" />
@@ -61,7 +63,7 @@
         <Setter Property="IsTabStop" Value="False" />
     </Style>
 
-    <Style TargetType="local:ValidationAlertsColumn">
+    <Style TargetType="specialColumns:ValidationAlertsColumn">
         <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />

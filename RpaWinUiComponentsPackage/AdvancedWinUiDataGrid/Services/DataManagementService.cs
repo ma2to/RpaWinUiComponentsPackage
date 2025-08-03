@@ -1,6 +1,6 @@
 ﻿// Services/DataManagementService.cs - ✅ OPRAVENÉ CS4032, CS0029 chyby
 using Microsoft.Extensions.Logging.Abstractions;
-using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models;
+using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces;
 using RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Utilities;
 using System;
@@ -22,7 +22,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
         private readonly Dictionary<string, Type> _columnTypes = new();
         private readonly ResourceCleanupHelper _cleanupHelper;
 
-        private GridConfiguration? _configuration;
+        private Models.Grid.GridConfiguration? _configuration;
         private bool _isInitialized = false;
         private readonly object _dataLock = new object();
 
@@ -40,7 +40,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
 
         #region Explicit Interface Implementation
 
-        Task IDataManagementService.InitializeAsync(GridConfiguration configuration)
+        Task IDataManagementService.InitializeAsync(Models.Grid.GridConfiguration configuration)
         {
             return InitializeInternalAsync(configuration);
         }
@@ -104,7 +104,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
 
         #region ✅ KOMPLETNÁ Auto-Add Implementation s opravenými async/await
 
-        private async Task InitializeInternalAsync(GridConfiguration configuration)
+        private async Task InitializeInternalAsync(Models.Grid.GridConfiguration configuration)
         {
             try
             {
