@@ -169,7 +169,10 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Grid
                 GridName = GridName,
                 AutoAddNewRow = AutoAddNewRow,
                 BackgroundValidationConfig = BackgroundValidationConfig,
-                EnableBatchValidation = EnableBatchValidation
+                EnableBatchValidation = EnableBatchValidation,
+                EnableVirtualScrolling = EnableVirtualScrolling,
+                VirtualScrollingVisibleRows = VirtualScrollingVisibleRows,
+                VirtualScrollingBufferSize = VirtualScrollingBufferSize
             };
         }
     }

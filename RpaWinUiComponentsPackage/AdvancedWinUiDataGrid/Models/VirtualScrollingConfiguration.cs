@@ -85,6 +85,51 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models
         /// </summary>
         public int CellRecyclingPoolSize { get; set; } = 100;
 
+        /// <summary>
+        /// ✅ NOVÉ: Minimálny počet riadkov pre aktiváciu virtual scrolling
+        /// </summary>
+        public int MinRowsForActivation { get; set; } = 100;
+
+        /// <summary>
+        /// ✅ NOVÉ: Počet viditeľných riadkov vo viewport
+        /// </summary>
+        public int VisibleRowCount { get; set; } = 50;
+
+        /// <summary>
+        /// ✅ NOVÉ: Optimalizovaná výška riadku pre výkonnosť
+        /// </summary>
+        public double OptimizedRowHeight { get; set; } = 36.0;
+
+        /// <summary>
+        /// ✅ NOVÉ: Throttling delay pre scroll events v ms (16ms = 60 FPS)
+        /// </summary>
+        public int ScrollThrottleMs { get; set; } = 16;
+
+        /// <summary>
+        /// ✅ NOVÉ: Povoliť lazy loading UI elementov
+        /// </summary>
+        public bool EnableLazyLoading { get; set; } = true;
+
+        /// <summary>
+        /// ✅ NOVÉ: Maximálny počet UI elementov v cache
+        /// </summary>
+        public int MaxCachedUIElements { get; set; } = 200;
+
+        /// <summary>
+        /// ✅ NOVÉ: Povoliť viewport change events pre diagnostiku
+        /// </summary>
+        public bool EnableViewportChangeEvents { get; set; } = false;
+
+        /// <summary>
+        /// ✅ NOVÉ: Povoliť selective invalidation (len zmenené oblasti)
+        /// </summary>
+        public bool EnableSelectiveInvalidation { get; set; } = true;
+
+        /// <summary>
+        /// ✅ NOVÉ: Povoliť diagnostické informácie
+        /// </summary>
+        public bool EnableDiagnostics { get; set; } = false;
+
         #endregion
 
         #region Static Configurations
@@ -140,7 +185,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models
             MemoryThresholdMB = 100.0,
             MemoryMonitoringInterval = 3000,
             EnableAutoCleanup = true,
-            CellRecyclingPoolSize = 200
+            CellRecyclingPoolSize = 200,
+            // ✅ NOVÉ optimalizácie
+            MinRowsForActivation = 50,
+            VisibleRowCount = 30,
+            OptimizedRowHeight = 36.0,
+            ScrollThrottleMs = 8,
+            EnableLazyLoading = true,
+            MaxCachedUIElements = 100,
+            EnableSelectiveInvalidation = true,
+            EnableDiagnostics = false
         };
 
         /// <summary>
@@ -204,8 +258,111 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models
                 MemoryMonitoringInterval = MemoryMonitoringInterval,
                 EnableMemoryMonitoring = EnableMemoryMonitoring,
                 EnableAutoCleanup = EnableAutoCleanup,
-                CellRecyclingPoolSize = CellRecyclingPoolSize
+                CellRecyclingPoolSize = CellRecyclingPoolSize,
+                // ✅ NOVÉ properties
+                MinRowsForActivation = MinRowsForActivation,
+                VisibleRowCount = VisibleRowCount,
+                OptimizedRowHeight = OptimizedRowHeight,
+                ScrollThrottleMs = ScrollThrottleMs,
+                EnableLazyLoading = EnableLazyLoading,
+                MaxCachedUIElements = MaxCachedUIElements,
+                EnableViewportChangeEvents = EnableViewportChangeEvents,
+                EnableSelectiveInvalidation = EnableSelectiveInvalidation,
+                EnableDiagnostics = EnableDiagnostics
             };
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Celkový počet renderovaných riadkov (visible + buffer)
+        /// </summary>
+        public int TotalRenderedRows => VisibleRowCount + (RowBufferSize * 2);
+
+        /// <summary>
+        /// ✅ NOVÉ: Celková výška viewport-u
+        /// </summary>
+        public double ViewportHeight => VisibleRowCount * OptimizedRowHeight;
+
+        /// <summary>
+        /// ✅ NOVÉ: Vypočíta memory footprint reduction percentage
+        /// </summary>
+        public double CalculateMemoryReduction(int totalRows)
+        {
+            if (!EnableVerticalVirtualization || totalRows <= MinRowsForActivation)
+                return 0.0;
+
+            var renderedRows = Math.Min(TotalRenderedRows, totalRows);
+            return Math.Round((1.0 - (double)renderedRows / totalRows) * 100, 2);
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Získa diagnostické informácie o konfigurácii
+        /// </summary>
+        public string GetDiagnosticInfo()
+        {
+            return $"VirtualScrolling: " +
+                   $"Vertical={EnableVerticalVirtualization}, " +
+                   $"Horizontal={EnableHorizontalVirtualization}, " +
+                   $"Viewport: {VisibleRowCount}+{RowBufferSize*2} rows, " +
+                   $"Height: {OptimizedRowHeight}px, " +
+                   $"Throttle: {ScrollThrottleMs}ms, " +
+                   $"Cache: {MaxCachedUIElements} elements, " +
+                   $"LazyLoad: {EnableLazyLoading}, " +
+                   $"SelectiveInvalidation: {EnableSelectiveInvalidation}";
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Kontroluje či konfigurácia vyžaduje virtualizáciu pre daný dataset
+        /// </summary>
+        public bool ShouldActivateVirtualization(int totalRows, int totalColumns = 0)
+        {
+            var verticalActivation = EnableVerticalVirtualization && totalRows >= MinRowsForActivation;
+            var horizontalActivation = EnableHorizontalVirtualization && totalColumns >= 20; // Predpoklad
+            
+            return verticalActivation || horizontalActivation;
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Optimalizuje konfiguráciu na základe dataset size
+        /// </summary>
+        public VirtualScrollingConfiguration OptimizeForDataset(int totalRows, int totalColumns = 0)
+        {
+            var optimized = Clone();
+
+            // Optimalizácia na základe veľkosti datasetu
+            if (totalRows < 500)
+            {
+                // Malý dataset - vypni virtualizáciu
+                optimized.EnableVerticalVirtualization = false;
+                optimized.EnableHorizontalVirtualization = false;
+            }
+            else if (totalRows < 5000)
+            {
+                // Stredný dataset - základná virtualizácia
+                optimized.VisibleRowCount = Math.Min(50, optimized.VisibleRowCount);
+                optimized.RowBufferSize = Math.Min(10, optimized.RowBufferSize);
+                optimized.ScrollThrottleMs = 16; // 60 FPS
+            }
+            else if (totalRows < 50000)
+            {
+                // Veľký dataset - optimalizovaná virtualizácia
+                optimized.VisibleRowCount = Math.Min(30, optimized.VisibleRowCount);
+                optimized.RowBufferSize = Math.Min(8, optimized.RowBufferSize);
+                optimized.ScrollThrottleMs = 8; // 120 FPS
+                optimized.EnableLazyLoading = true;
+            }
+            else
+            {
+                // Enterprise dataset - maximálna optimalizácia
+                optimized.VisibleRowCount = Math.Min(25, optimized.VisibleRowCount);
+                optimized.RowBufferSize = Math.Min(5, optimized.RowBufferSize);
+                optimized.ScrollThrottleMs = 4; // 240 FPS
+                optimized.EnableLazyLoading = true;
+                optimized.EnableSelectiveInvalidation = true;
+                optimized.EnableVariableRowHeights = false; // Vypni pre max výkon
+                optimized.EnableSmoothScrolling = false; // Vypni animácie
+            }
+
+            return optimized;
         }
 
         #endregion

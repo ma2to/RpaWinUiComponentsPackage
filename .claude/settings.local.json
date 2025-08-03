@@ -15,7 +15,8 @@
       "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Row/' \"$file\")",
       "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation/' \"$file\")",
       "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search/' \"$file\")",
-      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ImportExport/' \"$file\")"
+      "Bash(do sed -i 's/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models$/namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.ImportExport/' \"$file\")",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

@@ -198,7 +198,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation
     /// <summary>
     /// Validation severity levels - INTERNAL
     /// </summary>
-    internal enum ValidationSeverity
+    public enum ValidationSeverity
     {
         Info = 0,
         Warning = 1,
@@ -224,6 +224,12 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation
             Severity = ValidationSeverity.Error, 
             Message = message 
         };
+        public static ValidationResult Failure(string message) => new() 
+        { 
+            IsValid = false, 
+            Severity = ValidationSeverity.Error, 
+            Message = message 
+        };
         public static ValidationResult Warning(string message) => new() 
         { 
             IsValid = true, 
@@ -242,6 +248,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Validation
         public string ColumnName { get; set; } = string.Empty;
         public object? CurrentValue { get; set; }
         public object? OriginalValue { get; set; }
+        
+        /// <summary>
+        /// Alias pre CurrentValue pre backward compatibility
+        /// </summary>
+        public object? Value => CurrentValue;
         public Dictionary<string, object?> RowData { get; set; } = new();
         public DateTime ValidationTimestamp { get; set; } = DateTime.UtcNow;
 

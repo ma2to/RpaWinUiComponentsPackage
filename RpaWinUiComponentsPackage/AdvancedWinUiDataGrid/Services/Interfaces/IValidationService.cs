@@ -32,6 +32,11 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces
         Task<bool> ValidateAllRowsAsync();
 
         /// <summary>
+        /// Validuje všetky riadky v gridu a vráti stav validácie
+        /// </summary>
+        Task<bool> ValidateRowsAsync();
+
+        /// <summary>
         /// Pridá nové validačné pravidlo
         /// </summary>
         Task AddValidationRuleAsync(ValidationRule rule);

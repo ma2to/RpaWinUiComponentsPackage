@@ -65,14 +65,19 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search
         public int SearchDebounceMs { get; set; } = 300;
 
         /// <summary>
-        /// Povoliť search history (default: true)
+        /// Regex timeout v ms (default: 1000)
         /// </summary>
-        public bool EnableSearchHistory { get; set; } = true;
+        public int RegexTimeoutMs { get; set; } = 1000;
 
         /// <summary>
-        /// Maximálny počet search history items (default: 20)
+        /// Maximálny počet search history items (0 = žiadna história, default: 0)
         /// </summary>
-        public int MaxSearchHistoryItems { get; set; } = 20;
+        public int MaxSearchHistoryItems { get; set; } = 0;
+
+        /// <summary>
+        /// Povoliť search history (automaticky true ak MaxSearchHistoryItems > 0)
+        /// </summary>
+        public bool EnableSearchHistory => MaxSearchHistoryItems > 0;
 
         /// <summary>
         /// Search strategy pre multi-column search
@@ -99,7 +104,6 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search
             FuzzyTolerance = 0.4,
             EnableRegexSearch = true,
             EnableSearchHighlighting = true,
-            EnableSearchHistory = true,
             MaxSearchHistoryItems = 50,
             MaxHighlightResults = 2000
         };
@@ -121,7 +125,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search
             return FuzzyTolerance >= 0.0 && FuzzyTolerance <= 1.0 &&
                    MaxHighlightResults > 0 && MaxHighlightResults <= 10000 &&
                    SearchDebounceMs >= 0 && SearchDebounceMs <= 2000 &&
-                   MaxSearchHistoryItems > 0 && MaxSearchHistoryItems <= 100;
+                   RegexTimeoutMs >= 100 && RegexTimeoutMs <= 10000 &&
+                   MaxSearchHistoryItems >= 0 && MaxSearchHistoryItems <= 100;
         }
 
         /// <summary>

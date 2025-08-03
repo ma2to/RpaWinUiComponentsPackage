@@ -80,6 +80,15 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         // Copy/Paste service
         private CopyPasteService? _copyPasteService;
 
+        // ✅ NOVÉ: Virtual Scrolling service
+        private VirtualScrollingService? _virtualScrollingService;
+
+        // ✅ NOVÉ: Batch Validation service
+        private BatchValidationService? _batchValidationService;
+
+        // ✅ NOVÉ: Advanced Search service
+        private AdvancedSearchService? _advancedSearchService;
+
         // ✅ NOVÉ: Cell Selection State management
         private readonly CellSelectionState _cellSelectionState = new();
 
@@ -87,7 +96,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         private readonly DragSelectionState _dragSelectionState = new();
 
         // ✅ NOVÉ: Advanced Validation Rules
-        private ValidationRuleSet? _advancedValidationRules;
+        private Models.Validation.ValidationRuleSet? _advancedValidationRules;
 
         // Internal data pre AUTO-ADD a UI binding
         private readonly List<Dictionary<string, object?>> _gridData = new();
@@ -1573,45 +1582,55 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         #region ✅ PUBLIC API Methods s kompletným logovaním a metrics
 
         /// <summary>
-        /// InitializeAsync s advanced validation rules - PUBLIC API
-        /// </summary>
-        public async Task InitializeAsync(
-            List<GridColumnDefinition> columns,
-            ValidationRuleSet? advancedValidationRules = null,
-            GridThrottlingConfig? throttlingConfig = null,
-            int emptyRowsCount = 15,
-            DataGridColorConfig? colorConfig = null,
-            ILogger? logger = null,
-            bool enableBatchValidation = false)
-        {
-            // Convert advanced rules to legacy format and call main method
-            var legacyRules = ConvertAdvancedRulesToLegacy(advancedValidationRules);
-            await InitializeAsync(columns, legacyRules, throttlingConfig, emptyRowsCount, colorConfig, advancedValidationRules, logger, enableBatchValidation);
-        }
-
-        /// <summary>
-        /// InitializeAsync s realtime validáciou - PUBLIC API
+        /// InitializeAsync - HLAVNÁ PUBLIC API metóda pre nové aplikácie
         /// ✅ ROZŠÍRENÉ LOGOVANIE: Detailné sledovanie každého kroku inicializácie
         /// </summary>
+        /// <param name="columns">Definície stĺpcov gridu</param>
+        /// <param name="validationConfig">Konfigurácia validačných pravidiel (optional)</param>
+        /// <param name="throttlingConfig">Konfigurácia throttling-u (optional)</param>
+        /// <param name="emptyRowsCount">Počet prázdnych riadkov na konci (default: 15)</param>
+        /// <param name="colorConfig">Konfigurácia farieb gridu (optional)</param>
+        /// <param name="logger">External logger (optional)</param>
+        /// <param name="enableBatchValidation">Povoliť batch validáciu (default: false)</param>
+        /// <param name="maxSearchHistoryItems">Max počet položiek v search history (DEPRECATED - použite searchHistoryItems)</param>
+        /// <param name="enableSort">Povoliť sortovanie stĺpcov (default: false)</param>
+        /// <param name="enableSearch">Povoliť vyhľadávanie (default: false)</param>
+        /// <param name="enableFilter">Povoliť filtrovanie stĺpcov (default: false)</param>
+        /// <param name="searchHistoryItems">Počet položiek v search history (0-100, default: 0)</param>
+        /// <exception cref="ArgumentOutOfRangeException">Ak searchHistoryItems nie je v rozsahu 0-100</exception>
         public async Task InitializeAsync(
             List<GridColumnDefinition> columns,
-            List<GridValidationRule>? validationRules = null,
+            IValidationConfiguration? validationConfig = null,
             GridThrottlingConfig? throttlingConfig = null,
             int emptyRowsCount = 15,
             DataGridColorConfig? colorConfig = null,
-            ValidationRuleSet? advancedValidationRules = null,
             ILogger? logger = null,
-            bool enableBatchValidation = false)
+            bool enableBatchValidation = false,
+            int maxSearchHistoryItems = 0,
+            bool enableSort = false,
+            bool enableSearch = false, 
+            bool enableFilter = false,
+            int searchHistoryItems = 0)
         {
             try
             {
+                // ✅ BUILD-TIME VALIDATION: Search history items must be in range 0-100
+                if (searchHistoryItems < 0 || searchHistoryItems > 100)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(searchHistoryItems), 
+                        searchHistoryItems, 
+                        "Search history items must be between 0 and 100 (inclusive). " +
+                        $"Provided value: {searchHistoryItems}");
+                }
+
                 // If external logger provided, use it; otherwise use internal logger
                 var effectiveLogger = logger ?? _logger;
                 
                 effectiveLogger.LogInformation("🚀 InitializeAsync START - Instance: {ComponentInstanceId}, " +
-                    "Columns: {ColumnCount}, Rules: {RuleCount}, EmptyRows: {EmptyRows}, HasColors: {HasColors}",
-                    _componentInstanceId, columns?.Count ?? 0, validationRules?.Count ?? 0, emptyRowsCount,
-                    colorConfig?.HasAnyCustomColors ?? false);
+                    "Columns: {ColumnCount}, Rules: {RuleCount}, EmptyRows: {EmptyRows}, HasColors: {HasColors}, " +
+                    "Sort: {EnableSort}, Search: {EnableSearch}, Filter: {EnableFilter}, SearchHistory: {SearchHistory}",
+                    _componentInstanceId, columns?.Count ?? 0, validationConfig?.RulesCount ?? 0, emptyRowsCount,
+                    colorConfig?.HasAnyCustomColors ?? false, enableSort, enableSearch, enableFilter, searchHistoryItems);
 
                 StartOperation("InitializeAsync");
                 IncrementOperationCounter("InitializeAsync");
@@ -1623,8 +1642,18 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                     throw new ArgumentException("Columns parameter cannot be null or empty", nameof(columns));
                 }
 
+                // Convert validation config to internal format for processing
+                Models.Validation.ValidationRuleSet? internalValidationRules = null;
+                if (validationConfig is PublicValidationConfiguration publicConfig)
+                {
+                    internalValidationRules = publicConfig.GetInternalRuleSet();
+                }
+                
+                // Convert advanced rules to legacy format for internal processing
+                var legacyRules = ConvertAdvancedRulesToLegacy(internalValidationRules);
+
                 // ✅ NOVÉ: Vytvor a nastav DataGridConfiguration
-                await ConfigureControllerAsync(columns, validationRules, throttlingConfig, emptyRowsCount, colorConfig);
+                await ConfigureControllerAsync(columns, legacyRules, throttlingConfig, emptyRowsCount, colorConfig);
 
                 // ✅ ROZŠÍRENÉ: Detailné logovanie štruktúry stĺpcov
                 LogColumnStructure(columns);
@@ -1633,7 +1662,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 DetectAndConfigureCheckBoxColumn(columns);
 
                 // ✅ ROZŠÍRENÉ: Detailné logovanie validačných pravidiel
-                LogValidationRules(validationRules);
+                LogAdvancedValidationRules(internalValidationRules);
 
                 // Store throttling config pre realtime validáciu
                 _throttlingConfig = throttlingConfig?.Clone() ?? GridThrottlingConfig.Default;
@@ -1648,16 +1677,19 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Store configuration
                 _columns.Clear();
                 _columns.AddRange(deduplicatedColumns);
+
+                // ✅ NOVÉ: Configure feature flags
+                await ConfigureFeatureFlagsAsync(enableSort, enableSearch, enableFilter, searchHistoryItems);
                 _unifiedRowCount = Math.Max(emptyRowsCount, 1);
                 _autoAddEnabled = true;
                 _individualColorConfig = colorConfig?.Clone();
-                _advancedValidationRules = advancedValidationRules;
+                _advancedValidationRules = internalValidationRules;
 
                 // ✅ ROZŠÍRENÉ: Detailné logovanie color config
                 LogColorConfiguration(colorConfig);
 
                 // Initialize services
-                await InitializeServicesAsync(columns, validationRules ?? new List<GridValidationRule>(), _throttlingConfig, emptyRowsCount, enableBatchValidation);
+                await InitializeServicesAsync(columns, legacyRules, _throttlingConfig, emptyRowsCount, enableBatchValidation, maxSearchHistoryItems);
 
                 // ✅ UI setup s resize, scroll a stretch funkcionalitou
                 ApplyIndividualColorsToUI();
@@ -1798,6 +1830,218 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         /// <summary>
+        /// Vykoná validáciu všetkých neprázdnych riadkov a aktualizuje UI - PUBLIC API
+        /// </summary>
+        public async Task ValidateAndUpdateUIAsync()
+        {
+            try
+            {
+                _logger.LogInformation("🔍 ValidateAndUpdateUIAsync START - Instance: {ComponentInstanceId}, " +
+                    "NonEmptyRows: {NonEmptyRowCount}, TotalRows: {TotalRows}",
+                    _componentInstanceId, GetNonEmptyRowCount(), _displayRows.Count);
+
+                StartOperation("ValidateAndUpdateUI");
+                IncrementOperationCounter("ValidateAndUpdateUI");
+                EnsureInitialized();
+
+                if (_validationService == null)
+                {
+                    _logger.LogWarning("⚠️ ValidateAndUpdateUIAsync: ValidationService is null - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    return;
+                }
+
+                // Získaj len neprázdne riadky pre validáciu
+                var nonEmptyRows = GetNonEmptyRowsData();
+                if (!nonEmptyRows.Any())
+                {
+                    _logger.LogInformation("ℹ️ ValidateAndUpdateUIAsync: No non-empty rows to validate - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    return;
+                }
+
+                _logger.LogDebug("🔍 Validating {NonEmptyRowCount} non-empty rows...", nonEmptyRows.Count);
+
+                // Spusti validáciu len pre neprázdne riadky
+                await _validationService.ValidateRowsAsync();
+
+                // Aktualizuj UI pre všetky riadky
+                await UpdateValidationUI();
+
+                var duration = EndOperation("ValidateAndUpdateUI");
+
+                _logger.LogInformation("✅ ValidateAndUpdateUIAsync COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, ValidatedRows: {ValidatedRows}, TotalErrors: {ErrorCount}",
+                    _componentInstanceId, duration, nonEmptyRows.Count, _totalValidationErrors);
+            }
+            catch (Exception ex)
+            {
+                EndOperation("ValidateAndUpdateUI");
+                IncrementOperationCounter("ValidateAndUpdateUI-Error");
+                _logger.LogError(ex, "❌ ERROR in ValidateAndUpdateUIAsync - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa počet neprázdnych riadkov
+        /// </summary>
+        private int GetNonEmptyRowCount()
+        {
+            try
+            {
+                return _displayRows.Count(row => 
+                    row.Cells.Any(cell => !string.IsNullOrWhiteSpace(cell.Value?.ToString())));
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Získa dáta len z neprázdnych riadkov
+        /// </summary>
+        private List<Dictionary<string, object?>> GetNonEmptyRowsData()
+        {
+            try
+            {
+                var nonEmptyRows = new List<Dictionary<string, object?>>();
+                
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    var row = _displayRows[i];
+                    var hasData = row.Cells.Any(cell => !string.IsNullOrWhiteSpace(cell.Value?.ToString()));
+                    
+                    if (hasData)
+                    {
+                        var rowData = new Dictionary<string, object?>();
+                        for (int j = 0; j < _columns.Count && j < row.Cells.Count; j++)
+                        {
+                            rowData[_columns[j].Name] = row.Cells[j].Value;
+                        }
+                        nonEmptyRows.Add(rowData);
+                    }
+                }
+
+                return nonEmptyRows;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR getting non-empty rows data");
+                return new List<Dictionary<string, object?>>();
+            }
+        }
+
+        /// <summary>
+        /// Aktualizuje UI po validácii
+        /// </summary>
+        private async Task UpdateValidationUI()
+        {
+            try
+            {
+                await Task.Run(() =>
+                {
+                    // Aktualizuj UI na main thread
+                    this.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            // Refresh validation alerts column ak existuje
+                            RefreshValidationAlertsColumn();
+                            
+                            // Trigger UI refresh
+                            InvalidateArrange();
+                            
+                            _logger.LogDebug("✅ Validation UI updated successfully");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "❌ ERROR updating validation UI");
+                        }
+                    });
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateValidationUI");
+            }
+        }
+
+        /// <summary>
+        /// Refresh validation alerts column
+        /// </summary>
+        private void RefreshValidationAlertsColumn()
+        {
+            try
+            {
+                // Find validation alerts column and refresh its content
+                var validationColumnIndex = -1;
+                for (int i = 0; i < _columns.Count; i++)
+                {
+                    if (_columns[i].Name.Contains("ValidAlert") || _columns[i].Name.Contains("ValidationAlert"))
+                    {
+                        validationColumnIndex = i;
+                        break;
+                    }
+                }
+
+                if (validationColumnIndex >= 0)
+                {
+                    // Update validation alerts for all rows
+                    for (int rowIndex = 0; rowIndex < _displayRows.Count; rowIndex++)
+                    {
+                        var row = _displayRows[rowIndex];
+                        if (validationColumnIndex < row.Cells.Count)
+                        {
+                            // Refresh validation state for this row
+                            var validationMessages = GetValidationMessagesForRow(rowIndex);
+                            row.Cells[validationColumnIndex].ClearValidationErrors();
+                            if (validationMessages.Any())
+                            {
+                                row.Cells[validationColumnIndex].ValidationErrors = string.Join("; ", validationMessages);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR refreshing validation alerts column");
+            }
+        }
+
+        /// <summary>
+        /// Získa validation messages pre konkrétny riadok
+        /// </summary>
+        private List<string> GetValidationMessagesForRow(int rowIndex)
+        {
+            try
+            {
+                var messages = new List<string>();
+                
+                if (rowIndex >= 0 && rowIndex < _displayRows.Count)
+                {
+                    var row = _displayRows[rowIndex];
+                    foreach (var cell in row.Cells)
+                    {
+                        if (!string.IsNullOrEmpty(cell.ValidationErrors))
+                        {
+                            messages.Add(cell.ValidationErrors);
+                        }
+                    }
+                }
+
+                return messages;
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+
+        /// <summary>
         /// ExportToDataTableAsync s detailným logovaním exportu
         /// </summary>
         public async Task<DataTable> ExportToDataTableAsync(bool includeValidAlerts = false)
@@ -1840,6 +2084,770 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 throw;
             }
         }
+
+        #region ✅ NOVÉ: Data Export/Import PUBLIC API
+
+        /// <summary>
+        /// Získa všetky dáta z gridu - PUBLIC API
+        /// </summary>
+        public List<Dictionary<string, object?>> GetAllData(bool includeValidAlertsColumn = false)
+        {
+            try
+            {
+                _logger.LogInformation("📊 GetAllData START - Instance: {ComponentInstanceId}, " +
+                    "TotalRows: {TotalRows}, IncludeValidAlerts: {IncludeValidAlerts}",
+                    _componentInstanceId, _displayRows.Count, includeValidAlertsColumn);
+
+                StartOperation("GetAllData");
+                EnsureInitialized();
+
+                var allData = new List<Dictionary<string, object?>>();
+
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    var row = _displayRows[i];
+                    var rowData = new Dictionary<string, object?>();
+
+                    // Add regular column data
+                    for (int j = 0; j < _columns.Count && j < row.Cells.Count; j++)
+                    {
+                        var column = _columns[j];
+                        var isValidAlertsColumn = column.Name.Contains("ValidAlert") || column.Name.Contains("ValidationAlert");
+
+                        if (!isValidAlertsColumn || includeValidAlertsColumn)
+                        {
+                            rowData[column.Name] = row.Cells[j].Value;
+                        }
+                    }
+
+                    allData.Add(rowData);
+                }
+
+                var duration = EndOperation("GetAllData");
+                _logger.LogInformation("✅ GetAllData COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, RowsReturned: {RowCount}, ColumnsPerRow: {ColumnCount}",
+                    _componentInstanceId, duration, allData.Count, allData.FirstOrDefault()?.Count ?? 0);
+
+                return allData;
+            }
+            catch (Exception ex)
+            {
+                EndOperation("GetAllData");
+                _logger.LogError(ex, "❌ ERROR in GetAllData - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa len označené dáta z gridu (checked riadky) - PUBLIC API
+        /// </summary>
+        public List<Dictionary<string, object?>> GetSelectedData(bool includeValidAlertsColumn = false)
+        {
+            try
+            {
+                _logger.LogInformation("📊 GetSelectedData START - Instance: {ComponentInstanceId}, " +
+                    "TotalRows: {TotalRows}, IncludeValidAlerts: {IncludeValidAlerts}",
+                    _componentInstanceId, _displayRows.Count, includeValidAlertsColumn);
+
+                StartOperation("GetSelectedData");
+                EnsureInitialized();
+
+                var selectedData = new List<Dictionary<string, object?>>();
+                var checkboxColumnIndex = GetCheckboxColumnIndex();
+
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    var row = _displayRows[i];
+                    
+                    // Check if row is selected (checkbox column)
+                    bool isSelected = false;
+                    if (checkboxColumnIndex >= 0 && checkboxColumnIndex < row.Cells.Count)
+                    {
+                        isSelected = row.Cells[checkboxColumnIndex].Value as bool? == true;
+                    }
+
+                    if (isSelected)
+                    {
+                        var rowData = new Dictionary<string, object?>();
+
+                        // Add regular column data
+                        for (int j = 0; j < _columns.Count && j < row.Cells.Count; j++)
+                        {
+                            var column = _columns[j];
+                            var isValidAlertsColumn = column.Name.Contains("ValidAlert") || column.Name.Contains("ValidationAlert");
+
+                            if (!isValidAlertsColumn || includeValidAlertsColumn)
+                            {
+                                rowData[column.Name] = row.Cells[j].Value;
+                            }
+                        }
+
+                        selectedData.Add(rowData);
+                    }
+                }
+
+                var duration = EndOperation("GetSelectedData");
+                _logger.LogInformation("✅ GetSelectedData COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, SelectedRows: {SelectedCount}, TotalRows: {TotalRows}",
+                    _componentInstanceId, duration, selectedData.Count, _displayRows.Count);
+
+                return selectedData;
+            }
+            catch (Exception ex)
+            {
+                EndOperation("GetSelectedData");
+                _logger.LogError(ex, "❌ ERROR in GetSelectedData - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Nastaví dáta do gridu s checkbox support - PUBLIC API
+        /// </summary>
+        public void SetData(List<Dictionary<string, object?>> data, Dictionary<int, bool>? checkboxStates = null)
+        {
+            try
+            {
+                _logger.LogInformation("📥 SetData START - Instance: {ComponentInstanceId}, " +
+                    "InputRows: {InputRows}, InputColumns: {InputColumns}, CheckboxStates: {CheckboxStatesCount}",
+                    _componentInstanceId, data?.Count ?? 0, data?.FirstOrDefault()?.Count ?? 0, checkboxStates?.Count ?? 0);
+
+                StartOperation("SetData");
+                EnsureInitialized();
+
+                if (data == null)
+                {
+                    _logger.LogWarning("⚠️ SetData: Input data is null - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    return;
+                }
+
+                // Clear existing data
+                _displayRows.Clear();
+                _gridData.Clear();
+
+                var checkboxColumnIndex = GetCheckboxColumnIndex();
+
+                // Convert input data to grid format
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var inputRow = data[i];
+                    var gridRow = new DataRowViewModel();
+                    
+                    for (int j = 0; j < _columns.Count; j++)
+                    {
+                        var column = _columns[j];
+                        object? cellValue;
+
+                        // Handle checkbox column with states
+                        if (j == checkboxColumnIndex && checkboxStates != null)
+                        {
+                            cellValue = checkboxStates.TryGetValue(i, out var checkboxValue) ? checkboxValue : false;
+                        }
+                        else
+                        {
+                            cellValue = inputRow.TryGetValue(column.Name, out var value) ? value : null;
+                        }
+                        
+                        var cell = new CellViewModel
+                        {
+                            Value = cellValue,
+                            ColumnName = column.Name
+                        };
+                        
+                        gridRow.Cells.Add(cell);
+                    }
+
+                    _displayRows.Add(gridRow);
+                    
+                    // Add checkbox state to grid data if applicable
+                    var gridDataRow = new Dictionary<string, object?>(inputRow);
+                    if (checkboxColumnIndex >= 0 && checkboxStates != null)
+                    {
+                        var checkboxColumnName = _columns[checkboxColumnIndex].Name;
+                        gridDataRow[checkboxColumnName] = checkboxStates.TryGetValue(i, out var checkboxValue) ? checkboxValue : false;
+                    }
+                    
+                    _gridData.Add(gridDataRow);
+                }
+
+                // Ensure minimum row count
+                EnsureMinimumRows();
+
+                var duration = EndOperation("SetData");
+                _logger.LogInformation("✅ SetData COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, FinalRows: {FinalRows}",
+                    _componentInstanceId, duration, _displayRows.Count);
+
+                // Trigger UI refresh
+                InvalidateArrange();
+            }
+            catch (Exception ex)
+            {
+                EndOperation("SetData");
+                _logger.LogError(ex, "❌ ERROR in SetData - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa index checkbox column ak existuje
+        /// </summary>
+        private int GetCheckboxColumnIndex()
+        {
+            try
+            {
+                for (int i = 0; i < _columns.Count; i++)
+                {
+                    if (_columns[i].Name.ToLower().Contains("checkbox") || 
+                        _columns[i].Name.ToLower().Contains("selected") ||
+                        _columns[i].Name.ToLower().Contains("check"))
+                    {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        /// <summary>
+        /// Zabezpečí minimálny počet riadkov
+        /// </summary>
+        private void EnsureMinimumRows()
+        {
+            try
+            {
+                while (_displayRows.Count < _unifiedRowCount)
+                {
+                    var emptyRow = new DataRowViewModel();
+                    var emptyRowData = new Dictionary<string, object?>();
+
+                    for (int j = 0; j < _columns.Count; j++)
+                    {
+                        var column = _columns[j];
+                        var cell = new CellViewModel
+                        {
+                            Value = null,
+                            ColumnName = column.Name
+                        };
+                        
+                        emptyRow.Cells.Add(cell);
+                        emptyRowData[column.Name] = null;
+                    }
+
+                    _displayRows.Add(emptyRow);
+                    _gridData.Add(emptyRowData);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR ensuring minimum rows");
+            }
+        }
+
+        /// <summary>
+        /// Získa všetky dáta ako DataTable - PUBLIC API
+        /// </summary>
+        public DataTable GetAllDataAsDataTable(bool includeValidAlertsColumn = false, bool? checkboxFilter = null)
+        {
+            try
+            {
+                _logger.LogInformation("📊 GetAllDataAsDataTable START - Instance: {ComponentInstanceId}, " +
+                    "TotalRows: {TotalRows}, IncludeValidAlerts: {IncludeValidAlerts}, CheckboxFilter: {CheckboxFilter}",
+                    _componentInstanceId, _displayRows.Count, includeValidAlertsColumn, checkboxFilter);
+
+                StartOperation("GetAllDataAsDataTable");
+                EnsureInitialized();
+
+                var dataTable = new DataTable();
+                var checkboxColumnIndex = GetCheckboxColumnIndex();
+
+                // Create columns
+                for (int j = 0; j < _columns.Count; j++)
+                {
+                    var column = _columns[j];
+                    var isValidAlertsColumn = column.Name.Contains("ValidAlert") || column.Name.Contains("ValidationAlert");
+
+                    if (!isValidAlertsColumn || includeValidAlertsColumn)
+                    {
+                        var dataColumn = new DataColumn(column.Name, typeof(object));
+                        dataTable.Columns.Add(dataColumn);
+                    }
+                }
+
+                // Add rows
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    var row = _displayRows[i];
+                    
+                    // Apply checkbox filter if specified
+                    if (checkboxFilter.HasValue && checkboxColumnIndex >= 0 && checkboxColumnIndex < row.Cells.Count)
+                    {
+                        var isChecked = row.Cells[checkboxColumnIndex].Value as bool? == true;
+                        if (checkboxFilter.Value != isChecked)
+                            continue; // Skip this row
+                    }
+
+                    var dataRow = dataTable.NewRow();
+                    int dataColumnIndex = 0;
+
+                    for (int j = 0; j < _columns.Count && j < row.Cells.Count; j++)
+                    {
+                        var column = _columns[j];
+                        var isValidAlertsColumn = column.Name.Contains("ValidAlert") || column.Name.Contains("ValidationAlert");
+
+                        if (!isValidAlertsColumn || includeValidAlertsColumn)
+                        {
+                            dataRow[dataColumnIndex] = row.Cells[j].Value ?? DBNull.Value;
+                            dataColumnIndex++;
+                        }
+                    }
+
+                    dataTable.Rows.Add(dataRow);
+                }
+
+                var duration = EndOperation("GetAllDataAsDataTable");
+                _logger.LogInformation("✅ GetAllDataAsDataTable COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, RowsReturned: {RowCount}, ColumnsReturned: {ColumnCount}",
+                    _componentInstanceId, duration, dataTable.Rows.Count, dataTable.Columns.Count);
+
+                return dataTable;
+            }
+            catch (Exception ex)
+            {
+                EndOperation("GetAllDataAsDataTable");
+                _logger.LogError(ex, "❌ ERROR in GetAllDataAsDataTable - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa len označené dáta ako DataTable - PUBLIC API
+        /// </summary>
+        public DataTable GetSelectedDataAsDataTable(bool includeValidAlertsColumn = false, bool? checkboxFilter = null)
+        {
+            try
+            {
+                _logger.LogInformation("📊 GetSelectedDataAsDataTable START - Instance: {ComponentInstanceId}, " +
+                    "TotalRows: {TotalRows}, IncludeValidAlerts: {IncludeValidAlerts}, CheckboxFilter: {CheckboxFilter}",
+                    _componentInstanceId, _displayRows.Count, includeValidAlertsColumn, checkboxFilter);
+
+                StartOperation("GetSelectedDataAsDataTable");
+                EnsureInitialized();
+
+                var dataTable = new DataTable();
+                var checkboxColumnIndex = GetCheckboxColumnIndex();
+
+                // Create columns
+                for (int j = 0; j < _columns.Count; j++)
+                {
+                    var column = _columns[j];
+                    var isValidAlertsColumn = column.Name.Contains("ValidAlert") || column.Name.Contains("ValidationAlert");
+
+                    if (!isValidAlertsColumn || includeValidAlertsColumn)
+                    {
+                        var dataColumn = new DataColumn(column.Name, typeof(object));
+                        dataTable.Columns.Add(dataColumn);
+                    }
+                }
+
+                // Add only selected rows
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    var row = _displayRows[i];
+                    
+                    // Check if row is selected (must have checkbox)
+                    bool isSelected = false;
+                    if (checkboxColumnIndex >= 0 && checkboxColumnIndex < row.Cells.Count)
+                    {
+                        isSelected = row.Cells[checkboxColumnIndex].Value as bool? == true;
+                    }
+
+                    if (!isSelected && !checkboxFilter.HasValue)
+                        continue; // Skip non-selected rows
+
+                    // Apply additional checkbox filter if specified
+                    if (checkboxFilter.HasValue && checkboxColumnIndex >= 0 && checkboxColumnIndex < row.Cells.Count)
+                    {
+                        var isChecked = row.Cells[checkboxColumnIndex].Value as bool? == true;
+                        if (checkboxFilter.Value != isChecked)
+                            continue; // Skip this row
+                    }
+                    else if (!checkboxFilter.HasValue && !isSelected)
+                    {
+                        continue; // Default behavior: only selected rows
+                    }
+
+                    var dataRow = dataTable.NewRow();
+                    int dataColumnIndex = 0;
+
+                    for (int j = 0; j < _columns.Count && j < row.Cells.Count; j++)
+                    {
+                        var column = _columns[j];
+                        var isValidAlertsColumn = column.Name.Contains("ValidAlert") || column.Name.Contains("ValidationAlert");
+
+                        if (!isValidAlertsColumn || includeValidAlertsColumn)
+                        {
+                            dataRow[dataColumnIndex] = row.Cells[j].Value ?? DBNull.Value;
+                            dataColumnIndex++;
+                        }
+                    }
+
+                    dataTable.Rows.Add(dataRow);
+                }
+
+                var duration = EndOperation("GetSelectedDataAsDataTable");
+                _logger.LogInformation("✅ GetSelectedDataAsDataTable COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, SelectedRows: {SelectedCount}, TotalRows: {TotalRows}",
+                    _componentInstanceId, duration, dataTable.Rows.Count, _displayRows.Count);
+
+                return dataTable;
+            }
+            catch (Exception ex)
+            {
+                EndOperation("GetSelectedDataAsDataTable");
+                _logger.LogError(ex, "❌ ERROR in GetSelectedDataAsDataTable - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Nastaví dáta z DataTable do gridu s checkbox support - PUBLIC API
+        /// </summary>
+        public void SetDataFromDataTable(DataTable dataTable, Dictionary<int, bool>? checkboxStates = null)
+        {
+            try
+            {
+                _logger.LogInformation("📥 SetDataFromDataTable START - Instance: {ComponentInstanceId}, " +
+                    "InputRows: {InputRows}, InputColumns: {InputColumns}, CheckboxStates: {CheckboxStatesCount}",
+                    _componentInstanceId, dataTable?.Rows?.Count ?? 0, dataTable?.Columns?.Count ?? 0, checkboxStates?.Count ?? 0);
+
+                StartOperation("SetDataFromDataTable");
+                EnsureInitialized();
+
+                if (dataTable == null)
+                {
+                    _logger.LogWarning("⚠️ SetDataFromDataTable: Input DataTable is null - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    return;
+                }
+
+                // Convert DataTable to Dictionary format
+                var data = new List<Dictionary<string, object?>>();
+
+                foreach (DataRow dataRow in dataTable.Rows)
+                {
+                    var rowDict = new Dictionary<string, object?>();
+                    
+                    for (int j = 0; j < dataTable.Columns.Count; j++)
+                    {
+                        var columnName = dataTable.Columns[j].ColumnName;
+                        var value = dataRow[j];
+                        rowDict[columnName] = value == DBNull.Value ? null : value;
+                    }
+
+                    data.Add(rowDict);
+                }
+
+                // Use existing SetData method with checkbox states
+                SetData(data, checkboxStates);
+
+                var duration = EndOperation("SetDataFromDataTable");
+                _logger.LogInformation("✅ SetDataFromDataTable COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, FinalRows: {FinalRows}",
+                    _componentInstanceId, duration, _displayRows.Count);
+            }
+            catch (Exception ex)
+            {
+                EndOperation("SetDataFromDataTable");
+                _logger.LogError(ex, "❌ ERROR in SetDataFromDataTable - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Row Management PUBLIC API
+
+        /// <summary>
+        /// Zmaže označené riadky (checked) - PUBLIC API
+        /// </summary>
+        public void DeleteSelectedRows()
+        {
+            try
+            {
+                _logger.LogInformation("🗑️ DeleteSelectedRows START - Instance: {ComponentInstanceId}, " +
+                    "TotalRows: {TotalRows}",
+                    _componentInstanceId, _displayRows.Count);
+
+                StartOperation("DeleteSelectedRows");
+                EnsureInitialized();
+
+                var checkboxColumnIndex = GetCheckboxColumnIndex();
+                if (checkboxColumnIndex < 0)
+                {
+                    _logger.LogWarning("⚠️ DeleteSelectedRows: No checkbox column found - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    return;
+                }
+
+                var rowsToDelete = new List<int>();
+
+                // Find all selected rows
+                for (int i = 0; i < _displayRows.Count; i++)
+                {
+                    var row = _displayRows[i];
+                    if (checkboxColumnIndex < row.Cells.Count)
+                    {
+                        var isSelected = row.Cells[checkboxColumnIndex].Value as bool? == true;
+                        if (isSelected)
+                        {
+                            rowsToDelete.Add(i);
+                        }
+                    }
+                }
+
+                // Delete rows from bottom to top to preserve indices
+                for (int i = rowsToDelete.Count - 1; i >= 0; i--)
+                {
+                    var rowIndex = rowsToDelete[i];
+                    if (rowIndex < _displayRows.Count)
+                    {
+                        _displayRows.RemoveAt(rowIndex);
+                    }
+                    if (rowIndex < _gridData.Count)
+                    {
+                        _gridData.RemoveAt(rowIndex);
+                    }
+                }
+
+                // Ensure minimum row count
+                EnsureMinimumRows();
+
+                var duration = EndOperation("DeleteSelectedRows");
+                _logger.LogInformation("✅ DeleteSelectedRows COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, DeletedRows: {DeletedCount}, RemainingRows: {RemainingRows}",
+                    _componentInstanceId, duration, rowsToDelete.Count, _displayRows.Count);
+
+                // Trigger UI refresh
+                InvalidateArrange();
+            }
+            catch (Exception ex)
+            {
+                EndOperation("DeleteSelectedRows");
+                _logger.LogError(ex, "❌ ERROR in DeleteSelectedRows - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Zmaže riadky podľa custom predicate - PUBLIC API
+        /// </summary>
+        public void DeleteRowsWhere(Func<Dictionary<string, object?>, bool> predicate)
+        {
+            try
+            {
+                _logger.LogInformation("🗑️ DeleteRowsWhere START - Instance: {ComponentInstanceId}, " +
+                    "TotalRows: {TotalRows}",
+                    _componentInstanceId, _displayRows.Count);
+
+                StartOperation("DeleteRowsWhere");
+                EnsureInitialized();
+
+                if (predicate == null)
+                {
+                    _logger.LogWarning("⚠️ DeleteRowsWhere: Predicate is null - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    return;
+                }
+
+                var rowsToDelete = new List<int>();
+
+                // Find rows that match predicate
+                for (int i = 0; i < _gridData.Count; i++)
+                {
+                    try
+                    {
+                        if (predicate(_gridData[i]))
+                        {
+                            rowsToDelete.Add(i);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ DeleteRowsWhere: Predicate failed for row {RowIndex}", i);
+                    }
+                }
+
+                // Delete rows from bottom to top to preserve indices
+                for (int i = rowsToDelete.Count - 1; i >= 0; i--)
+                {
+                    var rowIndex = rowsToDelete[i];
+                    if (rowIndex < _displayRows.Count)
+                    {
+                        _displayRows.RemoveAt(rowIndex);
+                    }
+                    if (rowIndex < _gridData.Count)
+                    {
+                        _gridData.RemoveAt(rowIndex);
+                    }
+                }
+
+                // Ensure minimum row count
+                EnsureMinimumRows();
+
+                var duration = EndOperation("DeleteRowsWhere");
+                _logger.LogInformation("✅ DeleteRowsWhere COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, DeletedRows: {DeletedCount}, RemainingRows: {RemainingRows}",
+                    _componentInstanceId, duration, rowsToDelete.Count, _displayRows.Count);
+
+                // Trigger UI refresh
+                InvalidateArrange();
+            }
+            catch (Exception ex)
+            {
+                EndOperation("DeleteRowsWhere");
+                _logger.LogError(ex, "❌ ERROR in DeleteRowsWhere - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Vloží nový riadok na zadanú pozíciu - PUBLIC API
+        /// </summary>
+        public void InsertRowAt(int index, Dictionary<string, object?>? data = null)
+        {
+            try
+            {
+                _logger.LogInformation("📝 InsertRowAt START - Instance: {ComponentInstanceId}, " +
+                    "Index: {Index}, TotalRows: {TotalRows}, HasData: {HasData}",
+                    _componentInstanceId, index, _displayRows.Count, data != null);
+
+                StartOperation("InsertRowAt");
+                EnsureInitialized();
+
+                if (index < 0 || index > _displayRows.Count)
+                {
+                    _logger.LogWarning("⚠️ InsertRowAt: Invalid index {Index} for {TotalRows} rows - Instance: {ComponentInstanceId}",
+                        index, _displayRows.Count, _componentInstanceId);
+                    return;
+                }
+
+                // Create new row
+                var newGridRow = new DataRowViewModel();
+                var newGridData = new Dictionary<string, object?>();
+
+                for (int j = 0; j < _columns.Count; j++)
+                {
+                    var column = _columns[j];
+                    var cellValue = data?.TryGetValue(column.Name, out var value) == true ? value : null;
+                    
+                    var cell = new CellViewModel
+                    {
+                        Value = cellValue,
+                        ColumnName = column.Name
+                    };
+                    
+                    newGridRow.Cells.Add(cell);
+                    newGridData[column.Name] = cellValue;
+                }
+
+                // Insert at specified position
+                _displayRows.Insert(index, newGridRow);
+                _gridData.Insert(index, newGridData);
+
+                var duration = EndOperation("InsertRowAt");
+                _logger.LogInformation("✅ InsertRowAt COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, NewIndex: {Index}, TotalRows: {TotalRows}",
+                    _componentInstanceId, duration, index, _displayRows.Count);
+
+                // Trigger UI refresh
+                InvalidateArrange();
+            }
+            catch (Exception ex)
+            {
+                EndOperation("InsertRowAt");
+                _logger.LogError(ex, "❌ ERROR in InsertRowAt - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Nastaví dáta pre konkrétny riadok - PUBLIC API
+        /// </summary>
+        public void SetRowData(int rowIndex, Dictionary<string, object?> data)
+        {
+            try
+            {
+                _logger.LogInformation("📝 SetRowData START - Instance: {ComponentInstanceId}, " +
+                    "RowIndex: {RowIndex}, TotalRows: {TotalRows}, DataColumns: {DataColumns}",
+                    _componentInstanceId, rowIndex, _displayRows.Count, data?.Count ?? 0);
+
+                StartOperation("SetRowData");
+                EnsureInitialized();
+
+                if (rowIndex < 0 || rowIndex >= _displayRows.Count)
+                {
+                    _logger.LogWarning("⚠️ SetRowData: Invalid row index {RowIndex} for {TotalRows} rows - Instance: {ComponentInstanceId}",
+                        rowIndex, _displayRows.Count, _componentInstanceId);
+                    return;
+                }
+
+                if (data == null)
+                {
+                    _logger.LogWarning("⚠️ SetRowData: Data is null - Instance: {ComponentInstanceId}",
+                        _componentInstanceId);
+                    return;
+                }
+
+                var row = _displayRows[rowIndex];
+
+                // Update cell values
+                for (int j = 0; j < _columns.Count && j < row.Cells.Count; j++)
+                {
+                    var column = _columns[j];
+                    var cellValue = data.TryGetValue(column.Name, out var value) ? value : null;
+                    
+                    row.Cells[j].Value = cellValue;
+                }
+
+                // Update grid data
+                if (rowIndex < _gridData.Count)
+                {
+                    _gridData[rowIndex] = new Dictionary<string, object?>(data);
+                }
+
+                var duration = EndOperation("SetRowData");
+                _logger.LogInformation("✅ SetRowData COMPLETED - Instance: {ComponentInstanceId}, " +
+                    "Duration: {Duration}ms, RowIndex: {RowIndex}",
+                    _componentInstanceId, duration, rowIndex);
+
+                // Trigger UI refresh
+                InvalidateArrange();
+            }
+            catch (Exception ex)
+            {
+                EndOperation("SetRowData");
+                _logger.LogError(ex, "❌ ERROR in SetRowData - Instance: {ComponentInstanceId}",
+                    _componentInstanceId);
+                throw;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// ClearAllDataAsync s logovaním
@@ -3183,7 +4191,8 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             List<GridValidationRule> rules,
             GridThrottlingConfig throttling,
             int emptyRows,
-            bool enableBatchValidation = false)
+            bool enableBatchValidation = false,
+            int maxSearchHistoryItems = 0)
         {
             try
             {
@@ -3222,6 +4231,35 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 _exportService = _serviceProvider.GetRequiredService<IExportService>();
                 await _exportService.InitializeAsync(gridConfig);
                 _logger.LogDebug("✅ ExportService initialized");
+
+                // ✅ NOVÉ: Inicializuj VirtualScrollingService s pokročilou konfiguráciou
+                var virtualScrollConfig = Models.VirtualScrollingConfiguration.Advanced.Clone();
+                virtualScrollConfig.EnableVerticalVirtualization = gridConfig.EnableVirtualScrolling;
+                virtualScrollConfig.VisibleRowCount = gridConfig.VirtualScrollingVisibleRows;
+                virtualScrollConfig.RowBufferSize = gridConfig.VirtualScrollingBufferSize;
+                virtualScrollConfig.OptimizedRowHeight = 36.0;
+                virtualScrollConfig.ScrollThrottleMs = 16;
+                virtualScrollConfig.EnableLazyLoading = true;
+                virtualScrollConfig.EnableSelectiveInvalidation = true;
+                virtualScrollConfig.EnableDiagnostics = true;
+                
+                _virtualScrollingService = new VirtualScrollingService(virtualScrollConfig, _logger);
+                _logger.LogDebug("✅ VirtualScrollingService initialized - Enabled: {IsEnabled}, VisibleRows: {VisibleRows}", 
+                    virtualScrollConfig.EnableVerticalVirtualization, virtualScrollConfig.VisibleRowCount);
+
+                // ✅ NOVÉ: Inicializuj BatchValidationService
+                var batchValidationConfig = enableBatchValidation ? BatchValidationConfiguration.Default : 
+                    new BatchValidationConfiguration { IsEnabled = false };
+                _batchValidationService = new BatchValidationService(batchValidationConfig, _logger);
+                _logger.LogDebug("✅ BatchValidationService initialized - Enabled: {IsEnabled}, BatchSize: {BatchSize}", 
+                    batchValidationConfig.IsEnabled, batchValidationConfig.BatchSize);
+
+                // ✅ NOVÉ: Inicializuj AdvancedSearchService
+                var advancedSearchConfig = AdvancedSearchConfiguration.Default;
+                advancedSearchConfig.MaxSearchHistoryItems = maxSearchHistoryItems;
+                _advancedSearchService = new AdvancedSearchService(advancedSearchConfig, _logger);
+                _logger.LogDebug("✅ AdvancedSearchService initialized - HistoryItems: {HistoryItems}, Regex: {RegexEnabled}", 
+                    maxSearchHistoryItems, advancedSearchConfig.EnableRegexSearch);
 
                 _logger.LogInformation("✅ InitializeServicesAsync COMPLETED - All services ready");
             }
@@ -3522,7 +4560,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         }
 
         /// <summary>
-        /// Event handler pre data scroll view changed
+        /// Event handler pre data scroll view changed - ✅ ROZŠÍRENÉ: Virtual Scrolling Support
         /// </summary>
         public void OnDataScrollViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
         {
@@ -3542,6 +4580,35 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
                     _logger.LogTrace("📜 Data scroll synchronized - HorizontalOffset: {Offset}",
                         dataScrollViewer.HorizontalOffset);
+
+                    // ✅ NOVÉ: Virtual Scrolling Integration
+                    if (_virtualScrollingService != null && _displayRows.Any())
+                    {
+                        try
+                        {
+                            // Update virtual scrolling service with current scroll position
+                            _virtualScrollingService.SetTotalRowCount(_displayRows.Count);
+                            
+                            var viewport = _virtualScrollingService.CalculateViewportOptimized(
+                                dataScrollViewer.VerticalOffset, 
+                                dataScrollViewer.ViewportHeight);
+
+                            // Trigger viewport-based rendering if enabled
+                            if (viewport.IsValid && _virtualScrollingService.ShouldUseVirtualScrolling())
+                            {
+                                _ = Task.Run(async () => await UpdateVirtualScrollingViewportAsync(viewport));
+                                
+                                _logger.LogTrace("🚀 Virtual scrolling viewport updated - Visible: {FirstVisible}-{LastVisible}, " +
+                                    "Rendered: {FirstRendered}-{LastRendered}",
+                                    viewport.FirstVisibleRowIndex, viewport.LastVisibleRowIndex,
+                                    viewport.FirstRenderedRowIndex, viewport.LastRenderedRowIndex);
+                            }
+                        }
+                        catch (Exception vsEx)
+                        {
+                            _logger.LogWarning(vsEx, "⚠️ Error in virtual scrolling viewport calculation");
+                        }
+                    }
 
                     _isScrollSynchronizing = false;
                 }
@@ -3710,6 +4777,88 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ ERROR in UpdateLayoutAfterSizeChangeAsync");
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Updates virtual scrolling viewport and optimizes rendering
+        /// </summary>
+        private async Task UpdateVirtualScrollingViewportAsync(VirtualScrollingViewport viewport)
+        {
+            try
+            {
+                if (_virtualScrollingService == null || !viewport.IsValid)
+                {
+                    _logger.LogTrace("⚠️ Virtual scrolling service not available or viewport invalid");
+                    return;
+                }
+
+                _logger.LogTrace("🚀 UpdateVirtualScrollingViewportAsync START - Viewport: {FirstVisible}-{LastVisible}",
+                    viewport.FirstVisibleRowIndex, viewport.LastVisibleRowIndex);
+
+                // Get current virtual scrolling stats for performance monitoring
+                var stats = _virtualScrollingService.GetStats();
+                
+                // Only process if we have significant changes or performance benefits
+                if (stats.MemorySavingPercent > 50)
+                {
+                    // Optimize rendering based on viewport
+                    var indicesToRender = _virtualScrollingService.GetRowIndicesToRender().ToList();
+                    
+                    if (indicesToRender.Any())
+                    {
+                        // Register rendered elements for recycling
+                        for (int i = viewport.FirstRenderedRowIndex; i <= viewport.LastRenderedRowIndex; i++)
+                        {
+                            if (i >= 0 && i < _displayRows.Count)
+                            {
+                                var rowElement = GetRowUIElement(i); // Get UI element for row
+                                if (rowElement != null)
+                                {
+                                    _virtualScrollingService.RegisterRenderedElement(i, rowElement);
+                                }
+                            }
+                        }
+
+                        _logger.LogDebug("💾 Virtual scrolling optimization applied - Memory saved: {MemorySaving:F1}%, " +
+                            "Rendered: {RenderedRows}/{TotalRows}, Cache: {CachedElements}, Recycled: {RecycledElements}",
+                            stats.MemorySavingPercent, stats.RenderedRows, stats.TotalRows, 
+                            stats.CachedElements, stats.RecycledElements);
+                    }
+                }
+
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in UpdateVirtualScrollingViewportAsync");
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Gets UI element for a specific row (helper for virtual scrolling)
+        /// </summary>
+        private Microsoft.UI.Xaml.FrameworkElement? GetRowUIElement(int rowIndex)
+        {
+            try
+            {
+                if (rowIndex < 0 || rowIndex >= _displayRows.Count)
+                    return null;
+
+                // Try to find the row element in the visual tree
+                var dataContainer = DataContainer;
+                if (dataContainer?.Children.Count > rowIndex)
+                {
+                    var rowElement = dataContainer.Children[rowIndex] as Microsoft.UI.Xaml.FrameworkElement;
+                    return rowElement;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogTrace(ex, "⚠️ Error getting UI element for row {RowIndex}", rowIndex);
+                return null;
             }
         }
 
@@ -4482,7 +5631,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Konvertuje advanced validation rules na legacy format
         /// </summary>
-        private List<GridValidationRule>? ConvertAdvancedRulesToLegacy(ValidationRuleSet? advancedRules)
+        private List<GridValidationRule>? ConvertAdvancedRulesToLegacy(Models.Validation.ValidationRuleSet? advancedRules)
         {
             if (advancedRules == null || !advancedRules.Rules.Any())
                 return null;
@@ -4503,14 +5652,15 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                         CustomValidator = (value) =>
                         {
                             // Vytvor temporary validation context
-                            var context = new ValidationContext
+                            var context = new Models.Validation.ValidationContext
                             {
                                 ColumnName = advancedRule.TargetColumns.First(),
                                 CurrentValue = value,
                                 RowData = new Dictionary<string, object?> { { advancedRule.TargetColumns.First(), value } }
                             };
 
-                            return advancedRule.ValidationFunction(context);
+                            var result = advancedRule.ValidationFunction(context);
+                            return result?.IsValid ?? true;
                         },
                         ErrorMessage = advancedRule.ErrorMessage,
                         IsEnabled = advancedRule.IsEnabled
@@ -4736,25 +5886,29 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
         /// <summary>
         /// Loguje validačné pravidlá
         /// </summary>
-        private void LogValidationRules(List<GridValidationRule>? validationRules)
+        /// <summary>
+        /// Loguje advanced validation rules
+        /// </summary>
+        private void LogAdvancedValidationRules(Models.Validation.ValidationRuleSet? validationRules)
         {
             try
             {
-                if (validationRules == null || !validationRules.Any())
+                if (validationRules?.Rules == null || !validationRules.Rules.Any())
                 {
-                    _logger.LogDebug("📋 No validation rules provided");
+                    _logger.LogDebug("📋 No advanced validation rules provided");
                     return;
                 }
 
-                foreach (var rule in validationRules)
+                _logger.LogDebug("📋 Advanced Validation Rules: {RuleCount} rules", validationRules.Rules.Count);
+                foreach (var rule in validationRules.Rules)
                 {
-                    _logger.LogDebug("🔍 Validation Rule: {ColumnName} - {Type} - '{ErrorMessage}'",
-                        rule.ColumnName, rule.Type, rule.ErrorMessage);
+                    _logger.LogDebug("🔍 Advanced Rule: {Id} - Targets: {TargetColumns} - Priority: {Priority}",
+                        rule.Id, string.Join(",", rule.TargetColumns), rule.Priority);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Could not log validation rules");
+                _logger.LogWarning(ex, "⚠️ Could not log advanced validation rules");
             }
         }
 
@@ -5227,9 +6381,782 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
 
             #endregion
 
+            /// <summary>
+            /// Vyčistí validačné chyby bunky
+            /// </summary>
+            public void ClearValidationErrors()
+            {
+                ValidationErrors = string.Empty;
+                IsValid = true;
+            }
+
             public override string ToString()
             {
                 return $"Cell[{RowIndex}, {ColumnName}]: '{DisplayValue}' (Valid: {IsValid})";
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Virtual Scrolling PUBLIC API
+
+        /// <summary>
+        /// Získa statistiky virtual scrolling - PUBLIC API
+        /// </summary>
+        public VirtualScrollingStats? GetVirtualScrollingStats()
+        {
+            try
+            {
+                if (_virtualScrollingService == null)
+                {
+                    _logger.LogDebug("🔍 VirtualScrollingService not initialized");
+                    return null;
+                }
+
+                var stats = _virtualScrollingService.GetStats();
+                _logger.LogDebug("📊 VirtualScrolling stats: {Stats}", stats);
+                return stats;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetVirtualScrollingStats");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Nastaví virtual scrolling konfiguráciu - PUBLIC API
+        /// </summary>
+        public void SetVirtualScrollingConfiguration(Models.VirtualScrollingConfiguration config)
+        {
+            try
+            {
+                if (_virtualScrollingService == null)
+                {
+                    _logger.LogWarning("⚠️ VirtualScrollingService not initialized");
+                    return;
+                }
+
+                config.Validate();
+                _virtualScrollingService.UpdateConfiguration(config);
+                _logger.LogInformation("⚙️ Virtual scrolling configuration updated");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SetVirtualScrollingConfiguration");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa aktuálnu virtual scrolling konfiguráciu - PUBLIC API
+        /// </summary>
+        public Models.VirtualScrollingConfiguration? GetVirtualScrollingConfiguration()
+        {
+            try
+            {
+                return _virtualScrollingService?.GetConfiguration();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetVirtualScrollingConfiguration");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Získa aktuálny viewport info - PUBLIC API
+        /// </summary>
+        public VirtualScrollingViewport? GetCurrentViewport()
+        {
+            try
+            {
+                return _virtualScrollingService?.GetCurrentViewport();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetCurrentViewport");
+                return null;
+            }
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Batch Validation PUBLIC API
+
+        /// <summary>
+        /// Event pre batch validation progress reporting - PUBLIC API
+        /// </summary>
+        public event EventHandler<BatchValidationProgress>? BatchValidationProgressChanged;
+
+        /// <summary>
+        /// Spustí batch validation všetkých riadkov - PUBLIC API
+        /// </summary>
+        public async Task<BatchValidationResult?> ValidateAllRowsBatchAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (_batchValidationService == null)
+                {
+                    _logger.LogWarning("⚠️ BatchValidationService not initialized");
+                    return null;
+                }
+
+                _logger.LogInformation("🚀 ValidateAllRowsBatchAsync START - Rows: {RowCount}", _gridData.Count);
+
+                // Subscribe to progress events
+                if (_batchValidationService != null)
+                {
+                    _batchValidationService.ProgressChanged += OnBatchValidationProgressChanged;
+                }
+
+                var result = await _batchValidationService.ValidateRowsAsync(
+                    _gridData, 
+                    _columns, 
+                    ConvertToLegacyValidationRules(), 
+                    cancellationToken);
+
+                _logger.LogInformation("✅ ValidateAllRowsBatchAsync COMPLETED - Duration: {Duration}ms, " +
+                    "Valid: {Valid}, Invalid: {Invalid}", 
+                    result.Duration.TotalMilliseconds, result.ValidRows, result.InvalidRows);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ValidateAllRowsBatchAsync");
+                throw;
+            }
+            finally
+            {
+                // Unsubscribe from progress events
+                if (_batchValidationService != null)
+                {
+                    _batchValidationService.ProgressChanged -= OnBatchValidationProgressChanged;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Nastaví batch validation konfiguráciu - PUBLIC API
+        /// </summary>
+        public void SetBatchValidationConfiguration(BatchValidationConfiguration config)
+        {
+            try
+            {
+                if (_batchValidationService == null)
+                {
+                    _logger.LogWarning("⚠️ BatchValidationService not initialized");
+                    return;
+                }
+
+                config.Validate();
+                _batchValidationService.UpdateConfiguration(config);
+                _logger.LogInformation("⚙️ Batch validation configuration updated");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SetBatchValidationConfiguration");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa batch validation konfiguráciu - PUBLIC API
+        /// </summary>
+        public BatchValidationConfiguration? GetBatchValidationConfiguration()
+        {
+            try
+            {
+                return _batchValidationService?.GetConfiguration();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetBatchValidationConfiguration");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Zruší prebiehajúcu batch validation - PUBLIC API
+        /// </summary>
+        public void CancelBatchValidation()
+        {
+            try
+            {
+                _batchValidationService?.CancelValidation();
+                _logger.LogInformation("🛑 Batch validation cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in CancelBatchValidation");
+            }
+        }
+
+        /// <summary>
+        /// Handler pre batch validation progress events
+        /// </summary>
+        private void OnBatchValidationProgressChanged(object? sender, BatchValidationProgress e)
+        {
+            try
+            {
+                _logger.LogTrace("📊 Batch validation progress: {Progress}", e);
+                BatchValidationProgressChanged?.Invoke(this, e);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Error in batch validation progress handler");
+            }
+        }
+
+        /// <summary>
+        /// Konvertuje advanced validation rules na legacy format pre batch validation
+        /// </summary>
+        private List<ValidationRule> ConvertToLegacyValidationRules()
+        {
+            var legacyRules = new List<ValidationRule>();
+
+            // Konvertuj z _advancedValidationRules ak existujú
+            if (_advancedValidationRules?.Rules != null)
+            {
+                foreach (var rule in _advancedValidationRules.Rules)
+                {
+                    // Pre každý target column vytvoríme legacy ValidationRule
+                    foreach (var targetColumn in rule.TargetColumns)
+                    {
+                        legacyRules.Add(new ValidationRule
+                        {
+                            ColumnName = targetColumn,
+                            Type = ValidationType.Custom,
+                            ErrorMessage = rule.ErrorMessage,
+                            CustomValidator = (value) => 
+                            {
+                                try
+                                {
+                                    var context = new Models.Validation.ValidationContext
+                                    {
+                                        ColumnName = targetColumn,
+                                        CurrentValue = value
+                                    };
+                                    var result = rule.ValidationFunction?.Invoke(context);
+                                    return result?.IsValid ?? true;
+                                }
+                                catch
+                                {
+                                    return false;
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Fallback na základné required rules pre všetky stĺpce
+            if (legacyRules.Count == 0)
+            {
+                foreach (var column in _columns)
+                {
+                    legacyRules.Add(new ValidationRule
+                    {
+                        ColumnName = column.Name,
+                        IsRequired = false // Default nie sú required
+                    });
+                }
+            }
+
+            return legacyRules;
+        }
+
+        #endregion
+
+        #region ✅ NOVÉ: Advanced Search PUBLIC API
+
+        /// <summary>
+        /// Event pre advanced search results - PUBLIC API
+        /// </summary>
+        public event EventHandler<SearchResults>? AdvancedSearchCompleted;
+
+        /// <summary>
+        /// Event pre search history changes - PUBLIC API
+        /// </summary>
+        public event EventHandler<List<SearchCriteria>>? SearchHistoryChanged;
+
+        /// <summary>
+        /// Spustí advanced search - PUBLIC API
+        /// </summary>
+        public async Task<SearchResults?> SearchAsync(
+            string searchTerm,
+            bool isCaseSensitive = false,
+            bool isRegex = false,
+            bool isWholeWord = false,
+            List<string>? targetColumns = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (_advancedSearchService == null)
+                {
+                    _logger.LogWarning("⚠️ AdvancedSearchService not initialized");
+                    return null;
+                }
+
+                _logger.LogInformation("🔍 SearchAsync START - Term: '{SearchTerm}', Regex: {IsRegex}", 
+                    searchTerm, isRegex);
+
+                SearchResults? result = null;
+
+                // Subscribe to search events
+                void OnSearchCompleted(object? sender, SearchResults e)
+                {
+                    result = e;
+                    AdvancedSearchCompleted?.Invoke(this, e);
+                }
+
+                _advancedSearchService.SearchCompleted += OnSearchCompleted;
+                _advancedSearchService.SearchHistoryChanged += OnSearchHistoryChanged;
+
+                try
+                {
+                    await _advancedSearchService.SearchAsync(
+                        searchTerm, _gridData, _columns, isCaseSensitive, isRegex, isWholeWord, targetColumns, cancellationToken);
+
+                    // Wait a bit for the event to fire
+                    await Task.Delay(50, cancellationToken);
+
+                    _logger.LogInformation("✅ SearchAsync COMPLETED - Results: {ResultCount}", 
+                        result?.TotalCount ?? 0);
+
+                    return result;
+                }
+                finally
+                {
+                    _advancedSearchService.SearchCompleted -= OnSearchCompleted;
+                    _advancedSearchService.SearchHistoryChanged -= OnSearchHistoryChanged;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SearchAsync - Term: '{SearchTerm}'", searchTerm);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa search history - PUBLIC API
+        /// </summary>
+        public List<SearchCriteria> GetSearchHistory()
+        {
+            try
+            {
+                return _advancedSearchService?.GetSearchHistory() ?? new List<SearchCriteria>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetSearchHistory");
+                return new List<SearchCriteria>();
+            }
+        }
+
+        /// <summary>
+        /// Vyčistí search history - PUBLIC API
+        /// </summary>
+        public void ClearSearchHistory()
+        {
+            try
+            {
+                _advancedSearchService?.ClearSearchHistory();
+                _logger.LogInformation("🗑️ Search history cleared");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ClearSearchHistory");
+            }
+        }
+
+        /// <summary>
+        /// Nastaví advanced search konfiguráciu - PUBLIC API
+        /// </summary>
+        public void SetAdvancedSearchConfiguration(AdvancedSearchConfiguration config)
+        {
+            try
+            {
+                if (_advancedSearchService == null)
+                {
+                    _logger.LogWarning("⚠️ AdvancedSearchService not initialized");
+                    return;
+                }
+
+                if (!config.IsValid())
+                    throw new ArgumentException("Invalid AdvancedSearchConfiguration");
+
+                _advancedSearchService.UpdateConfiguration(config);
+                _logger.LogInformation("⚙️ Advanced search configuration updated");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in SetAdvancedSearchConfiguration");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Získa advanced search konfiguráciu - PUBLIC API
+        /// </summary>
+        public AdvancedSearchConfiguration? GetAdvancedSearchConfiguration()
+        {
+            try
+            {
+                return _advancedSearchService?.GetConfiguration();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in GetAdvancedSearchConfiguration");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Handler pre search history changes
+        /// </summary>
+        private void OnSearchHistoryChanged(object? sender, List<SearchCriteria> e)
+        {
+            try
+            {
+                SearchHistoryChanged?.Invoke(this, e);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Error in search history change handler");
+            }
+        }
+
+        #region ✅ REFACTORING: Centralized Helper Methods
+
+        /// <summary>
+        /// ✅ REFACTORING: Centralizované vykonanie operácie s automatickým loggingom a error handlingom
+        /// </summary>
+        private async Task<T> ExecuteWithLoggingAsync<T>(
+            string operationName, 
+            Func<Task<T>> operation,
+            Func<T, string>? successMessageFormatter = null)
+        {
+            try
+            {
+                _logger.LogInformation("🚀 {OperationName} START - Instance: {ComponentInstanceId}", 
+                    operationName, _componentInstanceId);
+                StartOperation(operationName);
+                IncrementOperationCounter(operationName);
+                
+                var result = await operation();
+                var duration = EndOperation(operationName);
+                
+                var successMessage = successMessageFormatter?.Invoke(result) ?? "COMPLETED";
+                _logger.LogInformation("✅ {OperationName} {Message} - Duration: {Duration}ms, Instance: {ComponentInstanceId}", 
+                    operationName, successMessage, duration, _componentInstanceId);
+                    
+                return result;
+            }
+            catch (Exception ex)
+            {
+                EndOperation(operationName);
+                IncrementOperationCounter($"{operationName}-Error");
+                _logger.LogError(ex, "❌ ERROR in {OperationName} - Instance: {ComponentInstanceId}", 
+                    operationName, _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: Synchronná verzia ExecuteWithLogging
+        /// </summary>
+        private T ExecuteWithLogging<T>(
+            string operationName, 
+            Func<T> operation,
+            Func<T, string>? successMessageFormatter = null)
+        {
+            try
+            {
+                _logger.LogInformation("🚀 {OperationName} START - Instance: {ComponentInstanceId}", 
+                    operationName, _componentInstanceId);
+                StartOperation(operationName);
+                IncrementOperationCounter(operationName);
+                
+                var result = operation();
+                var duration = EndOperation(operationName);
+                
+                var successMessage = successMessageFormatter?.Invoke(result) ?? "COMPLETED";
+                _logger.LogInformation("✅ {OperationName} {Message} - Duration: {Duration}ms, Instance: {ComponentInstanceId}", 
+                    operationName, successMessage, duration, _componentInstanceId);
+                    
+                return result;
+            }
+            catch (Exception ex)
+            {
+                EndOperation(operationName);
+                IncrementOperationCounter($"{operationName}-Error");
+                _logger.LogError(ex, "❌ ERROR in {OperationName} - Instance: {ComponentInstanceId}", 
+                    operationName, _componentInstanceId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: Void verzia ExecuteWithLogging
+        /// </summary>
+        private async Task ExecuteWithLoggingAsync(
+            string operationName, 
+            Func<Task> operation,
+            string? successMessage = null)
+        {
+            await ExecuteWithLoggingAsync(operationName, async () =>
+            {
+                await operation();
+                return true; // Dummy return value
+            }, _ => successMessage ?? "COMPLETED");
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: Parameter validation helper
+        /// </summary>
+        private void ValidateParameter<T>(T parameter, string parameterName) where T : class
+        {
+            if (parameter == null)
+            {
+                _logger.LogError("❌ {ParameterName} parameter is null - Instance: {ComponentInstanceId}",
+                    parameterName, _componentInstanceId);
+                throw new ArgumentNullException(parameterName);
+            }
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: Service validation helper
+        /// </summary>
+        private bool ValidateService<T>(T service, string serviceName) where T : class
+        {
+            if (service == null)
+            {
+                _logger.LogWarning("⚠️ {ServiceName} is null - Instance: {ComponentInstanceId}",
+                    serviceName, _componentInstanceId);
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: Collection validation helper
+        /// </summary>
+        private void ValidateCollection<T>(ICollection<T> collection, string collectionName)
+        {
+            if (collection == null || collection.Count == 0)
+            {
+                _logger.LogError("❌ {CollectionName} collection is null or empty - Instance: {ComponentInstanceId}",
+                    collectionName, _componentInstanceId);
+                throw new ArgumentException($"{collectionName} collection cannot be null or empty", collectionName);
+            }
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: Safe string conversion helper
+        /// </summary>
+        private static string SafeToString(object? value) =>
+            value?.ToString() ?? string.Empty;
+
+        /// <summary>
+        /// ✅ REFACTORING: Empty value check helper
+        /// </summary>
+        private static bool IsEmptyValue(object? value) =>
+            value == null || string.IsNullOrWhiteSpace(value.ToString());
+
+        /// <summary>
+        /// ✅ REFACTORING: Row data emptiness check helper (enhanced version of IsRowEmptyData)
+        /// </summary>
+        private static bool IsRowDataEmpty(Dictionary<string, object?> rowData) =>
+            rowData?.Values?.All(IsEmptyValue) ?? true;
+
+        /// <summary>
+        /// ✅ REFACTORING: UI Thread execution helper
+        /// </summary>
+        private async Task ExecuteOnUIThreadAsync(Action uiAction, string operationName = "UIUpdate")
+        {
+            await Task.Run(() =>
+            {
+                this.DispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        uiAction();
+                        _logger.LogDebug("✅ {OperationName} completed on UI thread - Instance: {ComponentInstanceId}", 
+                            operationName, _componentInstanceId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ ERROR in {OperationName} on UI thread - Instance: {ComponentInstanceId}", 
+                            operationName, _componentInstanceId);
+                    }
+                });
+            });
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: Synchronous UI Thread execution helper
+        /// </summary>
+        private void ExecuteOnUIThread(Action uiAction, string operationName = "UIUpdate")
+        {
+            this.DispatcherQueue.TryEnqueue(() =>
+            {
+                try
+                {
+                    uiAction();
+                    _logger.LogDebug("✅ {OperationName} completed on UI thread - Instance: {ComponentInstanceId}", 
+                        operationName, _componentInstanceId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ ERROR in {OperationName} on UI thread - Instance: {ComponentInstanceId}", 
+                        operationName, _componentInstanceId);
+                }
+            });
+        }
+
+        /// <summary>
+        /// ✅ REFACTORING: CheckBox State Manager helper class
+        /// </summary>
+        private class CheckBoxStateManager
+        {
+            private readonly Dictionary<int, bool> _states = new();
+            private readonly ILogger _logger;
+            private readonly string _componentInstanceId;
+            private CheckBoxColumnHeader? _header;
+
+            public CheckBoxStateManager(ILogger logger, string componentInstanceId)
+            {
+                _logger = logger;
+                _componentInstanceId = componentInstanceId;
+            }
+
+            public void SetHeader(CheckBoxColumnHeader? header)
+            {
+                _header = header;
+            }
+
+            public void SetState(int rowIndex, bool state)
+            {
+                _states[rowIndex] = state;
+                _logger.LogTrace("🔲 CheckBox state set - Row: {RowIndex}, State: {State}", rowIndex, state);
+            }
+
+            public bool GetState(int rowIndex)
+            {
+                return _states.TryGetValue(rowIndex, out var state) && state;
+            }
+
+            public void UpdateHeaderState(int totalRows)
+            {
+                if (_header == null) return;
+
+                try
+                {
+                    var checkedCount = _states.Values.Count(s => s);
+                    var isIndeterminate = checkedCount > 0 && checkedCount < totalRows;
+                    var isChecked = checkedCount == totalRows && totalRows > 0;
+
+                    var headerState = isChecked 
+                        ? Controls.SpecialColumns.CheckBoxHeaderState.Checked 
+                        : (isIndeterminate 
+                            ? Controls.SpecialColumns.CheckBoxHeaderState.Indeterminate 
+                            : Controls.SpecialColumns.CheckBoxHeaderState.Unchecked);
+                    
+                    _header.SetHeaderState(headerState);
+                    
+                    _logger.LogDebug("🔲 Header state updated - Checked: {CheckedCount}/{TotalRows}, State: {HeaderState}",
+                        checkedCount, totalRows, headerState);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ Error updating header checkbox state");
+                }
+            }
+
+            public void ClearAll()
+            {
+                _states.Clear();
+                UpdateHeaderState(0);
+                _logger.LogDebug("🔲 All checkbox states cleared");
+            }
+
+            public void SetAllStates(bool state, int rowCount)
+            {
+                _states.Clear();
+                for (int i = 0; i < rowCount; i++)
+                {
+                    _states[i] = state;
+                }
+                UpdateHeaderState(rowCount);
+                _logger.LogDebug("🔲 All checkbox states set to {State} for {RowCount} rows", state, rowCount);
+            }
+
+            public Dictionary<int, bool> GetAllStates() => new(_states);
+
+            public List<int> GetCheckedRowIndices() => 
+                _states.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToList();
+        }
+
+        // ✅ REFACTORING: CheckBox state manager instance
+        private CheckBoxStateManager? _checkBoxStateManager;
+
+        #endregion
+
+        /// <summary>
+        /// ✅ NOVÉ: Konfiguruje feature flags pre sort, search, filter a search history
+        /// </summary>
+        private async Task ConfigureFeatureFlagsAsync(bool enableSort, bool enableSearch, bool enableFilter, int searchHistoryItems)
+        {
+            try
+            {
+                _logger.LogInformation("⚙️ ConfigureFeatureFlagsAsync START - Sort: {EnableSort}, Search: {EnableSearch}, " +
+                    "Filter: {EnableFilter}, SearchHistory: {SearchHistory}",
+                    enableSort, enableSearch, enableFilter, searchHistoryItems);
+
+                // Configure sorting if enabled
+                if (enableSort && _searchAndSortService != null)
+                {
+                    _logger.LogDebug("🔧 Enabling sorting functionality");
+                    // Set multi-sort configuration if needed
+                    var sortConfig = MultiSortConfiguration.Default;
+                    sortConfig.IsEnabled = true;
+                    // Additional sorting configuration can be added here
+                }
+
+                // Configure search if enabled  
+                if (enableSearch && _advancedSearchService != null)
+                {
+                    _logger.LogDebug("🔧 Enabling search functionality with history: {SearchHistory}", searchHistoryItems);
+                    
+                    var searchConfig = AdvancedSearchConfiguration.Default;
+                    searchConfig.MaxSearchHistoryItems = searchHistoryItems;
+                    // EnableSearchHistory is read-only and automatically calculated from MaxSearchHistoryItems
+                    
+                    _advancedSearchService.UpdateConfiguration(searchConfig);
+                }
+
+                // Configure filtering if enabled
+                if (enableFilter)
+                {
+                    _logger.LogDebug("🔧 Enabling filter functionality");
+                    // Filter configuration logic can be added here when filter service is available
+                }
+
+                // Log final configuration state
+                _logger.LogInformation("✅ Feature flags configured - Sort: {EnableSort}, Search: {EnableSearch}, " +
+                    "Filter: {EnableFilter}, SearchHistory: {SearchHistory}",
+                    enableSort, enableSearch, enableFilter, searchHistoryItems);
+
+                await Task.CompletedTask; // Placeholder for any async operations
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ConfigureFeatureFlagsAsync");
+                throw;
             }
         }
 

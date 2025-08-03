@@ -490,6 +490,28 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Operations
         }
 
         /// <summary>
+        /// Validuje všetky riadky v gridu a vráti stav validácie
+        /// </summary>
+        public async Task<bool> ValidateRowsAsync()
+        {
+            try
+            {
+                _logger.LogDebug("🔍 ValidateRowsAsync START");
+                
+                // Delegate to ValidateAllRowsAsync
+                var result = await ValidateAllRowsAsync();
+                
+                _logger.LogDebug("✅ ValidateRowsAsync COMPLETED - Result: {Result}", result);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ ERROR in ValidateRowsAsync");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Diagnostické informácie o ValidationService
         /// </summary>
         public string GetDiagnosticInfo()
