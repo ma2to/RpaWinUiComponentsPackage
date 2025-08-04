@@ -75,7 +75,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                 _logger.LogInformation("✅ NavigationService INITIALIZED - Duration: {Duration}ms, " +
                     "KeyboardShortcutsEnabled: {ShortcutsEnabled}, UIStateTrackingEnabled: {StateTracking}, " +
                     "SupportedKeys: [{SupportedKeys}]",
-                    duration, true, true, "Tab, Shift+Tab, Enter, Shift+Enter, Esc, Ctrl+C/V/X");
+                    duration, true, true, "Tab, Shift+Tab, Enter, Shift+Enter, Esc, Ctrl+C/V/X, Arrows, Ctrl+Home/End, Home/End, Page Up/Down, Ctrl+A");
 
                 return Task.CompletedTask;
             }
@@ -272,6 +272,77 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                             _logger.LogDebug("🎮 Ctrl+A: Selecting all cells");
                         }
                         break;
+
+                    // ✅ NOVÉ: Ctrl+Home - move to first cell (0,0)
+                    case Windows.System.VirtualKey.Home when IsCtrlPressed():
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            await _navigationCallback.MoveToFirstCellAsync();
+                            _logger.LogInformation("🎮 Ctrl+Home: Moving to first cell (0,0)");
+                        }
+                        break;
+
+                    // ✅ NOVÉ: Ctrl+End - move to last cell
+                    case Windows.System.VirtualKey.End when IsCtrlPressed():
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            await _navigationCallback.MoveToLastCellAsync();
+                            _logger.LogInformation("🎮 Ctrl+End: Moving to last cell");
+                        }
+                        break;
+
+                    // ✅ NOVÉ: Home - move to first column in current row
+                    case Windows.System.VirtualKey.Home:
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            await _navigationCallback.MoveToFirstColumnInRowAsync(position.Row);
+                            _logger.LogDebug("🎮 Home: Moving to first column in row {Row}", position.Row);
+                        }
+                        break;
+
+                    // ✅ NOVÉ: End - move to last column in current row
+                    case Windows.System.VirtualKey.End:
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            await _navigationCallback.MoveToLastColumnInRowAsync(position.Row);
+                            _logger.LogDebug("🎮 End: Moving to last column in row {Row}", position.Row);
+                        }
+                        break;
+
+                    // ✅ NOVÉ: Page Up - move up by visible rows count
+                    case Windows.System.VirtualKey.PageUp:
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            var visibleRows = await _navigationCallback.GetVisibleRowsCountAsync();
+                            var targetRow = Math.Max(0, position.Row - visibleRows);
+                            await _navigationCallback.MoveToCellAsync(targetRow, position.Column);
+                            _logger.LogInformation("🎮 Page Up: Moving from row {FromRow} to row {ToRow} (VisibleRows: {VisibleRows})", 
+                                position.Row, targetRow, visibleRows);
+                        }
+                        break;
+
+                    // ✅ NOVÉ: Page Down - move down by visible rows count
+                    case Windows.System.VirtualKey.PageDown:
+                        if (_navigationCallback != null)
+                        {
+                            e.Handled = true;
+                            var position = _navigationCallback.GetCellPosition(textBox);
+                            var visibleRows = await _navigationCallback.GetVisibleRowsCountAsync();
+                            var totalRows = await _navigationCallback.GetTotalRowsCountAsync();
+                            var targetRow = Math.Min(totalRows - 1, position.Row + visibleRows);
+                            await _navigationCallback.MoveToCellAsync(targetRow, position.Column);
+                            _logger.LogInformation("🎮 Page Down: Moving from row {FromRow} to row {ToRow} (VisibleRows: {VisibleRows}, TotalRows: {TotalRows})", 
+                                position.Row, targetRow, visibleRows, totalRows);
+                        }
+                        break;
                 }
 
                 // Analyze state change after processing
@@ -443,7 +514,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                     // Capture UI state before cancellation
                     var beforeState = CaptureUIState(textBox);
 
-                    // TODO: Obnoviť pôvodnú hodnotu bunky
+                    // ✅ IMPLEMENTED: Obnoviť pôvodnú hodnotu bunky
                     if (!string.IsNullOrEmpty(_originalEditValue))
                     {
                         textBox.Text = _originalEditValue;
@@ -519,8 +590,14 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
                             string.Join(", ", validation.Issues));
                     }
 
-                    // TODO: Uložiť hodnotu bunky a spustiť validáciu
-                    // await _dataManagementService.SetCellValueAsync(currentRow, currentColumn, newValue);
+                    // ✅ IMPLEMENTED: Uložiť hodnotu bunky a spustiť validáciu
+                    if (_navigationCallback != null)
+                    {
+                        await _navigationCallback.SetCellValueAsync(currentRow, currentColumn, newValue);
+                        await _navigationCallback.ValidateCellAsync(currentRow, currentColumn);
+                        _logger.LogDebug("💾 Cell value saved and validated: [{Row},{Col}] = '{Value}'", 
+                            currentRow, currentColumn, newValue);
+                    }
 
                     // Update edit state
                     _currentEditValue = newValue;
@@ -746,6 +823,28 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services
             if (IsAltPressed()) analysis.Modifiers.Add("Alt");
 
             return analysis;
+        }
+
+        /// <summary>
+        /// ✅ IMPLEMENTED: Get previous cell position for navigation
+        /// </summary>
+        private CellPosition GetPreviousCellPosition(int currentRow, int currentColumn)
+        {
+            var previousColumn = currentColumn - 1;
+            var previousRow = currentRow;
+
+            if (previousColumn < 0)
+            {
+                previousColumn = _currentCellState.Count - 1;
+                previousRow = Math.Max(0, currentRow - 1);
+            }
+
+            return new CellPosition
+            {
+                Row = previousRow,
+                Column = previousColumn,
+                ColumnName = $"Column_{previousColumn}"
+            };
         }
 
         /// <summary>

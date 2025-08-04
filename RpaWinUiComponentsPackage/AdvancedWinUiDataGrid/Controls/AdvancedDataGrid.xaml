@@ -151,7 +151,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <!-- Data row template sa pridá v code-behind -->
-                                        <Border Background="Transparent"
+                                        <Border Background="{Binding IsZebraRow, Converter={StaticResource ZebraRowConverter}}"
                                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                                 BorderThickness="0,0,0,1"
                                                 MinHeight="36"

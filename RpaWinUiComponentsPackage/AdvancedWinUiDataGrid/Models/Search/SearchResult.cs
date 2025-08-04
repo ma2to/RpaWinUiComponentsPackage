@@ -326,4 +326,5 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Models.Search
         /// </summary>
         CaseInsensitive
     }
+
 }

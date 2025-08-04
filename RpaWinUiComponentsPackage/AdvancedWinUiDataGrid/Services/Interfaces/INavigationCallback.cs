@@ -57,5 +57,40 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.Interfaces
         /// Získa UI element pre bunku na pozícii
         /// </summary>
         object? GetCellUIElement(int row, int column);
+
+        /// <summary>
+        /// ✅ NOVÉ: Presunie focus na prvú bunku (0,0) - Ctrl+Home
+        /// </summary>
+        Task MoveToFirstCellAsync();
+
+        /// <summary>
+        /// ✅ NOVÉ: Presunie focus na poslednú bunku - Ctrl+End
+        /// </summary>
+        Task MoveToLastCellAsync();
+
+        /// <summary>
+        /// ✅ NOVÉ: Presunie focus na prvý stĺpec v danom riadku - Home
+        /// </summary>
+        Task MoveToFirstColumnInRowAsync(int row);
+
+        /// <summary>
+        /// ✅ NOVÉ: Presunie focus na posledný stĺpec v danom riadku - End
+        /// </summary>
+        Task MoveToLastColumnInRowAsync(int row);
+
+        /// <summary>
+        /// ✅ NOVÉ: Presunie focus na špecifickú bunku - používané pre Page Up/Down
+        /// </summary>
+        Task MoveToCellAsync(int row, int column);
+
+        /// <summary>
+        /// ✅ NOVÉ: Získa počet viditeľných riadkov pre Page Up/Down
+        /// </summary>
+        Task<int> GetVisibleRowsCountAsync();
+
+        /// <summary>
+        /// ✅ NOVÉ: Získa celkový počet riadkov
+        /// </summary>
+        Task<int> GetTotalRowsCountAsync();
     }
 }

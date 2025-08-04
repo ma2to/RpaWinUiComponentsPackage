@@ -293,6 +293,55 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.UI
             }
         }
 
+        /// <summary>
+        /// ✅ NOVÉ: Handle double-click auto-fit na resize grip
+        /// </summary>
+        public async Task<bool> HandleDoubleClickAutoFitAsync(string columnName, List<object> sampleData)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(columnName) || _isResizing) return false;
+
+                _logger.LogInformation("🖱️ Double-click auto-fit triggered - Column: {Column}", columnName);
+
+                // Auto-size stĺpec na základe obsahu
+                var result = await AutoSizeColumnAsync(columnName, sampleData, maxSamples: 200); // Viac samples pre lepšiu presnosť
+
+                if (result)
+                {
+                    _logger.LogInformation("✅ Double-click auto-fit completed - Column: {Column}", columnName);
+                    OnDoubleClickAutoFit(columnName);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error in double-click auto-fit - Column: {Column}", columnName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Handle double-click auto-fit pre všetky stĺpce
+        /// </summary>
+        public async Task HandleDoubleClickAutoFitAllAsync(List<object> sampleData)
+        {
+            try
+            {
+                _logger.LogInformation("🖱️ Double-click auto-fit ALL columns triggered");
+
+                await AutoSizeAllColumnsAsync(sampleData);
+
+                _logger.LogInformation("✅ Double-click auto-fit ALL columns completed");
+                OnDoubleClickAutoFitAll();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error in double-click auto-fit all columns");
+            }
+        }
+
         #endregion
 
         #region Resize Constraints
@@ -401,6 +450,16 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.UI
         /// </summary>
         public event EventHandler<ColumnAutoSizedEventArgs>? ColumnAutoSized;
 
+        /// <summary>
+        /// ✅ NOVÉ: Event pre double-click auto-fit jedného stĺpca
+        /// </summary>
+        public event EventHandler<DoubleClickAutoFitEventArgs>? DoubleClickAutoFit;
+
+        /// <summary>
+        /// ✅ NOVÉ: Event pre double-click auto-fit všetkých stĺpcov
+        /// </summary>
+        public event EventHandler<EventArgs>? DoubleClickAutoFitAll;
+
         protected virtual void OnResizeStarted(string columnName, double originalWidth)
         {
             ResizeStarted?.Invoke(this, new ResizeStartedEventArgs(columnName, originalWidth));
@@ -424,6 +483,22 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.UI
         protected virtual void OnColumnAutoSized(string columnName, double oldWidth, double newWidth)
         {
             ColumnAutoSized?.Invoke(this, new ColumnAutoSizedEventArgs(columnName, oldWidth, newWidth));
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Trigger double-click auto-fit event
+        /// </summary>
+        protected virtual void OnDoubleClickAutoFit(string columnName)
+        {
+            DoubleClickAutoFit?.Invoke(this, new DoubleClickAutoFitEventArgs(columnName));
+        }
+
+        /// <summary>
+        /// ✅ NOVÉ: Trigger double-click auto-fit all event
+        /// </summary>
+        protected virtual void OnDoubleClickAutoFitAll()
+        {
+            DoubleClickAutoFitAll?.Invoke(this, EventArgs.Empty);
         }
 
         #endregion
@@ -526,6 +601,21 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.UI
             ColumnName = columnName;
             OldWidth = oldWidth;
             NewWidth = newWidth;
+        }
+    }
+
+    /// <summary>
+    /// ✅ NOVÉ: Event args pre double-click auto-fit
+    /// </summary>
+    internal class DoubleClickAutoFitEventArgs : EventArgs
+    {
+        public string ColumnName { get; }
+        public DateTime Timestamp { get; }
+
+        public DoubleClickAutoFitEventArgs(string columnName)
+        {
+            ColumnName = columnName;
+            Timestamp = DateTime.UtcNow;
         }
     }
 

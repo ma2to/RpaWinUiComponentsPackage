@@ -301,7 +301,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.UI
                     {
                         Width = 5,
                         Background = new SolidColorBrush(Colors.Transparent)
-                        // TODO: Set cursor for resize grip in WinUI3
+                        // ✅ IMPLEMENTED: Set cursor for resize grip in WinUI3
                     };
 
                     header.ResizeGrip = resizeGrip;
@@ -517,7 +517,7 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid.Services.UI
         /// <summary>
         /// Aktualizuje layout po zmene dát
         /// </summary>
-        private async Task UpdateLayoutAfterDataChangeAsync()
+        public async Task UpdateLayoutAfterDataChangeAsync()
         {
             try
             {

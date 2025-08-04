@@ -30,13 +30,23 @@ namespace RpaWinUiComponentsPackage.AdvancedWinUiDataGrid
                 // Očakáva sa že value je bool - true pre zebra row, false pre normal row
                 if (value is bool isZebraRow)
                 {
-                    if (isZebraRow && AlternateRowBrush != null)
+                    if (isZebraRow)
                     {
-                        return AlternateRowBrush;
+                        // Použij AlternateRowBrush ak je nastavený, inak default zebra farbu
+                        if (AlternateRowBrush != null)
+                        {
+                            return AlternateRowBrush;
+                        }
+                        else
+                        {
+                            // Default zebra farba - jemne tmavšia
+                            return new SolidColorBrush(Color.FromArgb(20, 0, 0, 0));
+                        }
                     }
-                    else if (!isZebraRow && NormalRowBrush != null)
+                    else
                     {
-                        return NormalRowBrush;
+                        // Použij NormalRowBrush ak je nastavený, inak transparent
+                        return NormalRowBrush ?? new SolidColorBrush(Colors.Transparent);
                     }
                 }
 
